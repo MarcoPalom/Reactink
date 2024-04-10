@@ -1,9 +1,4 @@
 import React from 'react';
-import '../assets/styles/style.css';
-import '../assets/styles/animate.css';
-import '../assets/styles/bootstrap-datetimepicker.min.css';
-import '../assets/styles/bootstrap.min.css';
-import '../assets/styles/dataTables.bootstrap4.min.css';
 import logo from '../assets/img/logo3.png';
 import logosmall from '../assets/img/logo-small.png';
 import closes from '../assets/img/icons/closes.svg';
@@ -14,7 +9,7 @@ import product from '../assets/img/icons/product.svg';
 import sales from '../assets/img/icons/sales1.svg';
 import users from '../assets/img/icons/users1.svg';
 
-const dashboardnavbar = () => {
+const DashboardNavbar = () => {
   return (
     <div className='main-wrapper'>
       <div className="header">
@@ -255,4 +250,4 @@ const dashboardnavbar = () => {
   )
 }
 
-export default dashboardnavbar;
+export default DashboardNavbar;

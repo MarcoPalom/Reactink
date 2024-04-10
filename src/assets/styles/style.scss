@@ -1,0 +1,29 @@
+body {
+  margin: 0;
+}
+
+.content-wrapper {
+  display: flex;
+  height: 100vh;
+
+  .side-nav {
+    //background: red;
+    border-right: 1px solid #dcdbdb;
+  }
+
+  .top-nav-container {
+    width: 100%;
+
+    .top-nav {
+      height: 3rem;
+      background: #83fae2;
+    }
+
+    .content {
+      padding: 2rem;
+      height: calc(100% - 7rem);
+      overflow: scroll;
+    }
+  }
+
+}
