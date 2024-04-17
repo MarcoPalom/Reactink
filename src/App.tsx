@@ -1,19 +1,17 @@
 import React from 'react';
-import TopNav from "components/top-nav/TopNav";
 import SideNav from "components/side-nav/SideNav";
-
+import TopNav from "components/top-nav/TopNav";
 
 function App() {
     return (
-        <div>
-            <div className='content-wrapper p-t-15'>
+        <div className=''>
+            <div className='w-screen flex flex-row'>
                 <SideNav/>
-                <div className='top-nav-container p-t-15'>
+                <div className='w-full'>
                     <TopNav/>
-                    <div className='content p-t-15'>
+                    <div className='overflow-y-scroll h-[calc(100vh-3.5rem)] pb-10 bg-slate-50'>
                         {/*<Routes/>*/}
-
-
+                        <div>1</div>
                         <div>ldknldnldknldkd</div>
                         <div>ldknldnldknldkd</div>
                         <div>ldknldnldknldkd</div>
@@ -102,9 +100,7 @@ function App() {
                         <div>ldknldnldknldkd</div>
                         <div>ldknldnldknldkd</div>
                         <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
+                        <div>2</div>
                     </div>
                 </div>
             </div>
