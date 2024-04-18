@@ -2,6 +2,7 @@ import Logo from 'assets/img/logo.png'
 import {Menu, MenuProps} from "antd";
 import {CodeSandboxOutlined, DashboardOutlined, EyeOutlined, MailOutlined, ShoppingCartOutlined} from "@ant-design/icons";
 import React from "react";
+import {useNavigate} from "react-router-dom";
 
 type MenuItem = Required<MenuProps>['items'][number];
 
@@ -21,14 +22,14 @@ const getItem = (
     } as MenuItem;
 }
 const SideNav = () => {
-
+    const navigate = useNavigate();
 
     const items: MenuProps['items'] = [
-        getItem('Inicio', 'home', <DashboardOutlined/>),
+        getItem('Inicio', '/', <DashboardOutlined/>),
 
         getItem('Inventario', 'stock', <MailOutlined/>, [
-            getItem('Lista de productos', 'stock-1'),
-            getItem('Añadir productos', 'stock-2'),
+            getItem('Lista de productos', '/productos'),
+            getItem('Añadir productos', '/productos/5131153'),
             getItem('Lista de categorías', 'stock-3'),
             getItem('Añadir categorías', 'stock-4'),
         ]),
@@ -63,6 +64,9 @@ const SideNav = () => {
                 <Menu
                     mode="inline"
                     items={items}
+                    onClick={(e) => {
+                        navigate(e.key)
+                    }}
                 />
             </div>
         </div>

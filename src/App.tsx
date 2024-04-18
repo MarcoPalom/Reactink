@@ -1,112 +1,22 @@
-import React from 'react';
-import SideNav from "components/side-nav/SideNav";
-import TopNav from "components/top-nav/TopNav";
+import React from 'react'
+import SideNav from 'components/side-nav/SideNav'
+import TopNav from 'components/top-nav/TopNav'
+import AppRoutes from 'routes'
 
 function App() {
-    return (
-        <div className=''>
-            <div className='w-screen flex flex-row'>
-                <SideNav/>
-                <div className='w-full'>
-                    <TopNav/>
-                    <div className='overflow-y-scroll h-[calc(100vh-3.5rem)] pb-10 bg-slate-50'>
-                        {/*<Routes/>*/}
-                        <div>1</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>ldknldnldknldkd</div>
-                        <div>2</div>
-                    </div>
-                </div>
-            </div>
+  return (
+    <div className="">
+      <div className="w-screen flex flex-row">
+        <SideNav />
+        <div className="w-full">
+          <TopNav />
+          <div className="overflow-y-scroll h-[calc(100vh-3.5rem)] pb-10 bg-slate-50">
+            <AppRoutes />
+          </div>
         </div>
-    );
+      </div>
+    </div>
+  )
 }
 
-export default App;
-
+export default App
