@@ -1,7 +1,7 @@
 import Logo from 'assets/img/logo.png'
-import {Menu, MenuProps} from "antd";
+import {Menu, MenuProps,Button} from "antd";
 import {CodeSandboxOutlined, DashboardOutlined, EyeOutlined, MailOutlined, ShoppingCartOutlined} from "@ant-design/icons";
-import React from "react";
+import React, { useState } from "react";
 import {useNavigate} from "react-router-dom";
 
 type MenuItem = Required<MenuProps>['items'][number];
@@ -63,6 +63,7 @@ const SideNav = () => {
             <div>
                 <Menu
                     mode="inline"
+                    className='p-5'
                     items={items}
                     onClick={(e) => {
                         navigate(e.key)
