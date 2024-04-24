@@ -1,8 +1,8 @@
 import Logo from 'assets/img/logo.png'
-import {Menu, MenuProps,Button} from "antd";
-import {CodeSandboxOutlined, DashboardOutlined, EyeOutlined, MailOutlined, ShoppingCartOutlined} from "@ant-design/icons";
+import { Menu, MenuProps, Button } from "antd";
+import { CodeSandboxOutlined, DashboardOutlined, EyeOutlined, MailOutlined, ShoppingCartOutlined, MenuUnfoldOutlined, MenuFoldOutlined } from "@ant-design/icons";
 import React, { useState } from "react";
-import {useNavigate} from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 
 type MenuItem = Required<MenuProps>['items'][number];
 
@@ -22,55 +22,70 @@ const getItem = (
     } as MenuItem;
 }
 const SideNav = () => {
+    const [isVisible, setIsVisible] = useState(false);
+
+    const toggleVisibility = () => {
+        setIsVisible(!isVisible);
+    };
     const navigate = useNavigate();
 
     const items: MenuProps['items'] = [
-        getItem('Inicio', '/', <DashboardOutlined/>),
+        getItem('Inicio', '/', <DashboardOutlined />),
 
-        getItem('Inventario', 'stock', <MailOutlined/>, [
-            getItem('Lista de productos', '/productos'),
-            getItem('Añadir productos', '/productos/5131153'),
-            getItem('Lista de categorías', 'stock-3'),
-            getItem('Añadir categorías', 'stock-4'),
+        getItem('Inventario', 'stock', <MailOutlined />, [
+            getItem('Lista de productos', '/inventario/productos'),
+            getItem('Añadir productos', '/inventario/añadir-producto'),
+            getItem('Lista de categorías', '/inventario/categorias'),
+            getItem('Añadir categorías', '/inventario/añadir-categoria'),
         ]),
 
-        getItem('Finanzas', 'finance', <CodeSandboxOutlined/>, [
-            getItem('Lista de cotizaciones', 'finance-1'),
-            getItem('Añadir cotizacion', 'finance-2'),
-            getItem('Lista de ventas', 'finance-3'),
-            getItem('Lista de gastos', 'finance-4'),
-            getItem('Añadir gasto', 'finance-5'),
+        getItem('Finanzas', 'finance', <CodeSandboxOutlined />, [
+            getItem('Lista de cotizaciones', '/finanzas/cotizaciones'),
+            getItem('Añadir cotizacion', '/finanzas/añadir-cotizacion'),
+            getItem('Lista de ventas', '/finanzas/ventas'),
+            getItem('Lista de gastos', '/finanzas/gastos'),
+            getItem('Añadir gasto', '/finanzas/añadir-gasto'),
         ]),
 
-        getItem('Personal', 'employees', <ShoppingCartOutlined/>, [
-            getItem('Lista de empleados', 'employees-1'),
-            getItem('Añadir empleado', 'employees-2'),
-            getItem('Lista de clientes', 'employees-3'),
-            getItem('Añadir cliente', 'employees-4'),
+        getItem('Personal', 'employees', <ShoppingCartOutlined />, [
+            getItem('Lista de empleados', '/personal/empleados'),
+            getItem('Añadir empleado', '/personal/empleados-añadir'),
+            getItem('Lista de clientes', '/personal/clientes'),
+            getItem('Añadir cliente', '/personal/clientes-añadir'),
         ]),
 
-        getItem('Producción', 'prod', <EyeOutlined/>, [
+        getItem('Producción', 'prod', <EyeOutlined />, [
             getItem('Estado de producción', 'prod-1'),
         ]),
     ];
 
 
     return (
-        <div className='w-[16rem]'>
-            <div className='h-16 px-4 py-2'>
-                <img src={Logo} alt="Ink Sports" className='h-10'/>
-            </div>
-            <div>
-                <Menu
-                    mode="inline"
-                    className='p-5'
-                    items={items}
-                    onClick={(e) => {
-                        navigate(e.key)
-                    }}
-                />
+
+        <div>
+
+            <button className="block sm:hidden mt-3.5 ml-3.5 text-indigo-900 text-4xl" onClick={toggleVisibility}>
+                {isVisible ? <MenuUnfoldOutlined /> : <MenuFoldOutlined />}
+            </button>
+            <div className={`w-${isVisible ? 'screen' : '16rem'} h-${isVisible ? 'screen' : 'auto'} ${isVisible ? 'block' : 'hidden sm:block'}`}>
+                <div className={`flex h-16 px-4 py-2 ${isVisible ? 'justify-center' : 'justify-start'}`}>
+                    <img src={Logo} alt="Ink Sports" className='h-10 ' />
+                </div>
+                <div>
+                    <Menu
+                        mode="inline"
+                        className='p-5 text-center'
+                        items={items}
+                        onClick={(e) => {
+                            navigate(e.key)
+                            setIsVisible(false);
+                        }}
+                    />
+                </div>
             </div>
         </div>
+
+
     )
 }
 

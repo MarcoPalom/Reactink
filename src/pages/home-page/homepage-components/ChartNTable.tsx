@@ -46,9 +46,9 @@ const ChartNTable = () => {
     ];
 
     return (
-        <div className='flex flex-row gap-4 justify-between mb-6'>
+        <div className='grid grid-cols-1 lg:flex lg:flex-row gap-4 justify-between mb-6'>
             <Card
-                className='w-7/12 h-96'
+                className=' md:w-full lg:w-7/12 h-96'
 
 
 
@@ -56,12 +56,10 @@ const ChartNTable = () => {
 
             />
 
-            <Card className='w-2/5 h-96' title={<Title level={3}
-
-                className="text-base flex flex-row items-center justify-between"
-
-            >Pedidos agregados recientemente
-
+            <Card className='md:w-full lg:w-2/5 h-96' title={
+            <Title level={3} className="text-base flex flex-row items-center justify-between" >
+                
+                Pedidos agregados recientemente
 
 
                 <Popover
