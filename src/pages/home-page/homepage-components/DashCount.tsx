@@ -1,59 +1,48 @@
-import { UserOutlined, UsergroupAddOutlined } from '@ant-design/icons'
-import { FaClipboardList, FaClipboardCheck } from "react-icons/fa";
-import { useState , useEffect } from 'react';
+import { UsergroupAddOutlined, UserOutlined } from '@ant-design/icons'
+import { FaClipboardCheck, FaClipboardList } from 'react-icons/fa'
+import { useEffect, useState } from 'react'
 
+const DashCount = () => {
+  const [dashCountData, setDashCountData] = useState([20, 40, 60, 80])
 
+  useEffect(() => {
+    //cargar los datos desde una base de datos
+  }, [])
 
-
-const DashCount = () =>{
-
-    const [dashCountData, setDashCountData] = useState([20, 40, 60, 80]);
-
-    useEffect(() => {
-        //cargar los datos desde una base de datos 
-    }, []);
-
-
-
-
-return(
-<div className="grid grid-cols-1 md:grid-cols-2 lg:flex lg:flex-row gap-4 text-white w-full mb-5 justify-between">
-
-    <div className="bg-indigo-900 rounded-md flex justify-between p-5 md:max-w-xs lg:w-1/4 h-24">
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:flex lg:flex-row gap-4 text-white w-full mb-5 justify-between">
+      <div className="bg-indigo-900 rounded-md flex justify-between p-5 w-full md:max-w-xs lg:w-1/4 h-24">
         <div>
-            <h4 className="text-2xl">{dashCountData[0]}</h4>
-            <h5 className="text-sm">Empleados</h5>
+          <h4 className="text-2xl">{dashCountData[0]}</h4>
+          <h5 className="text-sm">Empleados</h5>
         </div>
         <UserOutlined className="text-6xl transform transition-all hover:scale-110 duration-500" />
-    </div>
+      </div>
 
-    <div className="bg-sky-400 rounded-md flex justify-between p-5 md:max-w-xs lg:w-1/4 h-24 ">
+      <div className="bg-sky-400 rounded-md flex justify-between p-5 md:max-w-xs lg:w-1/4 h-24 ">
         <div>
-            <h4 className="text-2xl">{dashCountData[1]}</h4>
-            <h5 className="text-sm">Clientes</h5>
+          <h4 className="text-2xl">{dashCountData[1]}</h4>
+          <h5 className="text-sm">Clientes</h5>
         </div>
         <UsergroupAddOutlined className="text-6xl transform transition-all hover:scale-110 duration-500" />
-    </div>
+      </div>
 
-    <div className="bg-rose-600 rounded-md flex justify-between p-5 md:max-w-xs lg:w-1/4 h-24 ">
+      <div className="bg-rose-600 rounded-md flex justify-between p-5 md:max-w-xs lg:w-1/4 h-24 ">
         <div>
-            <h4 className="text-2xl">{dashCountData[2]}</h4>
-            <h5 className="text-sm">Pedidos recibidos</h5>
+          <h4 className="text-2xl">{dashCountData[2]}</h4>
+          <h5 className="text-sm">Pedidos recibidos</h5>
         </div>
         <FaClipboardList className="text-6xl transform transition-all hover:scale-110 duration-500" />
-    </div>
+      </div>
 
-    <div className="bg-green-500 rounded-md flex justify-between p-5 md:max-w-xs lg:w-1/4 h-24">
+      <div className="bg-green-500 rounded-md flex justify-between p-5 md:max-w-xs lg:w-1/4 h-24">
         <div>
-            <h4 className="text-2xl">{dashCountData[3]}</h4>
-            <h5 className="text-sm">Pedidos completados</h5>
+          <h4 className="text-2xl">{dashCountData[3]}</h4>
+          <h5 className="text-sm">Pedidos completados</h5>
         </div>
         <FaClipboardCheck className="text-6xl transform transition-all hover:scale-110 duration-500" />
+      </div>
     </div>
-</div>
-
-
-)
-
+  )
 }
-export default DashCount;
+export default DashCount
