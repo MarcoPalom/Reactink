@@ -11,7 +11,7 @@ interface DataType {
 
 const category: DataType[] = [
   {
-    value: 'category1',
+    value: 'category11',
     label: 'OPCION 1'
   },
   {
