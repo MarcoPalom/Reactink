@@ -34,24 +34,24 @@ const SideNav = () => {
 
         getItem('Inventario', 'stock', <MailOutlined />, [
             getItem('Lista de productos', '/inventario/productos'),
-            getItem('Añadir productos', '/inventario/añadir-producto'),
+            getItem('agregar productos', '/inventario/agregar-producto'),
             getItem('Lista de categorías', '/inventario/categorias'),
-            getItem('Añadir categorías', '/inventario/añadir-categoria'),
+            getItem('agregar categorías', '/inventario/agregar-categoria'),
         ]),
 
         getItem('Finanzas', 'finance', <CodeSandboxOutlined />, [
             getItem('Lista de cotizaciones', '/finanzas/cotizaciones'),
-            getItem('Añadir cotizacion', '/finanzas/añadir-cotizacion'),
+            getItem('agregar cotizacion', '/finanzas/agregar-cotizacion'),
             getItem('Lista de ventas', '/finanzas/ventas'),
             getItem('Lista de gastos', '/finanzas/gastos'),
-            getItem('Añadir gasto', '/finanzas/añadir-gasto'),
+            getItem('agregar gasto', '/finanzas/agregar-gasto'),
         ]),
 
         getItem('Personal', 'employees', <ShoppingCartOutlined />, [
             getItem('Lista de empleados', '/personal/empleados'),
-            getItem('Añadir empleado', '/personal/empleados-añadir'),
+            getItem('agregar empleado', '/personal/empleados-agregar'),
             getItem('Lista de clientes', '/personal/clientes'),
-            getItem('Añadir cliente', '/personal/clientes-añadir'),
+            getItem('agregar cliente', '/personal/clientes-agregar'),
         ]),
 
         getItem('Producción', 'prod', <EyeOutlined />, [

@@ -1,3 +1,4 @@
+
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import HomePage from "pages/home-page/HomePage";
 import ProductList from "pages/products/product-list/ProductList";
@@ -20,21 +21,22 @@ const AppRoutes = () => {
             <Routes>
                 <Route path="/" element={<HomePage />} />
                 <Route path="/inventario/productos" element={<ProductList />} />
-                <Route path="/inventario/añadir-producto" element={<ProductDetail />} />
+                <Route path="/inventario/agregar-producto" element={<ProductDetail />} />
                 <Route path="/inventario/categorias" element={<CategoryList />} />
-                <Route path='/inventario/añadir-categoria' element={<CategoryDetail/>}/>
+                <Route path='/inventario/agregar-categoria' element={<CategoryDetail/>}/>
                 <Route path='/finanzas/cotizaciones' element={<CotationList/>}/>
-                <Route path='/finanzas/añadir-cotizacion' element={<CotationDetail/>}/>
+                <Route path='/finanzas/agregar-cotizacion' element={<CotationDetail/>}/>
                 <Route path='/finanzas/ventas' element={<SaleList/>}/>
                 <Route path='/finanzas/gastos' element={<ExpenseList/>}/>
-                <Route path='/finanzas/añadir-gasto' element={<ExpenseDetail/>}/>
+                <Route path='/finanzas/agregar-gasto' element={<ExpenseDetail/>}/>
                 <Route path='/personal/empleados' element={<EmployeList/>}/>
-                <Route path='/personal/empleados-añadir' element={<EmployeDetail/>}/>
+                <Route path='/personal/empleados-agregar' element={<EmployeDetail/>}/>
                 <Route path='/personal/clientes' element={<ClientList/>}/>
-                <Route path='/personal/clientes-añadir' element={<ClientDetail/>}/>
+                <Route path='/personal/clientes-agregar' element={<ClientDetail/>}/>
             </Routes>
 
     )
-}
+
+  }
 
 export default AppRoutes

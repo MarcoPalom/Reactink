@@ -10,7 +10,7 @@ function App() {
         <SideNav />
         <div className="w-full">
           <TopNav />
-          <div className="overflow-y-scroll h-[calc(100vh-3.5rem)] p-6 bg-slate-50">
+          <div className="overflow-y-scroll h-[calc(100vh-3.5rem)] p-5 mb-10 bg-slate-50 ">
             <AppRoutes />
           </div>
         </div>
