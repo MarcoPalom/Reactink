@@ -1,15 +1,15 @@
 import Logo from 'assets/img/logo.png'
+import Logosmall from 'assets/img/logo-small.png'
 import { Menu, MenuProps } from 'antd'
 import {
   CodeSandboxOutlined,
   DashboardOutlined,
   EyeOutlined,
   MailOutlined,
-  MenuUnfoldOutlined,
   ShoppingCartOutlined
 } from '@ant-design/icons'
 import React from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 
 type MenuItem = Required<MenuProps>['items'][number]
 
@@ -30,9 +30,26 @@ const getItem = (
 }
 const SideNav = () => {
   const navigate = useNavigate()
+  const location = useLocation()
+
+  const allowedRoutes = [
+    '/homepage',
+    '/inventario',
+    '/finanzas',
+    '/personal',
+    '/prod'
+  ]
+
+  const showSideNav = allowedRoutes.some((route) =>
+    location.pathname.startsWith(route)
+  )
+
+  if (!showSideNav) {
+    return null
+  }
 
   const items: MenuProps['items'] = [
-    getItem('Inicio', '/', <DashboardOutlined />),
+    getItem('Inicio', '/homepage', <DashboardOutlined />),
 
     getItem('Inventario', 'stock', <MailOutlined />, [
       getItem('Lista de productos', '/inventario/productos'),
@@ -63,9 +80,9 @@ const SideNav = () => {
 
   return (
     <div>
-      <button className="block md:hidden mt-3.5 ml-3.5 text-indigo-900 text-4xl">
-        <MenuUnfoldOutlined />
-      </button>
+      <div className="block md:hidden mt-3.5 ml-3.5 text-indigo-900 text-4xl">
+        <img src={Logosmall} alt="inksport" className="h-5" />
+      </div>
       <div className="w-20  md:w-64  h-screen">
         <div className={`h-16 px-4 py-2 justify-start hidden md:block`}>
           <img src={Logo} alt="Ink Sports" className="h-10 " />

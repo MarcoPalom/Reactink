@@ -14,12 +14,14 @@ import ClientList from 'pages/personal/client-list/ClientList';
 import ClientDetail from 'pages/personal/client-detail/ClientDetail';
 import EmployeList from 'pages/personal/employe-list/EmployeList';
 import EmployeDetail from 'pages/personal/employe-detail/EmployeDetail';
+import Login from 'pages/Login';
 
 const AppRoutes = () => {
     return (
 
             <Routes>
-                <Route path="/" element={<HomePage />} />
+                 <Route path="/" element={<Login />} />
+                <Route path="/homepage" element={<HomePage />} />
                 <Route path="/inventario/productos" element={<ProductList />} />
                 <Route path="/inventario/agregar-producto" element={<ProductDetail />} />
                 <Route path="/inventario/categorias" element={<CategoryList />} />
