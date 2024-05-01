@@ -53,24 +53,24 @@ const SideNav = () => {
 
     getItem('Inventario', 'stock', <MailOutlined />, [
       getItem('Lista de productos', '/inventario/productos'),
-      getItem('agregar productos', '/inventario/agregar-producto'),
+      getItem('Agregar productos', '/inventario/agregar-producto'),
       getItem('Lista de categorías', '/inventario/categorias'),
-      getItem('agregar categorías', '/inventario/agregar-categoria')
+      getItem('Agregar categorías', '/inventario/agregar-categoria')
     ]),
 
     getItem('Finanzas', 'finance', <CodeSandboxOutlined />, [
       getItem('Lista de cotizaciones', '/finanzas/cotizaciones'),
-      getItem('agregar cotizacion', '/finanzas/agregar-cotizacion'),
+      getItem('Agregar cotizacion', '/finanzas/agregar-cotizacion'),
       getItem('Lista de ventas', '/finanzas/ventas'),
       getItem('Lista de gastos', '/finanzas/gastos'),
-      getItem('agregar gasto', '/finanzas/agregar-gasto')
+      getItem('Agregar gasto', '/finanzas/agregar-gasto')
     ]),
 
     getItem('Personal', 'employees', <ShoppingCartOutlined />, [
       getItem('Lista de empleados', '/personal/empleados'),
-      getItem('agregar empleado', '/personal/empleados-agregar'),
+      getItem('Agregar empleado', '/personal/empleados-agregar'),
       getItem('Lista de clientes', '/personal/clientes'),
-      getItem('agregar cliente', '/personal/clientes-agregar')
+      getItem('Agregar cliente', '/personal/clientes-agregar')
     ]),
 
     getItem('Producción', 'prod', <EyeOutlined />, [
@@ -83,6 +83,7 @@ const SideNav = () => {
       <div className="block md:hidden mt-3.5 ml-3.5 text-indigo-900 text-4xl">
         <img src={Logosmall} alt="inksport" className="h-5" />
       </div>
+
       <div className="w-20  md:w-64  h-screen">
         <div className={`h-16 px-4 py-2 justify-start hidden md:block`}>
           <img src={Logo} alt="Ink Sports" className="h-10 " />

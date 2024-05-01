@@ -22,7 +22,7 @@ const HomePage = () => {
             if (!token) {
               navigate('/');
             }
-            const response = await axios.get('http://localhost:3000/api/user/renew-token', {
+            const response = await axios.get('http://localhost:3001/api/user/renew-token', {
               headers: {
                 Authorization: `Bearer ${token}`,
               },

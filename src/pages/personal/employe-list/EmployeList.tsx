@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Button, Space, Table, Card, Input } from 'antd'
+import {useNavigate} from 'react-router-dom'
 import {
   PlusOutlined,
   FilePdfOutlined,
@@ -17,17 +18,47 @@ const EmployeList = () => {
   const [filteredInfo, setFilteredInfo] = useState({})
   const [sortedInfo, setSortedInfo] = useState({})
   const [searchText, setSearchText] = useState('')
+  const navigate = useNavigate()
 
   useEffect(() => {
+    const renewToken = async () => {
+      try {
+        const token = localStorage.getItem('token');
+
+        if (!token) {
+          navigate('/');
+        }
+        const response = await axios.get('http://localhost:3001/api/user/renew-token', {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        localStorage.setItem('token', response.data.token);
+
+        console.log('Token renovado con éxito:', response.data);
+      } catch (error) {
+        console.error('Error al renovar el token:', error);
+        navigate('/');
+      }
+    };
+
+
     const fetchEmployees = async () => {
       try {
-        const response = await axios.get('http://localhost:3000/api/user/')
+        const response = await axios.get('http://localhost:3001/api/user/', {
+          // Faltaban headers para autenticación
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          }
+        })
         setEmployees(response.data)
       } catch (error) {
         console.error('Error fetching employees:', error)
       }
     }
 
+    renewToken();
     fetchEmployees()
   }, [])
 
@@ -35,6 +66,11 @@ const EmployeList = () => {
     setFilteredInfo(filters)
     setSortedInfo(sorter)
   }
+
+  // Se agregó funcion para redireccionar con el boton de agregar empleado
+  const handleClick = () => {
+    navigate('/personal/empleados-agregar')
+  } 
 
  
   const columns = [
@@ -78,18 +114,31 @@ const EmployeList = () => {
       title: 'Fecha de inicio',
       dataIndex: 'startDate',
       key: 'startDate',
+      // Formatear la fecha y eliminar la parte de tiempo
+      render: (startDate: Date) => {
+        return new Date(startDate).toLocaleDateString('es-ES');
+      }
     },
     {
       title: 'Rol',
       dataIndex: 'role',
       key: 'role',
-      sorter: (a:any, b:any) => a.role - b.role
+      sorter: (a:any, b:any) => a.role - b.role,
+      // Comprobación de roles
+      render: (role: number) => {
+        switch (role) {
+          case 1:
+            return 'Administrador';
+          case 2:
+            return 'Financiero';
+          case 3:
+            return 'Auxiliar'
+          default:
+            return 'Desconocido';
+        }
+      }
     },
-    {
-      title: 'Foto',
-      dataIndex: 'image',
-      key: 'image',
-    },
+    // Se quitó la foto
   ]
 
   const filteredEmployees = searchText
@@ -109,7 +158,7 @@ const EmployeList = () => {
           <h4 className="font-bold text-lg">Personal</h4>
           <h6 className="text-sm">Lista de Empleados</h6>
         </div>
-        <Button className=" h-10 bg-indigo-900 rounded-md text-white text-base font-bold p-2 items-center ">
+        <Button className=" h-10 bg-indigo-900 rounded-md text-white text-base font-bold p-2 items-center " onClick={handleClick}>
           <a>
             <PlusOutlined className="text-white font-bold" /> Añadir nuevo
             empleado{' '}

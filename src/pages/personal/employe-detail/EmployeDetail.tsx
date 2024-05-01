@@ -41,7 +41,7 @@ const EmployeDetail = () => {
         if (!token) {
           navigate('/');
         }
-        const response = await axios.get('http://localhost:3000/api/user/renew-token', {
+        const response = await axios.get('http://localhost:3001/api/user/renew-token', {
           headers: {
             Authorization: `Bearer ${token}`,
           },
@@ -137,27 +137,40 @@ const EmployeDetail = () => {
 
     try {
       const responseimg = await axios.post(
-        'http://localhost:3000/api/upload/single/user',
+        'http://localhost:3001/api/upload/single/user',
         dataimg
       )
+
+      // Se agregó para poder subir la imagen directamente al backend
+      formData.image = responseimg.data.fileName;
 
       if (!validateForm()) return
 
       const response = await axios.post(
-        'http://localhost:3000/api/user/register',
-        formData
+        'http://localhost:3001/api/user/register',
+        formData,
+        {
+          // Faltaban headers para autenticación
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`,
+          }
+        }
       )
+      // Manejar respuestas efectivas
+      .then(response => {
+          navigate('/personal/empleados')
+      })
+      // Manejar respuestas de errores
+      .catch(error => {
+          setErrorcamp('El correo electrónico ya está registrado')
+          setTimeout(() => {
+            setErrorcamp('')
+          }, 10000)
+      })
 
     } catch (error: any) {
         const errorMessage = error.response.data.error
         console.log(error)    
-
-      if (errorMessage.includes('Email')) {
-        setErrorcamp('El correo electrónico ya está registrado')
-        setTimeout(() => {
-          setErrorcamp('')
-        }, 5000)
-      }
 
       if (errorMessage.includes('files')) {
         setErrorcamp('Favor de llenar todos los campos')
