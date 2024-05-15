@@ -67,10 +67,9 @@ const SideNav = () => {
     ]),
 
     getItem('Personal', 'employees', <ShoppingCartOutlined />, [
-      getItem('Lista de empleados', '/personal/empleados'),
-      getItem('Agregar empleado', '/personal/empleados-agregar'),
-      getItem('Lista de clientes', '/personal/clientes'),
-      getItem('Agregar cliente', '/personal/clientes-agregar')
+      getItem('Empleados', '/personal/empleados'),
+      getItem('Clientes', '/personal/clientes'),
+ 
     ]),
 
     getItem('Producción', 'prod', <EyeOutlined />, [

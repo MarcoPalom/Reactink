@@ -1,55 +1,60 @@
 import React, { useState, useEffect } from 'react'
-import { Button, Space, Table, Card, Input } from 'antd'
-import {useNavigate} from 'react-router-dom'
+import {
+  Button,
+  Space,
+  Table,
+  Card,
+  Input,
+  Modal,
+  Form,
+  message,
+  Select
+} from 'antd'
+import { useNavigate } from 'react-router-dom'
 import {
   PlusOutlined,
   FilePdfOutlined,
   FileExcelOutlined,
   PrinterOutlined,
   EditOutlined,
-  DeleteOutlined
+  DeleteOutlined,
+  DatabaseOutlined
 } from '@ant-design/icons'
 import axios from 'axios'
+import useTokenRenewal from 'components/Scripts/useTokenRenewal'
+import { Employee, EmployeeAdd } from 'components/Scripts/Interfaces'
 
 const { Search } = Input
+const { confirm } = Modal
+
+const roleMapping: Record<number, string> = {
+  1: 'Administrador',
+  2: 'Financiero',
+  3: 'Auxiliar'
+}
 
 const EmployeList = () => {
-  const [employees, setEmployees] = useState([])
-  const [filteredInfo, setFilteredInfo] = useState({})
-  const [sortedInfo, setSortedInfo] = useState({})
+  const [employees, setEmployees] = useState<Employee[]>([])
   const [searchText, setSearchText] = useState('')
+  const [visible, setVisible] = useState<boolean>(false)
+  const [visibleEdit, setVisibleEdit] = useState<boolean>(false)
+  const [visibleAdd, setVisibleAdd] = useState<boolean>(false)
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
+    null
+  )
+  const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
   const navigate = useNavigate()
+  const [EditForm] = Form.useForm()
+  const [addForm] = Form.useForm()
+
+  useTokenRenewal(navigate)
 
   useEffect(() => {
-    const renewToken = async () => {
-      try {
-        const token = localStorage.getItem('token');
-
-        if (!token) {
-          navigate('/');
-        }
-        const response = await axios.get('http://localhost:3001/api/user/renew-token', {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        localStorage.setItem('token', response.data.token);
-
-        console.log('Token renovado con éxito:', response.data);
-      } catch (error) {
-        console.error('Error al renovar el token:', error);
-        navigate('/');
-      }
-    };
-
-
     const fetchEmployees = async () => {
       try {
         const response = await axios.get('http://localhost:3001/api/user/', {
-          // Faltaban headers para autenticación
           headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`,
+            Authorization: `Bearer ${localStorage.getItem('token')}`
           }
         })
         setEmployees(response.data)
@@ -57,108 +62,426 @@ const EmployeList = () => {
         console.error('Error fetching employees:', error)
       }
     }
-
-    renewToken();
     fetchEmployees()
-  }, [])
+  }, [visibleAdd])
 
-  const handleChange = (pagination:any, filters:any, sorter:any) => {
-    setFilteredInfo(filters)
-    setSortedInfo(sorter)
+  
+
+  const handleView = async (id: string) => {
+    try {
+      const response = await axios.get<Employee>(
+        `http://localhost:3001/api/user/${id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      )
+      setSelectedEmployee(response.data)
+      setVisible(true)
+    } catch (error) {
+      console.error('Error fetching employee details:', error)
+    }
   }
 
-  // Se agregó funcion para redireccionar con el boton de agregar empleado
-  const handleClick = () => {
-    navigate('/personal/empleados-agregar')
-  } 
+  const handleSave = async () => {
+    try {
+      const values = await EditForm.validateFields()
+      const response = await axios.put<Employee>(
+        `http://localhost:3001/api/user/update/${editingEmployee?.id}`,
+        values,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      )
+      message.success('Empleado actualizado exitosamente')
+      const updatedEmployees = employees.map((employee) =>
+        employee.id === editingEmployee?.id
+          ? { ...employee, ...values }
+          : employee
+      )
+      setEmployees(updatedEmployees)
+      setVisibleEdit(false)
+      EditForm.resetFields()
+    } catch (error) {
+      console.error('Error updating employee:', error)
+      message.error('Error al actualizar el empleado')
+    }
+  }
 
- 
+  const handleAddSave = async () => {
+    try {
+      const values = await addForm.validateFields()
+      if (values.password !== values.confirmPassword) {
+        throw new Error('Las contraseñas no coinciden')
+      }
+
+      const employeeData: EmployeeAdd = {
+        name: values.name,
+        surname: values.surname,
+        email: values.email,
+        phone: values.phone,
+        address: values.address,
+        salary: values.salary,
+        startDate: values.startDate,
+        role: values.role,
+        password: values.password,
+        image: values.image
+      }
+
+      const response = await axios.post<Employee>(
+        'http://localhost:3001/api/user/register',
+        employeeData,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      )
+      setEmployees((prevEmployees) => [...prevEmployees, response.data]);
+      message.success('Empleado agregado exitosamente');
+      setVisibleAdd(false);
+      addForm.resetFields()
+    } catch (error: any) {
+      console.error('Error adding employee:', error)
+      message.error(
+        error.response?.data.message || 'Error al agregar el empleado'
+      )
+    }
+  }
+
+  const handleDelete = (record: Employee) => {
+    confirm({
+      title: 'Confirmación de Eliminación',
+      content: `¿Estás seguro de que quieres eliminar al empleado ${record.name} ${record.surname}?`,
+      okText: 'Eliminar',
+      okType: 'danger',
+      cancelText: 'Cancelar',
+      onOk() {
+        deleteUser(record.id)
+      }
+    })
+  }
+
+  const deleteUser = async (id: string) => {
+    try {
+      await axios.delete(`http://localhost:3001/api/user/delete/${id}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`
+        }
+      })
+      message.success('Empleado eliminado exitosamente')
+      const updatedEmployees = employees.filter(
+        (employee) => employee.id !== id
+      )
+      setEmployees(updatedEmployees)
+    } catch (error) {
+      console.error('Error deleting employee:', error)
+      message.error('Error al eliminar el empleado')
+    }
+  }
+
+  const handleClose = () => {
+    setVisible(false)
+  }
+
+  const handleCloseEdit = () => {
+    EditForm.resetFields()
+    setVisibleEdit(false)
+  }
+
+  const handleAdd = () => {
+    setVisibleAdd(true)
+  }
+
+  const handleAddCancel = () => {
+    setVisibleAdd(false)
+    EditForm.resetFields()
+    addForm.resetFields()
+  }
+
+  const handleEdit = async (record: Employee) => {
+    try {
+      setEditingEmployee(record)
+      EditForm.setFieldsValue(record)
+      setVisibleEdit(true)
+    } catch (error) {
+      console.error('Error al editar el empleado:', error)
+    }
+  }
+
   const columns = [
     {
       title: 'Nombre',
       dataIndex: 'name',
       key: 'name',
-      sorter: (a:any, b:any) => a.name.length - b.name.length
+      sorter: (a: any, b: any) => a.name.length - b.name.length
     },
     {
       title: 'Apellido',
       dataIndex: 'surname',
       key: 'surname',
-      sorter: (a:any, b:any) => a.surname.length - b.surname.length
+      sorter: (a: any, b: any) => a.surname.length - b.surname.length
     },
     {
       title: 'Correo',
       dataIndex: 'email',
       key: 'email',
-      sorter: (a:any, b:any) => a.email.length - b.email.length
+      sorter: (a: any, b: any) => a.email.length - b.email.length
     },
     {
       title: 'Telefono',
       dataIndex: 'phone',
       key: 'phone'
-      
     },
     {
       title: 'Direccion',
       dataIndex: 'address',
       key: 'address',
-      sorter: (a:any, b:any) => a.address.length - b.address.length
+      sorter: (a: any, b: any) => a.address.length - b.address.length
     },
     {
       title: 'Sueldo',
       dataIndex: 'salary',
       key: 'salary',
-      sorter: (a:any, b:any) => a.salary - b.salary
+      sorter: (a: any, b: any) => a.salary - b.salary
     },
     {
       title: 'Fecha de inicio',
       dataIndex: 'startDate',
       key: 'startDate',
-      // Formatear la fecha y eliminar la parte de tiempo
       render: (startDate: Date) => {
-        return new Date(startDate).toLocaleDateString('es-ES');
+        return new Date(startDate).toLocaleDateString('es-ES')
       }
     },
     {
       title: 'Rol',
       dataIndex: 'role',
       key: 'role',
-      sorter: (a:any, b:any) => a.role - b.role,
-      // Comprobación de roles
+      sorter: (a: any, b: any) => a.role - b.role,
       render: (role: number) => {
         switch (role) {
           case 1:
-            return 'Administrador';
+            return 'Administrador'
           case 2:
-            return 'Financiero';
+            return 'Financiero'
           case 3:
             return 'Auxiliar'
           default:
-            return 'Desconocido';
+            return 'Desconocido'
         }
       }
     },
-    // Se quitó la foto
+    {
+      title: 'Accion',
+      key: 'action',
+      render: (text: any, record: any) => (
+        <Space size="middle">
+          <Button
+            icon={<DatabaseOutlined className="text-green-700" />}
+            onClick={() => handleView(record.id.toString())}
+          />
+          <Button
+            icon={<EditOutlined className="text-blue-700" />}
+            onClick={() => handleEdit(record)}
+          />
+          <Button
+            icon={<DeleteOutlined className="text-red-700" />}
+            onClick={() => handleDelete(record)}
+          />
+        </Space>
+      )
+    }
   ]
 
   const filteredEmployees = searchText
-    ? employees.filter(employee =>
+    ? employees.filter((employee) =>
         Object.values(employee).some(
-          value =>
+          (value) =>
             typeof value === 'string' &&
             value.toLowerCase().includes(searchText.toLowerCase())
         )
       )
     : employees
 
+  const filteredEmployeesWithKeys = filteredEmployees.map(
+    (employee, index) => ({
+      ...employee,
+      key: index.toString()
+    })
+  )
+
   return (
     <>
+      <Modal
+        title="Detalles del Empleado"
+        open={visible}
+        onCancel={handleClose}
+        footer={[]}
+      >
+        {selectedEmployee && (
+          <>
+            <p>
+              <strong>Nombre:</strong> {selectedEmployee.name}
+            </p>
+            <p>
+              <strong>Apellido:</strong> {selectedEmployee.surname}
+            </p>
+            <p>
+              <strong>Correo:</strong> {selectedEmployee.email}
+            </p>
+            <p>
+              <strong>Teléfono:</strong> {selectedEmployee.phone}
+            </p>
+            <p>
+              <strong>Dirección:</strong> {selectedEmployee.address}
+            </p>
+            <p>
+              <strong>Sueldo:</strong> {selectedEmployee.salary}
+            </p>
+            <p>
+              <strong>Fecha de inicio:</strong>{' '}
+              {new Date(selectedEmployee.startDate).toLocaleDateString('es-ES')}
+            </p>
+            <p>
+              <strong>Rol:</strong>{' '}
+              {roleMapping[selectedEmployee.role] || 'Desconocido'}
+            </p>
+          </>
+        )}
+      </Modal>
+
+      <Modal
+        title="Editar Empleado"
+        open={visibleEdit}
+        onCancel={handleCloseEdit}
+        onOk={handleSave}
+      >
+        <Form form={EditForm} layout="vertical">
+          <Form.Item name="name" label="Nombre">
+            <Input />
+          </Form.Item>
+          <Form.Item name="surname" label="Apellido">
+            <Input />
+          </Form.Item>
+          <Form.Item name="email" label="Email">
+            <Input />
+          </Form.Item>
+          <Form.Item name="phone" label="Telefono">
+            <Input />
+          </Form.Item>
+          <Form.Item name="address" label="Direccion">
+            <Input />
+          </Form.Item>
+          <Form.Item name="salary" label="Salario">
+            <Input />
+          </Form.Item>
+          <Form.Item name="startDate" label="Fecha de inicio">
+            <Input />
+          </Form.Item>
+          <Form.Item name="role" label="Puesto">
+            <Select placeholder="Selecciona un puesto">
+              <Select.Option value={1}>Administrador</Select.Option>
+              <Select.Option value={2}>Financiero</Select.Option>
+              <Select.Option value={3}>Auxiliar</Select.Option>
+            </Select>
+          </Form.Item>
+        </Form>
+      </Modal>
+
+      <Modal
+        title="Añadir Nuevo Empleado"
+        open={visibleAdd}
+        onCancel={handleAddCancel}
+        onOk={handleAddSave}
+      >
+        <Form form={addForm} layout="vertical">
+          <Form.Item
+            name="name"
+            label="Nombre"
+            rules={[{ required: true, message: 'Por favor ingrese el nombre' }]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item
+            name="surname"
+            label="Apellido"
+            rules={[
+              { required: true, message: 'Por favor ingrese el apellido' }
+            ]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item
+            name="email"
+            label="Correo Electrónico"
+            rules={[
+              {
+                required: true,
+                message: 'Por favor ingrese el correo electrónico'
+              },
+              {
+                type: 'email',
+                message: 'Por favor ingrese un correo electrónico válido'
+              }
+            ]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item
+            name="password"
+            label="Contraseña"
+            rules={[
+              { required: true, message: 'Por favor ingrese la contraseña' }
+            ]}
+          >
+            <Input.Password />
+          </Form.Item>
+          <Form.Item
+            name="confirmPassword"
+            label="Confirmar Contraseña"
+            rules={[
+              { required: true, message: 'Por favor confirme la contraseña' }
+            ]}
+          >
+            <Input.Password />
+          </Form.Item>
+          <Form.Item name="phone" label="Teléfono">
+            <Input />
+          </Form.Item>
+          <Form.Item name="address" label="Dirección">
+            <Input />
+          </Form.Item>
+          <Form.Item name="salary" label="Salario">
+            <Input type="number" />
+          </Form.Item>
+          <Form.Item name="startDate" label="Fecha de Inicio">
+            <Input type="date" />
+          </Form.Item>
+          <Form.Item name="role" label="Puesto">
+            <Select placeholder="Selecciona un puesto">
+              <Select.Option value={1}>Administrador</Select.Option>
+              <Select.Option value={2}>Financiero</Select.Option>
+              <Select.Option value={3}>Auxiliar</Select.Option>
+            </Select>
+          </Form.Item>
+          {/*<Form.Item name="image" label="Foto">
+            <Input type="file" onChange={handleFileUpload} />
+          </Form.Item>*/}
+        </Form>
+      </Modal>
+
       <div className="flex flex-row justify-between mb-4">
         <div>
           <h4 className="font-bold text-lg">Personal</h4>
           <h6 className="text-sm">Lista de Empleados</h6>
         </div>
-        <Button className=" h-10 bg-indigo-900 rounded-md text-white text-base font-bold p-2 items-center " onClick={handleClick}>
+        <Button
+          className=" h-10 bg-indigo-900 rounded-md text-white text-base font-bold p-2 items-center "
+          onClick={handleAdd}
+        >
           <a>
             <PlusOutlined className="text-white font-bold" /> Añadir nuevo
             empleado{' '}
@@ -174,7 +497,7 @@ const EmployeList = () => {
             <Search
               placeholder="Busqueda..."
               className="w-44"
-              onChange={e => setSearchText(e.target.value)}
+              onChange={(e) => setSearchText(e.target.value)}
             />
           </div>
           <div className="flex flex-row gap-4 text-lg">
@@ -185,8 +508,7 @@ const EmployeList = () => {
         </Space>
         <Table
           columns={columns}
-          dataSource={filteredEmployees}
-          onChange={handleChange}
+          dataSource={filteredEmployeesWithKeys}
           scroll={{ y: 500 }}
         />
       </Card>
