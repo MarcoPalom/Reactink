@@ -21,6 +21,7 @@ const useTokenRenewal = (navigate:any) => {
         );
 
         localStorage.setItem('token', response.data.token);
+        localStorage.setItem('user', response.data.user);
 
         console.log('Token renovado con éxito:', response.data);
       } catch (error) {
