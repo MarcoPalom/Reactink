@@ -391,22 +391,25 @@ const CotationList = () => {
 
   const columns = [
     {
-      title: 'Fecha de recibido',
+      title: 'Fecha de Recibido',
       dataIndex: 'dateReceipt',
       key: 'dateReceipt',
-      sorter: (a: any, b: any) => a.name.length - b.name.length
+      render: (dateReceipt: string) => new Date(dateReceipt).toLocaleDateString()
     },
     {
-      title: 'Fecha de expiracion',
+      title: 'Fecha de Expiracion',
       dataIndex: 'expirationDate',
       key: 'expirationDate',
-      sorter: (a: any, b: any) => a.surname.length - b.surname.length
+      render: (expirationDate: string) => new Date(expirationDate).toLocaleDateString()
     },
     {
       title: 'Cliente',
       dataIndex: 'clientId',
       key: 'clientId',
-      sorter: (a: any, b: any) => a.email.length - b.email.length
+      render: (clientId: string) => {
+        const client = clients.find(client => client.id === clientId);
+        return client ? client.name : 'Cliente no encontrado';
+      }
     },
     {
       title: 'Subtotal',
@@ -669,7 +672,7 @@ const CotationList = () => {
           onClick={handleAdd}
         >
           <a>
-            <PlusOutlined className="text-white font-bold" /> Añadir nueva
+            <PlusOutlined className="text-white font-bold" /> Añadir Nueva
             Cotizacion{' '}
           </a>
         </Button>

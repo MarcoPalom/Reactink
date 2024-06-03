@@ -313,7 +313,8 @@ const MaterialList = () => {
     {
       title: 'Fecha de recibido',
       dataIndex: 'dateReceipt',
-      key: 'dateReceipt'
+      key: 'dateReceipt',
+      render: (dateReceipt: string) => new Date(dateReceipt).toLocaleDateString()
     },
     {
       title: 'Serie',
@@ -484,9 +485,10 @@ const MaterialList = () => {
           </Form.Item>
           <Form.Item name="unitMeasure" label="Unidad de medida">
             <Select placeholder="Selecciona una unidad">
-              <Select.Option value="Cm">Centimetros(Cm)</Select.Option>
-              <Select.Option value="in">Pulgada(in)</Select.Option>
+              <Select.Option value="CM">Centimetros(Cm)</Select.Option>
+              <Select.Option value="IN">Pulgada(in)</Select.Option>
               <Select.Option value="M">Metros(M)</Select.Option>
+              <Select.Option value="KG">Kilos(KG)</Select.Option>
             </Select>
           </Form.Item>
           <Form.Item name="dateReceipt" label="Recibido:">
@@ -508,7 +510,7 @@ const MaterialList = () => {
         extra={
           <Space>
           <Button onClick={handleAddSave} type="primary">
-            Submit
+            Guardar
           </Button>
         </Space>
         }
@@ -553,7 +555,7 @@ const MaterialList = () => {
                     }}
                   >
                     <Button type="link" onClick={handleAddCategory}>
-                      Añadir categoría
+                      Añadir Categoría
                     </Button>
                   </div>
                 </>
@@ -586,7 +588,7 @@ const MaterialList = () => {
                     }}
                   >
                     <Button type="link" onClick={handleAddSupplier}>
-                      Añadir proveedor
+                      Añadir Proveedor
                     </Button>
                   </div>
                 </>
@@ -601,9 +603,10 @@ const MaterialList = () => {
           </Form.Item>
           <Form.Item name="unitMeasure" label="Unidad de medida">
             <Select placeholder="Selecciona una unidad">
-              <Select.Option value="Cm">Centimetros(Cm)</Select.Option>
-              <Select.Option value="in">Pulgada(in)</Select.Option>
+              <Select.Option value="CM">Centimetros(Cm)</Select.Option>
+              <Select.Option value="IN">Pulgada(in)</Select.Option>
               <Select.Option value="M">Metros(M)</Select.Option>
+              <Select.Option value="KG">Kilos(KG)</Select.Option>
             </Select>
           </Form.Item>
           <Form.Item name="dateReceipt" label="Fecha de recibido">
@@ -620,12 +623,12 @@ const MaterialList = () => {
 
       <Drawer
         open={isAddCategoryModalVisible}
-        title="Añadir nueva categoría"
+        title="Añadir Nueva Categoría"
         onClose={() => setIsAddCategoryModalVisible(false)}
         extra={
           <Space>
             <Button onClick={handleNewCategorySubmit} type="primary">
-              Submit
+              Guardar
             </Button>
           </Space>
         }
@@ -648,11 +651,17 @@ const MaterialList = () => {
         </Form>
       </Drawer>
 
-      <Modal
+      <Drawer
         open={isAddSupplierModalVisible}
-        title="Añadir nuevo proveedor"
-        onCancel={() => setIsAddSupplierModalVisible(false)}
-        onOk={handleNewSupplierSubmit}
+        title="Añadir Nuevo Proveedor"
+        onClose={() => setIsAddSupplierModalVisible(false)}
+        extra={
+          <Space>
+          <Button onClick={handleNewSupplierSubmit} type="primary">
+            Guardar
+          </Button>
+        </Space>
+        }
       >
         <Form layout="vertical">
           <Form.Item
@@ -708,7 +717,7 @@ const MaterialList = () => {
             />
           </Form.Item>
         </Form>
-      </Modal>
+      </Drawer>
 
       <div className="flex flex-row justify-between mb-4">
         <div>
@@ -720,8 +729,8 @@ const MaterialList = () => {
           onClick={handleAdd}
         >
           <a>
-            <PlusOutlined className="text-white font-bold" /> Añadir nuevo
-            material{' '}
+            <PlusOutlined className="text-white font-bold" /> Añadir Nuevo
+            Material{' '}
           </a>
         </Button>
       </div>
