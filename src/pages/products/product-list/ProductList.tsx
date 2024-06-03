@@ -8,7 +8,8 @@ import {
   Modal,
   Form,
   message,
-  Select
+  Select,
+  Drawer
 } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -30,7 +31,7 @@ import {
   Supplier,
   SupplierAdd
 } from 'components/Scripts/Interfaces'
-import { response } from 'express'
+import Dragger from 'antd/es/upload/Dragger'
 
 const { Search } = Input
 const { confirm } = Modal
@@ -41,23 +42,19 @@ const MaterialList = () => {
   const [visible, setVisible] = useState<boolean>(false)
   const [visibleEdit, setVisibleEdit] = useState<boolean>(false)
   const [visibleAdd, setVisibleAdd] = useState<boolean>(false)
-  const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(
-    null
-  )
+  const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null )
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
-  const [isAddCategoryModalVisible, setIsAddCategoryModalVisible] =
-    useState(false)
+  const [isAddCategoryModalVisible, setIsAddCategoryModalVisible] =useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [Suppliers, setSuppliers] = useState<Supplier[]>([])
-  const [isAddSupplierModalVisible, setIsAddSupplierModalVisible] =
-    useState(false)
+  const [isAddSupplierModalVisible, setIsAddSupplierModalVisible] =useState(false)
   const [newSupplier, setNewSupplier] = useState<SupplierAdd>({
     name: '',
     email: '',
     phone: ''
   })
-  const [userName, setUserName] = useState<string>('');
+  const [userName, setUserName] = useState<string>('')
   const navigate = useNavigate()
   const [EditForm] = Form.useForm()
   const [addForm] = Form.useForm()
@@ -66,97 +63,39 @@ const MaterialList = () => {
   useTokenRenewal(navigate)
 
   useEffect(() => {
-    const fetchMaterials = async () => {
+    const fetchData = async () => {
       try {
-        const response = await axios.get('http://localhost:3001/api/material/', {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-        const materials = response.data;
-    
-        // Fetch additional details for categories and suppliers
-        const categoriesResponse = await axios.get('http://localhost:3001/api/category/', {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-        const categories = categoriesResponse.data;
-    
-        const suppliersResponse = await axios.get('http://localhost:3001/api/supplier/', {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-        const suppliers = suppliersResponse.data;
-    
-        const enrichedMaterials = materials.map((material:any) => ({
+        const [materialsResponse, categoriesResponse, suppliersResponse, userResponse] = await Promise.all([
+          axios.get('http://localhost:3001/api/material/', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }),
+          axios.get('http://localhost:3001/api/category/', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }),
+          axios.get('http://localhost:3001/api/supplier/', { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }),
+          axios.get(`http://localhost:3001/api/user/`, { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } })
+        ]);
+
+        const materials: Material[] = materialsResponse.data.map((material: any) => ({
           ...material,
-          categoryName: categories.find((category:any) => category.id === material.categoryId)?.name,
-          supplierName: suppliers.find((supplier:any) => supplier.id === material.supplierId)?.name,
-          
+          categoryName: categoriesResponse.data.find((category: Category) => category.id === material.categoryId)?.name,
+          supplierName: suppliersResponse.data.find((supplier: Supplier) => supplier.id === material.supplierId)?.name,
+          userName: userResponse.data.find((user: any) => user.id === material.userId)?.name
         }));
 
-
-        //userName: user.find((user:any) => user.id === user.supplierId)?.name
-    
-        setMaterials(enrichedMaterials);
+        setMaterials(materials);
+        setCategories(categoriesResponse.data);
+        setSuppliers(suppliersResponse.data);
+        setUserName(userResponse.data.name);
       } catch (error) {
-        console.error('Error fetching Materials:', error);
+        console.error('Error fetching data:', error);
       }
     };
 
-    const fetchCategories = async () => {
-      try {
-        const response = await axios.get(
-          'http://localhost:3001/api/category/',
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem('token')}`
-            }
-          }
-        )
-        setCategories(response.data)
-      } catch (error) {
-        console.error('There was an error fetching the categories!', error)
-      }
-    }
-    const fetchSuppliers = async () => {
-      try {
-        const response = await axios.get(
-          'http://localhost:3001/api/supplier/',
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem('token')}`
-            }
-          }
-        )
-        setSuppliers(response.data)
-      } catch (error) {
-        console.error('There was an error fetching the Suppliers!', error)
-      }
-      
-    }
+    fetchData();
+  }, [visibleAdd]);
 
-    const getUser = () => {
-      const user = localStorage.getItem('user')
-      console.log(user)
-     }
+  const handleAddSupplier = () => setIsAddSupplierModalVisible(true);
+  const handleAddCategory = () => setIsAddCategoryModalVisible(true);
+  
 
-
-    getUser()
-    fetchSuppliers()
-    fetchCategories()
-    fetchMaterials()
-  }, [visibleAdd])
-
-
-
-
-  const handleAddSupplier = () => {
-    setIsAddSupplierModalVisible(true)
-  }
-
+ 
   const handleNewSupplierSubmit = async () => {
     try {
       const response = await axios.post(
@@ -177,9 +116,7 @@ const MaterialList = () => {
     }
   }
 
-  const handleAddCategory = () => {
-    setIsAddCategoryModalVisible(true)
-  }
+ 
 
   const handleNewCategorySubmit = async () => {
     try {
@@ -246,11 +183,10 @@ const MaterialList = () => {
 
   const handleAddSave = async () => {
     try {
-      const values = await addForm.validateFields();
+      const values = await addForm.validateFields()
       const MaterialData: MaterialAdd = {
         ...values,
-       
-      };
+      }
 
       const response = await axios.post<Material>(
         'http://localhost:3001/api/material/',
@@ -260,16 +196,18 @@ const MaterialList = () => {
             Authorization: `Bearer ${localStorage.getItem('token')}`
           }
         }
-      );
-      setMaterials((prevMaterials) => [...prevMaterials, response.data]);
-      message.success('Material agregado exitosamente');
-      setVisibleAdd(false);
-      addForm.resetFields();
+      )
+      setMaterials((prevMaterials) => [...prevMaterials, response.data])
+      message.success('Material agregado exitosamente')
+      setVisibleAdd(false)
+      addForm.resetFields()
     } catch (error: any) {
-      console.error('Error adding Material:', error);
-      message.error(error.response?.data.message || 'Error al agregar el Material');
+      console.error('Error adding Material:', error)
+      message.error(
+        error.response?.data.message || 'Error al agregar el Material'
+      )
     }
-  };
+  }
 
   const handleDelete = (record: Material) => {
     confirm({
@@ -362,11 +300,11 @@ const MaterialList = () => {
       key: 'categoryId'
     },
     {
-    title: 'Agrego',
-    dataIndex: 'userId',
-    key: 'userId',
-    sorter: (a: any, b: any) => a.email.length - b.email.length
-     },
+      title: 'Agrego',
+      dataIndex: 'userName',
+      key: 'userName',
+      sorter: (a: any, b: any) => a.email.length - b.email.length
+    },
     {
       title: 'Unidad',
       dataIndex: 'unitMeasure',
@@ -440,31 +378,31 @@ const MaterialList = () => {
               <strong>Nombre:</strong> {selectedMaterial.name}
             </p>
             <p>
-              <strong>description:</strong> {selectedMaterial.description}
+              <strong>Descripcion:</strong> {selectedMaterial.description}
             </p>
             <p>
-              <strong>stock:</strong> {selectedMaterial.stock}
+              <strong>Cantidad:</strong> {selectedMaterial.stock}
             </p>
             <p>
-              <strong>supplierId:</strong> {selectedMaterial.supplierId}
+              <strong>Provedor:</strong> {selectedMaterial.supplierId}
             </p>
             <p>
-              <strong>categoryId:</strong> {selectedMaterial.categoryId}
+              <strong>Categoria:</strong> {selectedMaterial.categoryId}
             </p>
             <p>
-              <strong>userId:</strong> {selectedMaterial.userId}
+              <strong>Usuario:</strong> {selectedMaterial.userId}
             </p>
             <p>
-              <strong>unitMeasure:</strong> {selectedMaterial.unitMeasure}
-            </p>{' '}
-            <p>
-              <strong>dateReceipt:</strong> {selectedMaterial.dateReceipt}
+              <strong>Unidad:</strong> {selectedMaterial.unitMeasure}
             </p>
             <p>
-              <strong>serial:</strong> {selectedMaterial.serial}
+              <strong>Recibido:</strong> {selectedMaterial.dateReceipt}
             </p>
             <p>
-              <strong>location:</strong> {selectedMaterial.location}
+              <strong>Serial:</strong> {selectedMaterial.serial}
+            </p>
+            <p>
+              <strong>Ubicacion:</strong> {selectedMaterial.location}
             </p>
           </>
         )}
@@ -480,26 +418,100 @@ const MaterialList = () => {
           <Form.Item name="name" label="Nombre">
             <Input />
           </Form.Item>
-          <Form.Item name="surname" label="Apellido">
+          <Form.Item name="description" label="Descripcion">
             <Input />
           </Form.Item>
-          <Form.Item name="organization" label="Organizacion">
+          <Form.Item name="stock" label="Cantidad">
             <Input />
           </Form.Item>
-          <Form.Item name="email" label="Email">
+          <Form.Item
+            name="categoryId"
+            label="Categoría"
+            rules={[
+              { required: true, message: 'Por favor seleccione una categoría' }
+            ]}
+          >
+            <Select
+              placeholder="Seleccione una categoría"
+              dropdownRender={(menu) => (
+                <>
+                  {menu}
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      padding: 8
+                    }}
+                  ></div>
+                </>
+              )}
+            >
+              {categories.map((category) => (
+                <Option key={category.id} value={category.id}>
+                  {category.name}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+          <Form.Item
+            name="supplierId"
+            label="Proveedor"
+            rules={[
+              { required: true, message: 'Por favor seleccione un proveedor' }
+            ]}
+          >
+            <Select
+              placeholder="Seleccione un proveedor"
+              dropdownRender={(menu) => (
+                <>
+                  {menu}
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      padding: 8
+                    }}
+                  ></div>
+                </>
+              )}
+            >
+              {Suppliers.map((Supplier) => (
+                <Option key={Supplier.id} value={Supplier.id}>
+                  {Supplier.name}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+          <Form.Item name="unitMeasure" label="Unidad de medida">
+            <Select placeholder="Selecciona una unidad">
+              <Select.Option value="Cm">Centimetros(Cm)</Select.Option>
+              <Select.Option value="in">Pulgada(in)</Select.Option>
+              <Select.Option value="M">Metros(M)</Select.Option>
+            </Select>
+          </Form.Item>
+          <Form.Item name="dateReceipt" label="Recibido:">
+            <Input type="date" />
+          </Form.Item>
+          <Form.Item name="serial" label="Serial">
             <Input />
           </Form.Item>
-          <Form.Item name="phone" label="Telefono">
+          <Form.Item name="location" label="Ubicacion">
             <Input />
           </Form.Item>
         </Form>
       </Modal>
 
-      <Modal
+      <Drawer
         title="Añadir Nuevo Material"
         open={visibleAdd}
-        onCancel={handleAddCancel}
-        onOk={handleAddSave}
+        onClose={handleAddCancel}
+        extra={
+          <Space>
+          <Button onClick={handleAddSave} type="primary">
+            Submit
+          </Button>
+        </Space>
+        }
       >
         <Form form={addForm} layout="vertical">
           <Form.Item
@@ -588,13 +600,12 @@ const MaterialList = () => {
             </Select>
           </Form.Item>
           <Form.Item name="unitMeasure" label="Unidad de medida">
-    
-          <Select placeholder="Selecciona una unidad">
-            <Select.Option value="Cm">Centimetros(Cm)</Select.Option>
-            <Select.Option value="in">Pulgada(in)</Select.Option>
-            <Select.Option value="M">Metros(M)</Select.Option>
-          </Select>
-        </Form.Item>
+            <Select placeholder="Selecciona una unidad">
+              <Select.Option value="Cm">Centimetros(Cm)</Select.Option>
+              <Select.Option value="in">Pulgada(in)</Select.Option>
+              <Select.Option value="M">Metros(M)</Select.Option>
+            </Select>
+          </Form.Item>
           <Form.Item name="dateReceipt" label="Fecha de recibido">
             <Input type="date" />
           </Form.Item>
@@ -605,13 +616,19 @@ const MaterialList = () => {
             <Input />
           </Form.Item>
         </Form>
-      </Modal>
+      </Drawer>
 
-      <Modal
+      <Drawer
         open={isAddCategoryModalVisible}
         title="Añadir nueva categoría"
-        onCancel={() => setIsAddCategoryModalVisible(false)}
-        onOk={handleNewCategorySubmit}
+        onClose={() => setIsAddCategoryModalVisible(false)}
+        extra={
+          <Space>
+            <Button onClick={handleNewCategorySubmit} type="primary">
+              Submit
+            </Button>
+          </Space>
+        }
       >
         <Form layout="vertical">
           <Form.Item
@@ -629,7 +646,7 @@ const MaterialList = () => {
             />
           </Form.Item>
         </Form>
-      </Modal>
+      </Drawer>
 
       <Modal
         open={isAddSupplierModalVisible}

@@ -52,15 +52,11 @@ const SideNav = () => {
     getItem('Inicio', '/homepage', <DashboardOutlined />),
 
     getItem('Inventario', 'stock', <MailOutlined />, [
-      getItem('Lista de productos', '/inventario/productos'),
-      getItem('Agregar productos', '/inventario/agregar-producto'),
-      getItem('Lista de categorías', '/inventario/categorias'),
-      getItem('Agregar categorías', '/inventario/agregar-categoria')
+      getItem('Materiales', '/inventario/productos'),
     ]),
 
     getItem('Finanzas', 'finance', <CodeSandboxOutlined />, [
-      getItem('Lista de cotizaciones', '/finanzas/cotizaciones'),
-      getItem('Agregar cotizacion', '/finanzas/agregar-cotizacion'),
+      getItem('Cotizaciones', '/finanzas/cotizaciones'),
       getItem('Lista de ventas', '/finanzas/ventas'),
       getItem('Lista de gastos', '/finanzas/gastos'),
       getItem('Agregar gasto', '/finanzas/agregar-gasto')

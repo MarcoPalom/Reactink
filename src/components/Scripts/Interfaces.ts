@@ -96,4 +96,41 @@ export interface Employee {
     phone: string
   }
 
+  
+  export interface Quotation {
+    id: string
+    dateReceipt: string
+    expirationDate: string
+    clientId: string
+    subtotal:number
+    tax:number
+    netAmount:number
+    advance:number
+    total:number
+
+  }
+
+  export interface QuotationAdd  {
+    dateReceipt: string
+    expirationDate: string
+    clientId: string
+    subtotal:number
+    tax:number
+    netAmount:number
+    advance:number
+    total:number
+  }
+
+ export interface QuotationItem {
+    quotationId: string;
+    description: string;
+    quantity: number;
+    amount: number;
+    tax: number;
+    total: number;
+  }
+
+
+
+
   export {}
