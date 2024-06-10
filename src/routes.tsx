@@ -11,9 +11,7 @@ import ExpenseList from 'pages/finance/expense-list/ExpenseList';
 import SaleList from 'pages/finance/sale-list/SaleList';
 import ExpenseDetail from 'pages/finance/expense-detail/ExpenseDetail';
 import ClientList from 'pages/personal/client-list/ClientList';
-import ClientDetail from 'pages/personal/client-detail/ClientDetail';
 import EmployeList from 'pages/personal/employe-list/EmployeList';
-import EmployeDetail from 'pages/personal/employe-detail/EmployeDetail';
 import Login from 'pages/Login';
 
 const AppRoutes = () => {
@@ -32,9 +30,7 @@ const AppRoutes = () => {
                 <Route path='/finanzas/gastos' element={<ExpenseList/>}/>
                 <Route path='/finanzas/agregar-gasto' element={<ExpenseDetail/>}/>
                 <Route path='/personal/empleados' element={<EmployeList/>}/>
-                <Route path='/personal/empleados-agregar' element={<EmployeDetail/>}/>
                 <Route path='/personal/clientes' element={<ClientList/>}/>
-                <Route path='/personal/clientes-agregar' element={<ClientDetail/>}/>
             </Routes>
 
     )
