@@ -1,5 +1,114 @@
 
 
+import { message, Modal } from 'antd';
+import { fetchQuotation, updateQuotation, addQuotation, addQuotationProduct, deleteQuotation } from 'components/Scripts/Apicalls'
+
+const { confirm } = Modal;
+
+//utils
+
+export const filterQuotations = (Quotations: any[], searchText: string) => {
+  return searchText
+    ? Quotations.filter((Quotation) =>
+        Quotation.id.toString().toLowerCase().includes(searchText.toLowerCase())
+      )
+    : Quotations;
+};
+
+export const addKeysToQuotations = (Quotations: any[]) => {
+  return Quotations.map((Quotation, index) => ({
+    ...Quotation,
+    key: index.toString()
+  }));
+};
+
+//handlers de cotizacion
+
+export const handleView = async (id: string, setSelectedQuotation: any, setVisible: any) => {
+  try {
+    const data = await fetchQuotation(id);
+    console.log(data);
+    setSelectedQuotation(data);
+    setVisible(true);
+  } catch (error) {
+    console.error('Error fetching Quotation details:', error);
+  }
+};
+
+export const handleSave = async (EditForm: any, editingQuotation: any, Quotations: any, setQuotations: any, setVisibleEdit: any) => {
+  try {
+    const values = await EditForm.validateFields();
+    const updatedQuotation = await updateQuotation(editingQuotation.id, values);
+    message.success('Cotizacion actualizado exitosamente');
+    const updatedQuotations = Quotations.map((Quotation: any) =>
+      Quotation.id === editingQuotation.id ? { ...Quotation, ...values } : Quotation
+    );
+    setQuotations(updatedQuotations);
+    setVisibleEdit(false);
+    EditForm.resetFields();
+  } catch (error) {
+    console.error('Error updating Quotation:', error);
+    message.error('Error al actualizar la Cotizacion');
+  }
+};
+
+export const handleAddSave = async (addForm: any, dataSource: any, setQuotations: any, setVisibleAdd: any) => {
+  try {
+    const values = await addForm.validateFields();
+    if (values.password !== values.confirmPassword) {
+      throw new Error('Las contraseñas no coinciden');
+    }
+
+    const newQuotation = await addQuotation(values);
+    for (const item of dataSource) {
+      const pivotDataProduct = {
+        quotationId: newQuotation.id,
+        description: item.description,
+        quantity: item.quantity,
+        amount: item.unitPrice,
+        tax: item.tax,
+        total: item.total,
+      };
+      console.log(pivotDataProduct);
+      await addQuotationProduct(pivotDataProduct);
+    }
+
+    setQuotations((prevQuotations: any) => [...prevQuotations, newQuotation]);
+    message.success('Cotizacion agregado exitosamente');
+    setVisibleAdd(false);
+    addForm.resetFields();
+  } catch (error: any) {
+    console.error('Error adding Quotation:', error);
+    message.error(error.response?.data.message || 'Error al agregar la Cotizacion');
+  }
+};
+
+export const handleDelete = (record: any, deletequotation: any, Quotations: any, setQuotations: any) => {
+  confirm({
+    title: 'Confirmación de Eliminación',
+    content: `¿Estás seguro de que quieres eliminar la cotizacion?`,
+    okText: 'Eliminar',
+    okType: 'danger',
+    cancelText: 'Cancelar',
+    onOk: async () => {
+      await deletequotation(record.id);
+      const updatedQuotations = Quotations.filter(
+        (Quotation: any) => Quotation.id !== record.id
+      );
+      setQuotations(updatedQuotations);
+    },
+  });
+};
+
+export const handleEdit = (record: any, setEditingQuotation: any, EditForm: any, setVisibleEdit: any) => {
+  try {
+    setEditingQuotation(record);
+    EditForm.setFieldsValue(record);
+    setVisibleEdit(true);
+  } catch (error) {
+    console.error('Error al editar la Cotizacion:', error);
+  }
+};
 
 //Funciones Matematicas calcular cotizaciones
 

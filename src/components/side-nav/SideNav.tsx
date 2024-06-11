@@ -57,9 +57,8 @@ const SideNav = () => {
 
     getItem('Finanzas', 'finance', <CodeSandboxOutlined />, [
       getItem('Cotizaciones', '/finanzas/cotizaciones'),
-      getItem('Lista de ventas', '/finanzas/ventas'),
-      getItem('Lista de gastos', '/finanzas/gastos'),
-      getItem('Agregar gasto', '/finanzas/agregar-gasto')
+      getItem('Ventas', '/finanzas/ventas'),
+      getItem('Gastos', '/finanzas/gastos'),
     ]),
 
     getItem('Personal', 'employees', <ShoppingCartOutlined />, [
