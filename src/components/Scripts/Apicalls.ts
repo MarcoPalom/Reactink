@@ -29,6 +29,16 @@ export const addQuotationProduct = async (pivotDataProduct: any) => {
   return response.data;
 };
 
+export const addQuotationProductMaquila = async (pivotDataProductMaquila: any) => {
+  const response = await axios.post(`${API_BASE_URL}/quotation-product-maquila/`, pivotDataProductMaquila, getAuthHeaders());
+  return response.data;
+};
+
+export const EditQuotationProduct = async (id: string , pivotDataProduct: any) => {
+  const response = await axios.put(`${API_BASE_URL}/quotation-product/update/${id}`, pivotDataProduct, getAuthHeaders());
+  return response.data;
+};
+
 export const deleteQuotation = async (id: string) => {
   await axios.delete(`${API_BASE_URL}/quotation/delete/${id}`, getAuthHeaders());
 };

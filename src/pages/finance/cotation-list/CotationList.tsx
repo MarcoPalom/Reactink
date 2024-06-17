@@ -26,7 +26,7 @@ import {
 } from '@ant-design/icons'
 import axios from 'axios'
 import useTokenRenewal from 'components/Scripts/useTokenRenewal'
-import { Quotation, QuotationAdd, Client } from 'components/Scripts/Interfaces'
+import { Quotation, QuotationAdd, Client  } from 'components/Scripts/Interfaces'
 import html2pdf from 'html2pdf.js'
 import {
   handleFinish,
@@ -37,13 +37,16 @@ import {
   calculateTaxAndNetAmount,
   calculateTotal,
   filterQuotations,
-  addKeysToQuotations
+  addKeysToQuotations,
+  handleFieldChangeMaquila,
+  handleFinishMaquila
 } from 'components/Scripts/QuotationUtils'
 import {
   fetchQuotation,
   updateQuotation,
   addQuotation,
-  deleteQuotation
+  deleteQuotation,
+  addQuotationProduct
 } from 'components/Scripts/Apicalls'
 import {
   handleView,
@@ -57,6 +60,7 @@ import Logo from 'assets/img/logo.png'
 const { Search } = Input
 const { confirm } = Modal
 const { Option } = Select
+
 const CotationList = () => {
   const [Quotations, setQuotations] = useState<Quotation[]>([])
   const [searchText, setSearchText] = useState('')
@@ -73,12 +77,14 @@ const CotationList = () => {
   const [total, setTotal] = useState(0)
   const [clients, setClients] = useState<Client[]>([])
   const [quotationProducts, setQuotationProducts] = useState([])
+  const [quotationProductsMaquila, setQuotationProductsMaquila] = useState([])
   const modalRef = useRef(null)
   const navigate = useNavigate()
   const [subtotal] = useState(0)
   const [EditForm] = Form.useForm()
   const [addForm] = Form.useForm()
   const [addQuotationForm] = Form.useForm()
+  const [currentTable, setCurrentTable] = useState('cotizacion_producto');
 
   useTokenRenewal(navigate)
 
@@ -123,7 +129,6 @@ const CotationList = () => {
               }
             }
           )
-          console.log(response.data)
           const filteredProducts = filterProductsByQuotationId(
             response.data,
             selectedQuotation.id
@@ -137,8 +142,36 @@ const CotationList = () => {
       }
     }
 
+   
+
+    const fetchQuotationProductsMaquila = async () => {
+      try {
+        if (selectedQuotation) {
+          const response = await axios.get(
+            `http://localhost:3001/api/quotation-product-maquila/?quotationid=${selectedQuotation.id}`,
+            {
+              headers: {
+                Authorization: `Bearer ${localStorage.getItem('token')}`
+              }
+            }
+          )
+          const filteredProducts = filterProductsByQuotationId(
+            response.data,
+            selectedQuotation.id
+          )
+          setQuotationProductsMaquila(filteredProducts)
+        } else {
+          setQuotationProductsMaquila([])
+        }
+      } catch (error) {
+        console.error('Error fetching quotation products:', error)
+      }
+    }
+    
     fetchQuotationProducts()
+    fetchQuotationProductsMaquila()
   }, [selectedQuotation])
+  
 
   const filterProductsByQuotationId = (products: any, quotationId: any) => {
     return products.filter(
@@ -146,6 +179,7 @@ const CotationList = () => {
     )
   }
 
+  
   const handleClose = () => {
     setVisible(false)
   }
@@ -165,6 +199,11 @@ const CotationList = () => {
     const subtotal = calculateSubtotal(dataSource)
     handleFinish(addForm, dataSource)
   }
+  const handleFinishClickMaquila = () => {
+    const subtotal = calculateSubtotal(dataSource)
+    handleFinishMaquila(addForm, dataSource)
+  }
+
   const handleAddRowClick = () => {
     handleAddRow(count, setCount, setDataSource, dataSource)
   }
@@ -172,18 +211,60 @@ const CotationList = () => {
     handleEmpty(confirm, setDataSource)
   }
   const handleSaveClick = async () => {
-    await handleSave(  EditForm,editingQuotation,Quotations,setQuotations,setVisibleEdit
-    )
+    try {
+      if (editingQuotation) {
+        await handleSave(EditForm, editingQuotation, Quotations, setQuotations, setVisibleEdit);
+      
+        for (const item of dataSource) {
+          const pivotDataProduct = {
+            quotationId: editingQuotation.id,
+            description: item.description,
+            quantity: item.quantity,
+            amount: item.unitPrice,
+            tax: item.tax,
+            total: item.total,
+          };
+        }
+      } else {
+        console.error('No hay una cotización en edición');
+        message.error('Error al guardar la Cotización');
+        return;
+      }
+    } catch (error) {
+      console.error('Error saving Quotation:', error);
+      message.error('Error al guardar la Cotización');
+    }
   }
   const handleAddSaveClick = async () => {
-    await handleAddSave(addForm, dataSource, setQuotations, setVisibleAdd)
+    await handleAddSave(addForm, dataSource, setVisibleAdd, setDataSource, setQuotations)
   }
   const handleViewClick = async (id: string) => {
     await handleView(id, setSelectedQuotation, setVisible)
   }
-  const handleEditClick = (record: Quotation) => {
-    handleEdit(record, setEditingQuotation, EditForm, setVisibleEdit)
+
+  const handleEditClick = async (record: Quotation) => {
+    try {
+      const response = await axios.get(
+        `http://localhost:3001/api/quotation-product/?quotationid=${record.id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem('token')}`
+          }
+        }
+      );
+  
+      const filteredProducts = filterProductsByQuotationId(
+        response.data,
+        record.id
+      );
+  
+      setDataSource(filteredProducts);
+      handleEdit(record, setEditingQuotation, EditForm, setVisibleEdit);
+    } catch (error) {
+      console.error('Error fetching quotation products:', error);
+    }
   }
+
   const handleDeleteClick = (record: Quotation) => {
     handleDelete(record, deleteQuotation, Quotations, setQuotations)
   }
@@ -202,6 +283,12 @@ const CotationList = () => {
 
     html2pdf().from(element).set(options).save()
   }
+  
+
+  const handleSelectChange = (value:any) => {
+    setCurrentTable(value); 
+    setDataSource([]);
+};
 
   const columnsAddQuotation = [
     {
@@ -225,8 +312,8 @@ const CotationList = () => {
     },
     {
       title: 'Precio Unitario',
-      dataIndex: 'unitPrice',
-      key: 'unitPrice',
+      dataIndex: 'amount',
+      key: 'amount',
       render: (text: number, record: any) => (
         <InputNumber
           min={0}
@@ -235,7 +322,7 @@ const CotationList = () => {
             handleFieldChange(
               value,
               record.key,
-              'unitPrice',
+              'amount',
               dataSource,
               setDataSource
             )
@@ -291,6 +378,93 @@ const CotationList = () => {
       render: (text: any) => `$${parseFloat(text).toFixed(2)}`
     }
   ]
+
+  const columnsAddQuotationMaquila = [
+    {
+        title: 'Descripcion',
+        dataIndex: 'description',
+        key: 'description',
+        render: (text: string, record: any) => (
+            <Input
+                value={text}
+                onChange={(e) =>
+                    handleFieldChangeMaquila(
+                        e.target.value,
+                        record.key,
+                        'description',
+                        dataSource,
+                        setDataSource
+                    )
+                }
+            />
+        )
+    },
+    {
+        title: 'Precio M',
+        dataIndex: 'price_meter',
+        key: 'price_meter',
+        render: () => (
+            <span>120</span> 
+        )
+    },
+    {
+        title: 'Metros de impresion',
+        dataIndex: 'meters_impression',
+        key: 'meters_impression',
+        render: (text: number, record: any) => (
+          <InputNumber
+          step={0.1} 
+          min={0}
+          value={text}
+          onChange={(value) =>
+              handleFieldChangeMaquila(
+                  value,
+                  record.key,
+                  'meters_impression',
+                  dataSource,
+                  setDataSource
+              )
+          }
+      />
+        )
+    },
+    {
+        title: 'Precio Unitario',
+        dataIndex: 'price_unit',
+        key: 'price_unit',
+        render: (text: number) => (
+          <span>{`$${text ? text.toFixed(2) : '0.00'}`}</span> 
+        )
+    },
+    {
+        title: 'Cantidad',
+        dataIndex: 'quantity',
+        key: 'quantity',
+        render: (text: number, record: any) => (
+            <InputNumber
+                min={0}
+                value={text}
+                onChange={(value) =>
+                    handleFieldChangeMaquila(
+                        value,
+                        record.key,
+                        'quantity',
+                        dataSource,
+                        setDataSource
+                    )
+                }
+            />
+        )
+    },
+    {
+      title: 'Total',
+      dataIndex: 'amount',
+      key: 'amount',
+      render: (text: number) => (
+          <span>{`$${text ? text.toFixed(2) : '0.00'}`}</span> 
+      )
+  }
+];
 
   const columns = [
     {
@@ -442,6 +616,7 @@ const CotationList = () => {
               </div>
             </div>
 
+            {quotationProducts.length > 0 && (
             <Table
               dataSource={quotationProducts}
               columns={[
@@ -475,6 +650,50 @@ const CotationList = () => {
                 }
               ]}
             />
+          )}
+            {quotationProductsMaquila.length > 0 && (
+            <Table
+              dataSource={quotationProductsMaquila}
+              columns={[
+                {
+                  title: 'Descripción',
+                  dataIndex: 'description',
+                  key: 'description'
+                },
+                {
+                  title: 'Cantidad',
+                  dataIndex: 'quantity',
+                  key: 'quantity'
+                },
+                {
+                  title: 'Precio M',
+                  dataIndex: 'price_meter',
+                  key: 'price_meter',
+                  render: (text: any) => `$${parseFloat(text).toFixed(2)}`
+                },
+                {
+                  title: 'Metros de impresion',
+                  dataIndex: 'meters_impression',
+                  key: 'meters_impression',
+                  render: (text: any) => `${parseFloat(text).toFixed(2)}m`
+                },
+                {
+                  title: 'Precio C/U',
+                  dataIndex: 'price_unit',
+                  key: 'price_unit',
+                  render: (text: any) => `$${parseFloat(text).toFixed(2)}`
+                },
+                {
+                  title: 'Total',
+                  dataIndex: 'amount',
+                  key: 'amount',
+                  render: (text: any) => `$${parseFloat(text).toFixed(2)}`
+                }
+              ]}
+              scroll={{ x: 240 }} 
+            />
+          )}
+
             <div className="mt-5 mb-5 text-end text-xs">
               <h1> 1 Y 2 Hidalgo, Zona Centro Cd. Victoria, Tamaulipas </h1>
               <h1>Tel: (834)-312-16-58 Whatsapp: 8341330078</h1>
@@ -496,7 +715,6 @@ const CotationList = () => {
   className="modal"
   extra={
     <Space>
-      <Button onClick={handleCloseEdit}>Cancelar</Button>
       <Button onClick={handleSaveClick} type="primary">
         Aceptar
       </Button>
@@ -505,7 +723,7 @@ const CotationList = () => {
 >
   <div className="overflow-auto">
     <Table
-      columns={columnsAddQuotation} // Suponiendo que reutilizas las mismas columnas para editar
+      columns={columnsAddQuotation} 
       dataSource={dataSource}
       pagination={false}
       footer={() => (
@@ -537,7 +755,18 @@ const CotationList = () => {
         </div>
         <div>
           <Form.Item name="tax" label="Impuesto">
-            <InputNumber className="w-full" />
+          <InputNumber
+                    onChange={(value) => {
+                      if (value !== null) {
+                        setTaxPercentage(value)
+                        const newNetAmount = calculateTaxAndNetAmount(EditForm)
+                        EditForm.setFieldsValue({ netAmount: newNetAmount })
+                        EditForm.setFieldsValue({ total: newNetAmount })
+                      }
+                    }}
+                    defaultValue={0}
+                    className="w-full"
+                  />
           </Form.Item>
 
           <Form.Item name="netAmount" label="Total Neto">
@@ -553,7 +782,17 @@ const CotationList = () => {
         </div>
         <div>
           <Form.Item name="advance" label="Avance" >
-            <InputNumber className="w-full" />
+          <InputNumber
+                    min={0}
+                    onChange={(value) => {
+                      if (value !== null) {
+                        setAdvance(value)
+                        const newTotal = calculateTotal(EditForm)
+                        EditForm.setFieldsValue({ total: newTotal })
+                      }
+                    }}
+                    className="w-full"
+                  />
           </Form.Item>
         </div>
       </div>
@@ -592,7 +831,18 @@ const CotationList = () => {
           </Space>
         }
       >
+       <Select
+        placeholder="Selecciona una opción"
+        onChange={handleSelectChange}
+        value={currentTable}
+        className="w-full mb-4"
+    >
+        <Option value="cotizacion_producto">Añadir Cotización Producto</Option>
+        <Option value="cotizacion_maquila">Añadir Cotización Maquila</Option>
+    </Select>
         <div className="overflow-auto">
+
+        {currentTable === 'cotizacion_producto' && (
           <Table
             columns={columnsAddQuotation}
             dataSource={dataSource}
@@ -614,6 +864,31 @@ const CotationList = () => {
               </Space>
             )}
           />
+         )}  
+
+           {currentTable === 'cotizacion_maquila' && (
+          <Table
+            columns={columnsAddQuotationMaquila}
+            dataSource={dataSource}
+            pagination={false}
+            footer={() => (
+              <Space className="flex justify-end">
+                <Button
+                  onClick={handleAddRowClick}
+                  icon={<PlusOutlined className="text-cyan-500" />}
+                />
+                <Button
+                  onClick={handleFinishClickMaquila}
+                  icon={<SendOutlined className="text-green-500" />}
+                />
+                <Button
+                  onClick={handleEmptyClick}
+                  icon={<ClearOutlined className="text-red-500" />}
+                />
+              </Space>
+            )}
+          />
+        )}
           <Form form={addForm} layout="vertical" className="p-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -631,6 +906,7 @@ const CotationList = () => {
                   initialValue={taxPercentage}
                 >
                   <InputNumber
+                    min = {0}
                     onChange={(value) => {
                       if (value !== null) {
                         setTaxPercentage(value)
@@ -639,7 +915,6 @@ const CotationList = () => {
                         addForm.setFieldsValue({ total: newNetAmount })
                       }
                     }}
-                    defaultValue={0}
                     className="w-full"
                   />
                 </Form.Item>
@@ -691,6 +966,10 @@ const CotationList = () => {
           </Form>
         </div>
       </Drawer>
+
+     
+
+
 
       <div className="flex flex-row justify-between mb-4">
         <div>

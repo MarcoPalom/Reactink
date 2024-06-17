@@ -130,6 +130,23 @@ export interface Employee {
     total: number;
   }
 
+  export interface QuotationProduct {
+    description: string;
+    quantity: number;
+    amount: number;
+    tax?: number;
+    total: number;
+  }
+  
+  export interface QuotationProductMaquila {
+    description: string;
+    quantity: number;
+    price_meter: number;
+    meters_impression: number;
+    price_unit: number;
+    amount: number;
+  }
+
 
 
 

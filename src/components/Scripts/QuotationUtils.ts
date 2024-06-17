@@ -1,7 +1,9 @@
 
 
 import { message, Modal } from 'antd';
-import { fetchQuotation, updateQuotation, addQuotation, addQuotationProduct, deleteQuotation } from 'components/Scripts/Apicalls'
+import { fetchQuotation, updateQuotation, addQuotation, addQuotationProduct, deleteQuotation, addQuotationProductMaquila } from 'components/Scripts/Apicalls'
+import { Quotation,QuotationProduct, QuotationProductMaquila} from 'components/Scripts/Interfaces'
+import { FormInstance } from 'antd';
 
 const { confirm } = Modal;
 
@@ -27,7 +29,6 @@ export const addKeysToQuotations = (Quotations: any[]) => {
 export const handleView = async (id: string, setSelectedQuotation: any, setVisible: any) => {
   try {
     const data = await fetchQuotation(id);
-    console.log(data);
     setSelectedQuotation(data);
     setVisible(true);
   } catch (error) {
@@ -52,36 +53,70 @@ export const handleSave = async (EditForm: any, editingQuotation: any, Quotation
   }
 };
 
-export const handleAddSave = async (addForm: any, dataSource: any, setQuotations: any, setVisibleAdd: any) => {
+export const handleAddSave = async (
+  addForm: FormInstance, 
+  dataSource: any[],
+  setVisibleAdd: React.Dispatch<React.SetStateAction<boolean>>,
+  setDataSource: React.Dispatch<React.SetStateAction<any[]>>,
+  setQuotations: React.Dispatch<React.SetStateAction<Quotation[]>>
+) => {
   try {
     const values = await addForm.validateFields();
-    if (values.password !== values.confirmPassword) {
-      throw new Error('Las contraseñas no coinciden');
-    }
-
     const newQuotation = await addQuotation(values);
-    for (const item of dataSource) {
-      const pivotDataProduct = {
-        quotationId: newQuotation.id,
-        description: item.description,
-        quantity: item.quantity,
-        amount: item.unitPrice,
-        tax: item.tax,
-        total: item.total,
-      };
-      console.log(pivotDataProduct);
-      await addQuotationProduct(pivotDataProduct);
+    const hasQuotationProducts = dataSource.some((item) => 'tax' in item);
+    const hasQuotationProductsMaquila = dataSource.some((item) => 'price_meter' in item);
+
+    if (hasQuotationProducts) {
+      for (const item of dataSource) {
+        if ('tax' in item) {
+          const pivotDataProduct: QuotationProduct = {
+            description: item.description,
+            quantity: item.quantity,
+            amount: item.amount,
+            tax: item.tax,
+            total: item.total,
+          };
+          console.log(pivotDataProduct)
+
+          await addQuotationProduct({
+            ...pivotDataProduct,
+            quotationId: newQuotation.id,
+          });
+        }
+      }
+    } else if (hasQuotationProductsMaquila) {
+      for (const item of dataSource) {
+        if ('price_meter' in item) {
+          const pivotDataProductMaquila: QuotationProductMaquila = {
+            description: item.description,
+            quantity: item.quantity,
+            meters_impression: item.meters_impression,
+            price_unit: item.price_unit,
+            price_meter: item.price_meter,
+            amount: item.amount,
+          };
+          console.log(pivotDataProductMaquila)
+
+          await addQuotationProductMaquila({
+            ...pivotDataProductMaquila,
+            quotationId: newQuotation.id,
+          });
+        }
+      }
     }
 
-    setQuotations((prevQuotations: any) => [...prevQuotations, newQuotation]);
-    message.success('Cotizacion agregado exitosamente');
+    setQuotations((prevQuotations) => [...prevQuotations, newQuotation]);
+    message.success('Cotización agregada exitosamente');
     setVisibleAdd(false);
     addForm.resetFields();
+    setDataSource([]);
   } catch (error: any) {
     console.error('Error adding Quotation:', error);
-    message.error(error.response?.data.message || 'Error al agregar la Cotizacion');
+    message.error(error.response?.data.message || 'Error al agregar la Cotización');
   }
 };
+
+ 
 
 export const handleDelete = (record: any, deletequotation: any, Quotations: any, setQuotations: any) => {
   confirm({
@@ -110,8 +145,6 @@ export const handleEdit = (record: any, setEditingQuotation: any, EditForm: any,
   }
 };
 
-//Funciones Matematicas calcular cotizaciones
-
 export const handleFieldChange = (value: any, key: string, column: string, dataSource: any[], setDataSource: any) => {
     const newData = [...dataSource];
     const index = newData.findIndex((item) => key === item.key);
@@ -121,17 +154,44 @@ export const handleFieldChange = (value: any, key: string, column: string, dataS
   
       if (column === 'tax' && newData[index].tax > 0) {
         newData[index].total =
-          newData[index].unitPrice *
+          newData[index].amount *
           newData[index].quantity *
           (1 + newData[index].tax / 100);
       } else {
         newData[index].total =
-          newData[index].unitPrice * newData[index].quantity;
+          newData[index].amount * newData[index].quantity;
       }
   
       setDataSource(newData);
     }
   };
+
+  export const handleFieldChangeMaquila = (value: any, key: string, column: string, dataSource: any[], setDataSource: any) => {
+    const newData = [...dataSource];
+    const index = newData.findIndex((item) => key === item.key);
+    if (index > -1) {
+        const item = newData[index];
+        newData.splice(index, 1, { ...item, [column]: value });
+
+        newData[index].price_meter = 120; 
+        newData[index].meters_impression = parseFloat(newData[index].meters_impression) || 0;
+        newData[index].quantity = parseFloat(newData[index].quantity) || 0;
+
+        newData[index].price_unit = newData[index].price_meter * newData[index].meters_impression;
+
+        if (isNaN(newData[index].price_unit)) {
+            newData[index].price_unit = 0;
+        }
+
+        newData[index].amount = newData[index].price_unit * newData[index].quantity;
+
+        if (isNaN(newData[index].amount)) {
+            newData[index].amount = 0;
+        }
+
+        setDataSource(newData);
+    }
+};
 
   export const calculateSubtotal = (dataSource: any[]) => {
     const newSubtotal = dataSource.reduce(
@@ -139,6 +199,14 @@ export const handleFieldChange = (value: any, key: string, column: string, dataS
         0
     );
     return newSubtotal;
+};
+
+export const calculateSubtotalMaquila = (dataSource: any[]) => {
+  const newSubtotal = dataSource.reduce(
+      (acc, item) => acc + parseFloat(item.amount || 0),
+      0
+  );
+  return newSubtotal;
 };
   
   export const calculateTaxAndNetAmount = (addForm: any) => {
@@ -173,7 +241,7 @@ export const handleAddRow = (count: number,setCount: any, setDataSource: any, da
     const newRow = {
       key: count,
       description: '',
-      unitPrice: 0,
+      amount: 0,
       quantity: 0,
       total: 0
     };
@@ -204,3 +272,16 @@ export const handleAddRow = (count: number,setCount: any, setDataSource: any, da
     addForm.setFieldsValue({ tax: 0 });
     addForm.setFieldsValue({ advance: 0 });
 };
+
+export const handleFinishMaquila = (addForm: any, dataSource: any[]) => {
+  const newSubtotal = calculateSubtotalMaquila(dataSource);
+  const newNetAmount = newSubtotal;
+  const newTotal = newSubtotal;
+  addForm.setFieldsValue({ subtotal: newSubtotal });
+  addForm.setFieldsValue({ netAmount: newNetAmount });
+  addForm.setFieldsValue({ total: newTotal });
+  addForm.setFieldsValue({ tax: 0 });
+  addForm.setFieldsValue({ advance: 0 });
+};
+
+

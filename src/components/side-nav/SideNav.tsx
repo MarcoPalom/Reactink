@@ -68,7 +68,7 @@ const SideNav = () => {
     ]),
 
     getItem('Producción', 'prod', <EyeOutlined />, [
-      getItem('Estado de producción', 'prod-1')
+      getItem('Estado de producción', '/produccion')
     ])
   ]
 

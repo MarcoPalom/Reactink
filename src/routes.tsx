@@ -8,6 +8,7 @@ import SaleList from 'pages/finance/sale-list/SaleList';
 import ClientList from 'pages/personal/client-list/ClientList';
 import EmployeList from 'pages/personal/employe-list/EmployeList';
 import Login from 'pages/Login';
+import Production from 'pages/Production/Production';
 
 const AppRoutes = () => {
     return (
@@ -21,6 +22,7 @@ const AppRoutes = () => {
                 <Route path='/finanzas/gastos' element={<ExpenseList/>}/>
                 <Route path='/personal/empleados' element={<EmployeList/>}/>
                 <Route path='/personal/clientes' element={<ClientList/>}/>
+                <Route path='/produccion' element={<Production/>}/>
             </Routes>
 
     )
