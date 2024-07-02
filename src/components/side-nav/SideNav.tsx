@@ -74,18 +74,18 @@ const SideNav = () => {
 
   return (
     <div>
-      <div className="block md:hidden mt-3.5 ml-3.5 text-indigo-900 text-4xl">
+      <div className="block xl:hidden mt-3.5 ml-3.5 text-indigo-900 text-4xl">
         <img src={Logosmall} alt="inksport" className="h-5" />
       </div>
 
-      <div className="w-20  md:w-64  h-screen">
-        <div className={`h-16 px-4 py-2 justify-start hidden md:block`}>
+      <div className="w-20  xl:w-64  h-screen">
+        <div className={`h-16 px-4 py-2 justify-start hidden xl:block`}>
           <img src={Logo} alt="Ink Sports" className="h-10 " />
         </div>
         <div>
           <Menu
             mode="inline"
-            className="p-5 hidden md:block"
+            className="p-5 hidden xl:block"
             items={items}
             onClick={(e) => {
               navigate(e.key)
@@ -95,7 +95,7 @@ const SideNav = () => {
           <Menu
             inlineCollapsed
             mode="inline"
-            className="p-5 block md:hidden"
+            className="p-5 block xl:hidden"
             items={items}
             onClick={(e) => {
               navigate(e.key)

@@ -22,7 +22,8 @@ import {
 } from '@ant-design/icons'
 import axios from 'axios'
 import useTokenRenewal from 'components/Scripts/useTokenRenewal'
-import { Employee, EmployeeAdd } from 'components/Scripts/Interfaces'
+import { Employee} from 'components/Scripts/Interfaces'
+import * as EmployeeUtils from 'components/Scripts/EmployeeUtils'; 
 
 const { Search } = Input
 const { confirm } = Modal
@@ -46,6 +47,9 @@ const EmployeList = () => {
   const navigate = useNavigate()
   const [EditForm] = Form.useForm()
   const [addForm] = Form.useForm()
+  const filteredEmployees = EmployeeUtils.filterEmployees(employees, searchText);
+  const filteredEmployeesWithKeys = EmployeeUtils.addKeysToEmployees(filteredEmployees);
+
 
   useTokenRenewal(navigate)
 
@@ -66,152 +70,6 @@ const EmployeList = () => {
   }, [visibleAdd])
 
   
-
-  const handleView = async (id: string) => {
-    try {
-      const response = await axios.get<Employee>(
-        `http://localhost:3001/api/user/${id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      )
-      setSelectedEmployee(response.data)
-      setVisible(true)
-    } catch (error) {
-      console.error('Error fetching employee details:', error)
-    }
-  }
-
-  const handleSave = async () => {
-    try {
-      const values = await EditForm.validateFields()
-      const response = await axios.put<Employee>(
-        `http://localhost:3001/api/user/update/${editingEmployee?.id}`,
-        values,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      )
-      message.success('Empleado actualizado exitosamente')
-      const updatedEmployees = employees.map((employee) =>
-        employee.id === editingEmployee?.id
-          ? { ...employee, ...values }
-          : employee
-      )
-      setEmployees(updatedEmployees)
-      setVisibleEdit(false)
-      EditForm.resetFields()
-    } catch (error) {
-      console.error('Error updating employee:', error)
-      message.error('Error al actualizar el empleado')
-    }
-  }
-
-  const handleAddSave = async () => {
-    try {
-      const values = await addForm.validateFields()
-      if (values.password !== values.confirmPassword) {
-        throw new Error('Las contraseñas no coinciden')
-      }
-
-      const employeeData: EmployeeAdd = {
-        name: values.name,
-        surname: values.surname,
-        email: values.email,
-        phone: values.phone,
-        address: values.address,
-        salary: values.salary,
-        startDate: values.startDate,
-        role: values.role,
-        password: values.password,
-        image: values.image
-      }
-
-      const response = await axios.post<Employee>(
-        'http://localhost:3001/api/user/register',
-        employeeData,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      )
-      setEmployees((prevEmployees) => [...prevEmployees, response.data]);
-      message.success('Empleado agregado exitosamente');
-      setVisibleAdd(false);
-      addForm.resetFields()
-    } catch (error: any) {
-      console.error('Error adding employee:', error)
-      message.error(
-        error.response?.data.message || 'Error al agregar el empleado'
-      )
-    }
-  }
-
-  const handleDelete = (record: Employee) => {
-    confirm({
-      title: 'Confirmación de Eliminación',
-      content: `¿Estás seguro de que quieres eliminar al empleado ${record.name} ${record.surname}?`,
-      okText: 'Eliminar',
-      okType: 'danger',
-      cancelText: 'Cancelar',
-      onOk() {
-        deleteUser(record.id)
-      }
-    })
-  }
-
-  const deleteUser = async (id: string) => {
-    try {
-      await axios.delete(`http://localhost:3001/api/user/delete/${id}`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`
-        }
-      })
-      message.success('Empleado eliminado exitosamente')
-      const updatedEmployees = employees.filter(
-        (employee) => employee.id !== id
-      )
-      setEmployees(updatedEmployees)
-    } catch (error) {
-      console.error('Error deleting employee:', error)
-      message.error('Error al eliminar el empleado')
-    }
-  }
-
-  const handleClose = () => {
-    setVisible(false)
-  }
-
-  const handleCloseEdit = () => {
-    EditForm.resetFields()
-    setVisibleEdit(false)
-  }
-
-  const handleAdd = () => {
-    setVisibleAdd(true)
-  }
-
-  const handleAddCancel = () => {
-    setVisibleAdd(false)
-    EditForm.resetFields()
-    addForm.resetFields()
-  }
-
-  const handleEdit = async (record: Employee) => {
-    try {
-      setEditingEmployee(record)
-      EditForm.setFieldsValue(record)
-      setVisibleEdit(true)
-    } catch (error) {
-      console.error('Error al editar el empleado:', error)
-    }
-  }
-
   const columns = [
     {
       title: 'Nombre',
@@ -253,7 +111,7 @@ const EmployeList = () => {
       dataIndex: 'startDate',
       key: 'startDate',
       render: (startDate: Date) => {
-        return new Date(startDate).toLocaleDateString('es-ES')
+        return new Date(startDate).toLocaleDateString('es-ES');
       }
     },
     {
@@ -262,63 +120,37 @@ const EmployeList = () => {
       key: 'role',
       sorter: (a: any, b: any) => a.role - b.role,
       render: (role: number) => {
-        switch (role) {
-          case 1:
-            return 'Administrador'
-          case 2:
-            return 'Financiero'
-          case 3:
-            return 'Auxiliar'
-          default:
-            return 'Desconocido'
-        }
+        return roleMapping[role] || 'Desconocido';
       }
     },
     {
       title: 'Accion',
       key: 'action',
       render: (text: any, record: any) => (
-        <Space size="middle">
+        <Space className="md:flex-wrap md:items-center"size="middle" >
           <Button
             icon={<DatabaseOutlined className="text-green-700" />}
-            onClick={() => handleView(record.id.toString())}
+            onClick={() => EmployeeUtils.handleView(record.id.toString(), setSelectedEmployee, setVisible)}
           />
           <Button
             icon={<EditOutlined className="text-blue-700" />}
-            onClick={() => handleEdit(record)}
+            onClick={() => EmployeeUtils.handleEdit(record, setEditingEmployee, EditForm, setVisibleEdit)}
           />
           <Button
             icon={<DeleteOutlined className="text-red-700" />}
-            onClick={() => handleDelete(record)}
-          />
+            onClick={() => EmployeeUtils.handleDelete(record, employees, setEmployees)}
+          />       
         </Space>
       )
     }
-  ]
-
-  const filteredEmployees = searchText
-    ? employees.filter((employee) =>
-        Object.values(employee).some(
-          (value) =>
-            typeof value === 'string' &&
-            value.toLowerCase().includes(searchText.toLowerCase())
-        )
-      )
-    : employees
-
-  const filteredEmployeesWithKeys = filteredEmployees.map(
-    (employee, index) => ({
-      ...employee,
-      key: index.toString()
-    })
-  )
+  ];
 
   return (
     <>
       <Modal
         title="Detalles del Empleado"
         open={visible}
-        onCancel={handleClose}
+        onCancel={() => EmployeeUtils.handleClose(setVisible)}
         footer={[]}
       >
         {selectedEmployee && (
@@ -356,8 +188,8 @@ const EmployeList = () => {
       <Modal
         title="Editar Empleado"
         open={visibleEdit}
-        onCancel={handleCloseEdit}
-        onOk={handleSave}
+        onCancel={() => EmployeeUtils.handleCloseEdit(EditForm, setVisibleEdit)}
+        onOk={() => EmployeeUtils.handleSave(EditForm, editingEmployee, employees, setEmployees, setVisibleEdit)}
       >
         <Form form={EditForm} layout="vertical">
           <Form.Item name="name" label="Nombre">
@@ -394,8 +226,8 @@ const EmployeList = () => {
       <Modal
         title="Añadir Nuevo Empleado"
         open={visibleAdd}
-        onCancel={handleAddCancel}
-        onOk={handleAddSave}
+        onCancel={() => EmployeeUtils.handleAddCancel(setVisibleAdd, EditForm, addForm)}
+        onOk={() => EmployeeUtils.handleAddSave(addForm, setEmployees, setVisibleAdd)}
       >
         <Form form={addForm} layout="vertical">
           <Form.Item
@@ -408,9 +240,7 @@ const EmployeList = () => {
           <Form.Item
             name="surname"
             label="Apellido"
-            rules={[
-              { required: true, message: 'Por favor ingrese el apellido' }
-            ]}
+            rules={[{ required: true, message: 'Por favor ingrese el apellido' }]}
           >
             <Input />
           </Form.Item>
@@ -418,14 +248,8 @@ const EmployeList = () => {
             name="email"
             label="Correo Electrónico"
             rules={[
-              {
-                required: true,
-                message: 'Por favor ingrese el correo electrónico'
-              },
-              {
-                type: 'email',
-                message: 'Por favor ingrese un correo electrónico válido'
-              }
+              { required: true, message: 'Por favor ingrese el correo electrónico' },
+              { type: 'email', message: 'Por favor ingrese un correo electrónico válido' }
             ]}
           >
             <Input />
@@ -433,18 +257,14 @@ const EmployeList = () => {
           <Form.Item
             name="password"
             label="Contraseña"
-            rules={[
-              { required: true, message: 'Por favor ingrese la contraseña' }
-            ]}
+            rules={[{ required: true, message: 'Por favor ingrese la contraseña' }]}
           >
             <Input.Password />
           </Form.Item>
           <Form.Item
             name="confirmPassword"
             label="Confirmar Contraseña"
-            rules={[
-              { required: true, message: 'Por favor confirme la contraseña' }
-            ]}
+            rules={[{ required: true, message: 'Por favor confirme la contraseña' }]}
           >
             <Input.Password />
           </Form.Item>
@@ -467,9 +287,6 @@ const EmployeList = () => {
               <Select.Option value={3}>Auxiliar</Select.Option>
             </Select>
           </Form.Item>
-          {/*<Form.Item name="image" label="Foto">
-            <Input type="file" onChange={handleFileUpload} />
-          </Form.Item>*/}
         </Form>
       </Modal>
 
@@ -480,7 +297,7 @@ const EmployeList = () => {
         </div>
         <Button
           className=" h-10 bg-indigo-900 rounded-md text-white text-base font-bold p-2 items-center "
-          onClick={handleAdd}
+          onClick={() => EmployeeUtils.handleAdd(setVisibleAdd)}
         >
           <a>
             <PlusOutlined className="text-white font-bold" /> Añadir nuevo
@@ -513,7 +330,8 @@ const EmployeList = () => {
         />
       </Card>
     </>
-  )
-}
+  );
+};
 
-export default EmployeList
+export default EmployeList;
+ 

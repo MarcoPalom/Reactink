@@ -10,7 +10,8 @@ import {
   message,
   Select,
   InputNumber,
-  Drawer
+  Drawer,
+  Switch
 } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -22,11 +23,12 @@ import {
   DeleteOutlined,
   DatabaseOutlined,
   SendOutlined,
-  ClearOutlined
+  ClearOutlined,
+  ScissorOutlined
 } from '@ant-design/icons'
 import axios from 'axios'
 import useTokenRenewal from 'components/Scripts/useTokenRenewal'
-import { Quotation, QuotationAdd, Client  } from 'components/Scripts/Interfaces'
+import { Quotation, QuotationAdd, Client } from 'components/Scripts/Interfaces'
 import html2pdf from 'html2pdf.js'
 import {
   handleFinish,
@@ -39,13 +41,38 @@ import {
   filterQuotations,
   addKeysToQuotations,
   handleFieldChangeMaquila,
-  handleFinishMaquila
+  handleFinishMaquila,
+  handleDeleteProduct,
+  handleAdvanceChange,
+  disciplines,
+  cloths,
+  neckForms,
+  neckTypes,
+  sleeveForms,
+  sleeveTypes,
+  cuffs,
+  cuffsTypes,
+  sizes,
+  handleSelectChangeShirt,
+  handleInputNumberChange,
+  handleInputChange,
+  handleGenderToggle,
+  shortLooks,
+  sections,
+  handleAddRowShorts,
+  handleEmptyShorts,
+  handleSelectChangeShirtShorts,
+  handleInputNumberChangeShorts,
+  handleInputChangeShorts,
+  handleGenderToggleShorts
 } from 'components/Scripts/QuotationUtils'
 import {
   fetchQuotation,
   updateQuotation,
   addQuotation,
   deleteQuotation,
+  deleteQuotationProduct,
+  deleteQuotationProductMaquila,
   addQuotationProduct
 } from 'components/Scripts/Apicalls'
 import {
@@ -57,6 +84,9 @@ import {
 } from 'components/Scripts/QuotationUtils'
 import TodayDate from 'components/Scripts/Utils'
 import Logo from 'assets/img/logo.png'
+import { FaTshirt } from 'react-icons/fa'
+import { GiUnderwearShorts, GiGoalKeeper } from 'react-icons/gi'
+
 const { Search } = Input
 const { confirm } = Modal
 const { Option } = Select
@@ -67,12 +97,21 @@ const CotationList = () => {
   const [visible, setVisible] = useState<boolean>(false)
   const [visibleEdit, setVisibleEdit] = useState<boolean>(false)
   const [visibleAdd, setVisibleAdd] = useState<boolean>(false)
-  const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null)
-  const [editingQuotation, setEditingQuotation] = useState<Quotation | null>(null)
+  const [visibleCut, setVisibleCut] = useState<boolean>(false)
+  const [isShirtForm, setIsShirtForm] = useState(true)
+  const [isShortForm, setIsShortForm] = useState(true)
+  const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(
+    null
+  )
+  const [editingQuotation, setEditingQuotation] = useState<Quotation | null>(
+    null
+  )
   const [dataSource, setDataSource] = useState<any[]>([])
+  const [dataSourceShorts, setDataSourceShorts] = useState<any[]>([])
   const [count, setCount] = useState(0)
   const [taxPercentage, setTaxPercentage] = useState(0)
   const [Advance, setAdvance] = useState(0)
+  const [taxLocked, setTaxLocked] = useState(false)
   const [netAmount, setNetAmount] = useState(0)
   const [total, setTotal] = useState(0)
   const [clients, setClients] = useState<Client[]>([])
@@ -82,9 +121,10 @@ const CotationList = () => {
   const navigate = useNavigate()
   const [subtotal] = useState(0)
   const [EditForm] = Form.useForm()
+  const [ShirtForm] = Form.useForm()
+  const [ShortForm] = Form.useForm()
   const [addForm] = Form.useForm()
-  const [addQuotationForm] = Form.useForm()
-  const [currentTable, setCurrentTable] = useState('cotizacion_producto');
+  const [currentTable, setCurrentTable] = useState('cotizacion_producto')
 
   useTokenRenewal(navigate)
 
@@ -142,8 +182,6 @@ const CotationList = () => {
       }
     }
 
-   
-
     const fetchQuotationProductsMaquila = async () => {
       try {
         if (selectedQuotation) {
@@ -167,11 +205,10 @@ const CotationList = () => {
         console.error('Error fetching quotation products:', error)
       }
     }
-    
+
     fetchQuotationProducts()
     fetchQuotationProductsMaquila()
   }, [selectedQuotation])
-  
 
   const filterProductsByQuotationId = (products: any, quotationId: any) => {
     return products.filter(
@@ -179,13 +216,20 @@ const CotationList = () => {
     )
   }
 
-  
+  const handleSwitchChange = (checked: any) => {
+    setIsShirtForm(checked)
+  }
+  const handleSwitchChangeShort = (checked: any) => {
+    setIsShortForm(checked)
+  }
+
   const handleClose = () => {
     setVisible(false)
   }
   const handleCloseEdit = () => {
     EditForm.resetFields()
     setVisibleEdit(false)
+    setTaxLocked(false)
   }
   const handleAdd = () => {
     setVisibleAdd(true)
@@ -194,6 +238,13 @@ const CotationList = () => {
     setVisibleAdd(false)
     EditForm.resetFields()
     addForm.resetFields()
+    setTaxLocked(false)
+  }
+  const handleAddCut = () => {
+    setVisibleCut(true)
+  }
+  const handleAddCutCancel = () => {
+    setVisibleCut(false)
   }
   const handleFinishClick = () => {
     const subtotal = calculateSubtotal(dataSource)
@@ -208,35 +259,45 @@ const CotationList = () => {
     handleAddRow(count, setCount, setDataSource, dataSource)
   }
   const handleEmptyClick = () => {
-    handleEmpty(confirm, setDataSource)
+    handleEmpty(confirm, setDataSource, setTaxLocked, EditForm)
+  }
+  const handleAddRowClickShorts = () => {
+    handleAddRowShorts(count, setCount, setDataSourceShorts, dataSourceShorts)
+  }
+  const handleEmptyClickShorts = () => {
+    handleEmptyShorts(confirm, setDataSourceShorts)
   }
   const handleSaveClick = async () => {
     try {
       if (editingQuotation) {
-        await handleSave(EditForm, editingQuotation, Quotations, setQuotations, setVisibleEdit);
-      
-        for (const item of dataSource) {
-          const pivotDataProduct = {
-            quotationId: editingQuotation.id,
-            description: item.description,
-            quantity: item.quantity,
-            amount: item.unitPrice,
-            tax: item.tax,
-            total: item.total,
-          };
-        }
+        await handleSave(
+          EditForm,
+          editingQuotation,
+          Quotations,
+          setQuotations,
+          setVisibleEdit,
+          setTaxLocked,
+          dataSource
+        )
       } else {
-        console.error('No hay una cotización en edición');
-        message.error('Error al guardar la Cotización');
-        return;
+        console.error('No hay una cotización en edición')
+        message.error('Error al guardar la Cotización')
+        return
       }
     } catch (error) {
-      console.error('Error saving Quotation:', error);
-      message.error('Error al guardar la Cotización');
+      console.error('Error saving Quotation:', error)
+      message.error('Error al guardar la Cotización')
     }
   }
+
   const handleAddSaveClick = async () => {
-    await handleAddSave(addForm, dataSource, setVisibleAdd, setDataSource, setQuotations)
+    await handleAddSave(
+      addForm,
+      dataSource,
+      setVisibleAdd,
+      setDataSource,
+      setQuotations
+    )
   }
   const handleViewClick = async (id: string) => {
     await handleView(id, setSelectedQuotation, setVisible)
@@ -251,22 +312,34 @@ const CotationList = () => {
             Authorization: `Bearer ${localStorage.getItem('token')}`
           }
         }
-      );
-  
+      )
+
       const filteredProducts = filterProductsByQuotationId(
         response.data,
         record.id
-      );
-  
-      setDataSource(filteredProducts);
-      handleEdit(record, setEditingQuotation, EditForm, setVisibleEdit);
+      )
+
+      setDataSource(filteredProducts)
+      handleEdit(record, setEditingQuotation, EditForm, setVisibleEdit)
     } catch (error) {
-      console.error('Error fetching quotation products:', error);
+      console.error('Error fetching quotation products:', error)
     }
   }
 
   const handleDeleteClick = (record: Quotation) => {
     handleDelete(record, deleteQuotation, Quotations, setQuotations)
+  }
+
+  const handleDeleteProductsClick = (record: Quotation) => {
+    handleDeleteProduct(
+      record,
+      deleteQuotationProductMaquila,
+      deleteQuotationProduct,
+      quotationProductsMaquila,
+      setQuotationProductsMaquila,
+      quotationProducts,
+      setQuotationProducts
+    )
   }
   const filteredQuotations = filterQuotations(Quotations, searchText)
   const filteredQuotationsWithKeys = addKeysToQuotations(filteredQuotations)
@@ -283,12 +356,11 @@ const CotationList = () => {
 
     html2pdf().from(element).set(options).save()
   }
-  
 
-  const handleSelectChange = (value:any) => {
-    setCurrentTable(value); 
-    setDataSource([]);
-};
+  const handleSelectChange = (value: any) => {
+    setCurrentTable(value)
+    setDataSource([])
+  }
 
   const columnsAddQuotation = [
     {
@@ -376,95 +448,105 @@ const CotationList = () => {
       dataIndex: 'total',
       key: 'total',
       render: (text: any) => `$${parseFloat(text).toFixed(2)}`
+    },
+    {
+      title: 'Accion',
+      key: 'action',
+      render: (text: any, record: any) => (
+        <Space size="middle">
+          <Button
+            icon={<DeleteOutlined className="text-red-700" />}
+            onClick={() => handleDeleteProductsClick(record)}
+          />
+        </Space>
+      )
     }
   ]
 
   const columnsAddQuotationMaquila = [
     {
-        title: 'Descripcion',
-        dataIndex: 'description',
-        key: 'description',
-        render: (text: string, record: any) => (
-            <Input
-                value={text}
-                onChange={(e) =>
-                    handleFieldChangeMaquila(
-                        e.target.value,
-                        record.key,
-                        'description',
-                        dataSource,
-                        setDataSource
-                    )
-                }
-            />
-        )
+      title: 'Descripcion',
+      dataIndex: 'description',
+      key: 'description',
+      render: (text: string, record: any) => (
+        <Input
+          value={text}
+          onChange={(e) =>
+            handleFieldChangeMaquila(
+              e.target.value,
+              record.key,
+              'description',
+              dataSource,
+              setDataSource
+            )
+          }
+        />
+      )
     },
     {
-        title: 'Precio M',
-        dataIndex: 'price_meter',
-        key: 'price_meter',
-        render: () => (
-            <span>120</span> 
-        )
+      title: 'Precio M',
+      dataIndex: 'price_meter',
+      key: 'price_meter',
+      render: () => <span>120</span>
     },
     {
-        title: 'Metros de impresion',
-        dataIndex: 'meters_impression',
-        key: 'meters_impression',
-        render: (text: number, record: any) => (
-          <InputNumber
-          step={0.1} 
+      title: 'Metros de impresion',
+      dataIndex: 'meters_impression',
+      key: 'meters_impression',
+      render: (text: number, record: any) => (
+        <InputNumber
+          step={0.1}
           min={0}
           value={text}
           onChange={(value) =>
-              handleFieldChangeMaquila(
-                  value,
-                  record.key,
-                  'meters_impression',
-                  dataSource,
-                  setDataSource
-              )
+            handleFieldChangeMaquila(
+              value,
+              record.key,
+              'meters_impression',
+              dataSource,
+              setDataSource
+            )
           }
-      />
-        )
+        />
+      )
     },
     {
-        title: 'Precio Unitario',
-        dataIndex: 'price_unit',
-        key: 'price_unit',
-        render: (text: number) => (
-          <span>{`$${text ? text.toFixed(2) : '0.00'}`}</span> 
-        )
+      title: 'Precio Unitario',
+      dataIndex: 'price_unit',
+      key: 'price_unit',
+      render: (text: number) => (
+        <span>{`$${text ? text.toFixed(2) : '0.00'}`}</span>
+      )
     },
     {
-        title: 'Cantidad',
-        dataIndex: 'quantity',
-        key: 'quantity',
-        render: (text: number, record: any) => (
-            <InputNumber
-                min={0}
-                value={text}
-                onChange={(value) =>
-                    handleFieldChangeMaquila(
-                        value,
-                        record.key,
-                        'quantity',
-                        dataSource,
-                        setDataSource
-                    )
-                }
-            />
-        )
+      title: 'Cantidad',
+      dataIndex: 'quantity',
+      key: 'quantity',
+      render: (text: number, record: any) => (
+        <InputNumber
+          min={0}
+          value={text}
+          onChange={(value) =>
+            handleFieldChangeMaquila(
+              value,
+              record.key,
+              'quantity',
+              dataSource,
+              setDataSource
+            )
+          }
+        />
+      )
     },
     {
       title: 'Total',
       dataIndex: 'amount',
       key: 'amount',
       render: (text: number) => (
-          <span>{`$${text ? text.toFixed(2) : '0.00'}`}</span> 
+        <span>{`$${text ? text.toFixed(2) : '0.00'}`}</span>
       )
-  }
-];
+    }
+  ]
 
   const columns = [
     {
@@ -542,7 +624,184 @@ const CotationList = () => {
             icon={<DeleteOutlined className="text-red-700" />}
             onClick={() => handleDeleteClick(record)}
           />
+          <Button
+            icon={<ScissorOutlined className="text-gray-700" />}
+            onClick={() => handleAddCut()}
+          />
         </Space>
+      )
+    }
+  ]
+
+  const columnsShirt = [
+    {
+      title: 'Talla',
+      dataIndex: 'talla',
+      key: 'talla',
+      render: (text: any, record: any) => (
+        <Select
+          className="w-20"
+          defaultValue={text}
+          onChange={(value) =>
+            handleSelectChangeShirt(
+              dataSource,
+              setDataSource,
+              value,
+              record.key,
+              'talla'
+            )
+          }
+        >
+          {sizes.map((size) => (
+            <Option key={size} value={size}>
+              {size}
+            </Option>
+          ))}
+        </Select>
+      )
+    },
+    {
+      title: 'Cantidad',
+      dataIndex: 'cantidad',
+      key: 'cantidad',
+      render: (text: any, record: any) => (
+        <InputNumber
+          min={0}
+          defaultValue={text}
+          onChange={(value) =>
+            handleInputNumberChange(
+              dataSource,
+              setDataSource,
+              value,
+              record.key,
+              'cantidad'
+            )
+          }
+        />
+      )
+    },
+    {
+      title: 'Genero',
+      dataIndex: 'genero',
+      key: 'genero',
+      render: (text: any, record: any) => (
+        <Button
+          className={`w-10 ${
+            text === 'H' ? 'bg-blue-500 text-white' : 'bg-pink-500 text-white'
+          }`}
+          onClick={() =>
+            handleGenderToggle(dataSource, setDataSource, record.key)
+          }
+        >
+          {text}
+        </Button>
+      )
+    },
+    {
+      title: 'Observación',
+      dataIndex: 'observacion',
+      key: 'observacion',
+      render: (text: any, record: any) => (
+        <Input
+          defaultValue={text}
+          onChange={(e) =>
+            handleInputChange(
+              dataSource,
+              setDataSource,
+              e,
+              record.key,
+              'observacion'
+            )
+          }
+        />
+      )
+    }
+  ]
+  const columnsShort = [
+    {
+      title: 'Talla',
+      dataIndex: 'talla',
+      key: 'talla',
+      render: (text: any, record: any) => (
+        <Select
+          className="w-20"
+          defaultValue={text}
+          onChange={(value) =>
+            handleSelectChangeShirtShorts(
+              dataSourceShorts,
+              setDataSourceShorts,
+              value,
+              record.key,
+              'talla'
+            )
+          }
+        >
+          {sizes.map((size) => (
+            <Option key={size} value={size}>
+              {size}
+            </Option>
+          ))}
+        </Select>
+      )
+    },
+    {
+      title: 'Cantidad',
+      dataIndex: 'cantidad',
+      key: 'cantidad',
+      render: (text: any, record: any) => (
+        <InputNumber
+          min={0}
+          defaultValue={text}
+          onChange={(value) =>
+            handleInputNumberChangeShorts(
+              setDataSourceShorts,
+              setDataSourceShorts,
+              value,
+              record.key,
+              'cantidad'
+            )
+          }
+        />
+      )
+    },
+    {
+      title: 'Genero',
+      dataIndex: 'genero',
+      key: 'genero',
+      render: (text: any, record: any) => (
+        <Button
+          className={`w-10 ${
+            text === 'H' ? 'bg-blue-500 text-white' : 'bg-pink-500 text-white'
+          }`}
+          onClick={() =>
+            handleGenderToggleShorts(
+              dataSourceShorts,
+              setDataSourceShorts,
+              record.key
+            )
+          }
+        >
+          {text}
+        </Button>
+      )
+    },
+    {
+      title: 'Observación',
+      dataIndex: 'observacion',
+      key: 'observacion',
+      render: (text: any, record: any) => (
+        <Input
+          defaultValue={text}
+          onChange={(e) =>
+            handleInputChangeShorts(
+              dataSourceShorts,
+              setDataSourceShorts,
+              e,
+              record.key,
+              'observacion'
+            )
+          }
+        />
       )
     }
   ]
@@ -617,82 +876,82 @@ const CotationList = () => {
             </div>
 
             {quotationProducts.length > 0 && (
-            <Table
-              dataSource={quotationProducts}
-              columns={[
-                {
-                  title: 'Descripción',
-                  dataIndex: 'description',
-                  key: 'description'
-                },
-                {
-                  title: 'Cantidad',
-                  dataIndex: 'quantity',
-                  key: 'quantity'
-                },
-                {
-                  title: 'Precio C/U',
-                  dataIndex: 'amount',
-                  key: 'amount',
-                  render: (text: any) => `$${parseFloat(text).toFixed(2)}`
-                },
-                {
-                  title: 'Impuesto',
-                  dataIndex: 'tax',
-                  key: 'tax',
-                  render: (text: any) => `${parseFloat(text).toFixed(2)}%`
-                },
-                {
-                  title: 'Total',
-                  dataIndex: 'total',
-                  key: 'total',
-                  render: (text: any) => `$${parseFloat(text).toFixed(2)}`
-                }
-              ]}
-            />
-          )}
+              <Table
+                dataSource={quotationProducts}
+                columns={[
+                  {
+                    title: 'Descripción',
+                    dataIndex: 'description',
+                    key: 'description'
+                  },
+                  {
+                    title: 'Cantidad',
+                    dataIndex: 'quantity',
+                    key: 'quantity'
+                  },
+                  {
+                    title: 'Precio C/U',
+                    dataIndex: 'amount',
+                    key: 'amount',
+                    render: (text: any) => `$${parseFloat(text).toFixed(2)}`
+                  },
+                  {
+                    title: 'Impuesto',
+                    dataIndex: 'tax',
+                    key: 'tax',
+                    render: (text: any) => `${parseFloat(text).toFixed(2)}%`
+                  },
+                  {
+                    title: 'Total',
+                    dataIndex: 'total',
+                    key: 'total',
+                    render: (text: any) => `$${parseFloat(text).toFixed(2)}`
+                  }
+                ]}
+              />
+            )}
             {quotationProductsMaquila.length > 0 && (
-            <Table
-              dataSource={quotationProductsMaquila}
-              columns={[
-                {
-                  title: 'Descripción',
-                  dataIndex: 'description',
-                  key: 'description'
-                },
-                {
-                  title: 'Cantidad',
-                  dataIndex: 'quantity',
-                  key: 'quantity'
-                },
-                {
-                  title: 'Precio M',
-                  dataIndex: 'price_meter',
-                  key: 'price_meter',
-                  render: (text: any) => `$${parseFloat(text).toFixed(2)}`
-                },
-                {
-                  title: 'Metros de impresion',
-                  dataIndex: 'meters_impression',
-                  key: 'meters_impression',
-                  render: (text: any) => `${parseFloat(text).toFixed(2)}m`
-                },
-                {
-                  title: 'Precio C/U',
-                  dataIndex: 'price_unit',
-                  key: 'price_unit',
-                  render: (text: any) => `$${parseFloat(text).toFixed(2)}`
-                },
-                {
-                  title: 'Total',
-                  dataIndex: 'amount',
-                  key: 'amount',
-                  render: (text: any) => `$${parseFloat(text).toFixed(2)}`
-                }
-              ]}
-              scroll={{ x: 240 }} 
-            />
-          )}
+              <Table
+                dataSource={quotationProductsMaquila}
+                columns={[
+                  {
+                    title: 'Descripción',
+                    dataIndex: 'description',
+                    key: 'description'
+                  },
+                  {
+                    title: 'Cantidad',
+                    dataIndex: 'quantity',
+                    key: 'quantity'
+                  },
+                  {
+                    title: 'Precio M',
+                    dataIndex: 'price_meter',
+                    key: 'price_meter',
+                    render: (text: any) => `$${parseFloat(text).toFixed(2)}`
+                  },
+                  {
+                    title: 'Metros de impresion',
+                    dataIndex: 'meters_impression',
+                    key: 'meters_impression',
+                    render: (text: any) => `${parseFloat(text).toFixed(2)}m`
+                  },
+                  {
+                    title: 'Precio C/U',
+                    dataIndex: 'price_unit',
+                    key: 'price_unit',
+                    render: (text: any) => `$${parseFloat(text).toFixed(2)}`
+                  },
+                  {
+                    title: 'Total',
+                    dataIndex: 'amount',
+                    key: 'amount',
+                    render: (text: any) => `$${parseFloat(text).toFixed(2)}`
+                  }
+                ]}
+                scroll={{ x: 240 }}
+              />
+            )}
 
             <div className="mt-5 mb-5 text-end text-xs">
               <h1> 1 Y 2 Hidalgo, Zona Centro Cd. Victoria, Tamaulipas </h1>
@@ -707,142 +966,21 @@ const CotationList = () => {
         )}
       </Modal>
 
-<Drawer
-  title="Editar Cotización"
-  open={visibleEdit}
-  onClose={handleCloseEdit}
-  size="large"
-  className="modal"
-  extra={
-    <Space>
-      <Button onClick={handleSaveClick} type="primary">
-        Aceptar
-      </Button>
-    </Space>
-  }
->
-  <div className="overflow-auto">
-    <Table
-      columns={columnsAddQuotation} 
-      dataSource={dataSource}
-      pagination={false}
-      footer={() => (
-        <Space className="flex justify-end">
-          <Button
-            onClick={handleAddRowClick}
-            icon={<PlusOutlined className="text-cyan-500" />}
-          />
-          <Button
-            onClick={handleFinishClick}
-            icon={<SendOutlined className="text-green-500" />}
-          />
-          <Button
-            onClick={handleEmptyClick}
-            icon={<ClearOutlined className="text-red-500" />}
-          />
-        </Space>
-      )}
-    />
-    <Form form={EditForm} layout="vertical" className="p-4">
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Form.Item name="dateReceipt" label="Fecha de recibido" >
-            <Input type="date" className="w-full" />
-          </Form.Item>
-          <Form.Item name="expirationDate" label="Fecha de expiración" >
-            <Input type="date" className="w-full" />
-          </Form.Item>
-        </div>
-        <div>
-          <Form.Item name="tax" label="Impuesto">
-          <InputNumber
-                    onChange={(value) => {
-                      if (value !== null) {
-                        setTaxPercentage(value)
-                        const newNetAmount = calculateTaxAndNetAmount(EditForm)
-                        EditForm.setFieldsValue({ netAmount: newNetAmount })
-                        EditForm.setFieldsValue({ total: newNetAmount })
-                      }
-                    }}
-                    defaultValue={0}
-                    className="w-full"
-                  />
-          </Form.Item>
-
-          <Form.Item name="netAmount" label="Total Neto">
-            <InputNumber className="w-full" />
-          </Form.Item>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <div>
-          <Form.Item name="subtotal" label="Subtotal" >
-            <InputNumber className="w-full" />
-          </Form.Item>
-        </div>
-        <div>
-          <Form.Item name="advance" label="Avance" >
-          <InputNumber
-                    min={0}
-                    onChange={(value) => {
-                      if (value !== null) {
-                        setAdvance(value)
-                        const newTotal = calculateTotal(EditForm)
-                        EditForm.setFieldsValue({ total: newTotal })
-                      }
-                    }}
-                    className="w-full"
-                  />
-          </Form.Item>
-        </div>
-      </div>
-      <div className="grid grid-cols-1 gap-4">
-        <div>
-          <Form.Item name="total" label="Total" >
-            <InputNumber className="w-full" />
-          </Form.Item>
-
-          <Form.Item name="clientId" label="Cliente">
-            <Select placeholder="Selecciona un cliente">
-              {clients.map((client: any) => (
-                <Option key={client.id} value={client.id}>
-                  {client.name}
-                </Option>
-              ))}
-            </Select>
-          </Form.Item>
-        </div>
-      </div>
-    </Form>
-  </div>
-</Drawer>
-
       <Drawer
-        title="Añadir Nueva Cotización"
-        open={visibleAdd}
-        onClose={handleAddCancel}
+        title="Editar Cotización"
+        open={visibleEdit}
+        onClose={handleCloseEdit}
         size="large"
         className="modal"
         extra={
           <Space>
-            <Button onClick={handleAddSaveClick} type="primary">
+            <Button onClick={handleSaveClick} type="primary">
               Aceptar
             </Button>
           </Space>
         }
       >
-       <Select
-        placeholder="Selecciona una opción"
-        onChange={handleSelectChange}
-        value={currentTable}
-        className="w-full mb-4"
-    >
-        <Option value="cotizacion_producto">Añadir Cotización Producto</Option>
-        <Option value="cotizacion_maquila">Añadir Cotización Maquila</Option>
-    </Select>
         <div className="overflow-auto">
-
-        {currentTable === 'cotizacion_producto' && (
           <Table
             columns={columnsAddQuotation}
             dataSource={dataSource}
@@ -864,31 +1002,161 @@ const CotationList = () => {
               </Space>
             )}
           />
-         )}  
+          <Form form={EditForm} layout="vertical" className="p-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Form.Item name="dateReceipt" label="Fecha de recibido">
+                  <Input type="date" className="w-full" />
+                </Form.Item>
+                <Form.Item name="expirationDate" label="Fecha de expiración">
+                  <Input type="date" className="w-full" />
+                </Form.Item>
+              </div>
+              <div>
+                <Form.Item name="tax" label="Impuesto">
+                  <InputNumber
+                    onChange={(value) => {
+                      if (value !== null) {
+                        setTaxPercentage(value)
+                        const newNetAmount = calculateTaxAndNetAmount(EditForm)
+                        EditForm.setFieldsValue({ netAmount: newNetAmount })
+                        EditForm.setFieldsValue({ total: newNetAmount })
+                      }
+                    }}
+                    defaultValue={0}
+                    className="w-full"
+                    disabled={taxLocked}
+                  />
+                </Form.Item>
 
-           {currentTable === 'cotizacion_maquila' && (
-          <Table
-            columns={columnsAddQuotationMaquila}
-            dataSource={dataSource}
-            pagination={false}
-            footer={() => (
-              <Space className="flex justify-end">
-                <Button
-                  onClick={handleAddRowClick}
-                  icon={<PlusOutlined className="text-cyan-500" />}
-                />
-                <Button
-                  onClick={handleFinishClickMaquila}
-                  icon={<SendOutlined className="text-green-500" />}
-                />
-                <Button
-                  onClick={handleEmptyClick}
-                  icon={<ClearOutlined className="text-red-500" />}
-                />
-              </Space>
-            )}
-          />
-        )}
+                <Form.Item name="netAmount" label="Total Neto">
+                  <InputNumber className="w-full" />
+                </Form.Item>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Form.Item name="subtotal" label="Subtotal">
+                  <InputNumber className="w-full" />
+                </Form.Item>
+              </div>
+              <div>
+                <Form.Item name="advance" label="Avance">
+                  <InputNumber
+                    min={0}
+                    onChange={(value) => {
+                      if (value !== null) {
+                        handleAdvanceChange(
+                          value,
+                          setAdvance,
+                          EditForm,
+                          setTaxLocked,
+                          calculateTotal
+                        )
+                        setAdvance(value)
+                        const newTotal = calculateTotal(EditForm)
+                        EditForm.setFieldsValue({ total: newTotal })
+                      }
+                    }}
+                    className="w-full"
+                  />
+                </Form.Item>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 gap-4">
+              <div>
+                <Form.Item name="total" label="Total">
+                  <InputNumber className="w-full" />
+                </Form.Item>
+
+                <Form.Item name="clientId" label="Cliente">
+                  <Select placeholder="Selecciona un cliente">
+                    {clients.map((client: any) => (
+                      <Option key={client.id} value={client.id}>
+                        {client.name}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </div>
+            </div>
+          </Form>
+        </div>
+      </Drawer>
+
+      <Drawer
+        title="Añadir Nueva Cotización"
+        open={visibleAdd}
+        onClose={handleAddCancel}
+        size="large"
+        className="modal"
+        extra={
+          <Space>
+            <Button onClick={handleAddSaveClick} type="primary">
+              Aceptar
+            </Button>
+          </Space>
+        }
+      >
+        <Select
+          placeholder="Selecciona una opción"
+          onChange={handleSelectChange}
+          value={currentTable}
+          className="w-full mb-4"
+        >
+          <Option value="cotizacion_producto">
+            Añadir Cotización Producto
+          </Option>
+          <Option value="cotizacion_maquila">Añadir Cotización Maquila</Option>
+        </Select>
+        <div className="overflow-auto">
+          {currentTable === 'cotizacion_producto' && (
+            <Table
+              columns={columnsAddQuotation}
+              dataSource={dataSource}
+              pagination={false}
+              footer={() => (
+                <Space className="flex justify-end">
+                  <Button
+                    onClick={handleAddRowClick}
+                    icon={<PlusOutlined className="text-cyan-500" />}
+                  />
+                  <Button
+                    onClick={handleFinishClick}
+                    icon={<SendOutlined className="text-green-500" />}
+                  />
+                  <Button
+                    onClick={handleEmptyClick}
+                    icon={<ClearOutlined className="text-red-500" />}
+                  />
+                </Space>
+              )}
+            />
+          )}
+
+          {currentTable === 'cotizacion_maquila' && (
+            <Table
+              columns={columnsAddQuotationMaquila}
+              dataSource={dataSource}
+              pagination={false}
+              footer={() => (
+                <Space className="flex justify-end">
+                  <Button
+                    onClick={handleAddRowClick}
+                    icon={<PlusOutlined className="text-cyan-500" />}
+                  />
+                  <Button
+                    onClick={handleFinishClickMaquila}
+                    icon={<SendOutlined className="text-green-500" />}
+                  />
+                  <Button
+                    onClick={handleEmptyClick}
+                    icon={<ClearOutlined className="text-red-500" />}
+                  />
+                </Space>
+              )}
+            />
+          )}
           <Form form={addForm} layout="vertical" className="p-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -906,16 +1174,21 @@ const CotationList = () => {
                   initialValue={taxPercentage}
                 >
                   <InputNumber
-                    min = {0}
+                    min={0}
                     onChange={(value) => {
                       if (value !== null) {
                         setTaxPercentage(value)
                         const newNetAmount = calculateTaxAndNetAmount(addForm)
                         addForm.setFieldsValue({ netAmount: newNetAmount })
                         addForm.setFieldsValue({ total: newNetAmount })
+                      } else {
+                        const newNetAmount = addForm.getFieldValue('subtotal')
+                        addForm.setFieldsValue({ netAmount: newNetAmount })
+                        addForm.setFieldsValue({ total: newNetAmount })
                       }
                     }}
                     className="w-full"
+                    disabled={taxLocked}
                   />
                 </Form.Item>
 
@@ -936,6 +1209,13 @@ const CotationList = () => {
                     min={0}
                     onChange={(value) => {
                       if (value !== null) {
+                        handleAdvanceChange(
+                          value,
+                          setAdvance,
+                          addForm,
+                          setTaxLocked,
+                          calculateTotal
+                        )
                         setAdvance(value)
                         const newTotal = calculateTotal(addForm)
                         addForm.setFieldsValue({ total: newTotal })
@@ -967,9 +1247,384 @@ const CotationList = () => {
         </div>
       </Drawer>
 
-     
+      <Drawer open={visibleCut} onClose={handleAddCutCancel} size="large">
+        <div className="flex justify-center mb-4">
+          <div className="flex items-center space-x-2">
+            <FaTshirt
+              className={`w-10 h-10 text-green-500 ${isShirtForm ? 'block' : 'hidden'}`}
+            />
+            <GiGoalKeeper
+              className={`w-10 h-10 text-green-500 ${!isShirtForm ? 'block' : 'hidden'}`}
+            />
+            <Switch
+              onChange={handleSwitchChange}
+              checked={isShirtForm}
+              className="w-14 h-7"
+              checkedChildren={<span className="invisible" />}
+              unCheckedChildren={<span className="invisible" />}
+            />
+          </div>
+        </div>
 
+        {isShirtForm ? (
+          <div className="overflow-auto">
+            <Form form={EditForm} layout="vertical" className="p-4">
+              <div className="grid grid-cols-2 gap-2 bg-gray-100 p-4 rounded-md ">
+                <Form.Item label="Disciplina">
+                  <Select>
+                    {disciplines.map((discipline) => (
+                      <Option key={discipline} value={discipline}>
+                        {discipline}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+                <Form.Item label="Tela playera frente">
+                  <Select>
+                    {cloths.map((cloths) => (
+                      <Option key={cloths} value={cloths}>
+                        {cloths}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+                <Form.Item label="Tela playera espalda">
+                  <Select>
+                    {cloths.map((cloths) => (
+                      <Option key={cloths} value={cloths}>
+                        {cloths}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+                <Form.Item label="Color de tela">
+                  <Input />
+                </Form.Item>
+                <Form.Item label="Forma cuello">
+                  <Select>
+                    {neckForms.map((neckForm) => (
+                      <Option key={neckForm} value={neckForm}>
+                        {neckForm}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+                <Form.Item label="Tipo cuello">
+                  <Select>
+                    {neckTypes.map((neckType) => (
+                      <Option key={neckType} value={neckType}>
+                        {neckType}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+                <Form.Item label="Tela cuello">
+                  <Select>
+                    {cloths.map((cloths) => (
+                      <Option key={cloths} value={cloths}>
+                        {cloths}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+                <Form.Item label="Color de tela">
+                  <Input />
+                </Form.Item>
+                <Form.Item label="Forma de manga">
+                  <Select>
+                    {sleeveForms.map((sleeveForm) => (
+                      <Option key={sleeveForm} value={sleeveForm}>
+                        {sleeveForm}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+                <Form.Item label="Tipo de manga">
+                  <Select>
+                    {sleeveTypes.map((sleeveType) => (
+                      <Option key={sleeveType} value={sleeveType}>
+                        {sleeveType}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+                <Form.Item label="Tela de manga">
+                  <Select>
+                    {cloths.map((cloths) => (
+                      <Option key={cloths} value={cloths}>
+                        {cloths}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+                <Form.Item label="Color de tela">
+                  <Input />
+                </Form.Item>
+                <Form.Item label="Puño">
+                  <Select>
+                    {cuffs.map((cuff) => (
+                      <Option key={cuff} value={cuff}>
+                        {cuff}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+                <Form.Item label="Tipo de puño">
+                  <Select>
+                    {cuffsTypes.map((cuffsType) => (
+                      <Option key={cuffsType} value={cuffsType}>
+                        {cuffsType}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+                <Form.Item label="Tela de puño">
+                  <Select>
+                    {cloths.map((cloths) => (
+                      <Option key={cloths} value={cloths}>
+                        {cloths}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+                <Form.Item label="Color de tela">
+                  <Input />
+                </Form.Item>
+                <Form.Item label="DTF playera">
+                  <Input />
+                </Form.Item>
+                <Form.Item label="Tramos playera">
+                  <Input />
+                </Form.Item>
+              </div>
 
+              <Table
+                className="mt-2"
+                dataSource={dataSource}
+                columns={columnsShirt}
+                pagination={false}
+                footer={() => (
+                  <Space className="flex justify-end">
+                    <Button
+                      onClick={handleAddRowClick}
+                      icon={<PlusOutlined className="text-cyan-500" />}
+                    />
+                    <Button
+                      onClick={handleEmptyClick}
+                      icon={<ClearOutlined className="text-red-500" />}
+                    />
+                  </Space>
+                )}
+              />
+            </Form>
+          </div>
+        ) : (
+          <div className="overflow-auto">
+            <Form form={EditForm} layout="vertical" className="p-4">
+              <div className="grid grid-cols-2 gap-2 bg-gray-100 p-4 rounded-md">
+                <Form.Item label="Tipo de tela">
+                  <Select>
+                    {cloths.map((cloths) => (
+                      <Option key={cloths} value={cloths}>
+                        {cloths}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+                <Form.Item label="Color de tela">
+                  <Input></Input>
+                </Form.Item>
+                <Form.Item label="Forma cuello">
+                  <Select>
+                    {neckForms.map((neckForm) => (
+                      <Option key={neckForm} value={neckForm}>
+                        {neckForm}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+                <Form.Item label="Forma de manga">
+                  <Select>
+                    {sleeveForms.map((sleeveForm) => (
+                      <Option key={sleeveForm} value={sleeveForm}>
+                        {sleeveForm}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+                <Form.Item label="Tipo de puño">
+                  <Select>
+                    {cuffsTypes.map((cuffsType) => (
+                      <Option key={cuffsType} value={cuffsType}>
+                        {cuffsType}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+                <Form.Item label="DTF playera">
+                  <Input />
+                </Form.Item>
+              </div>
+
+              <Table
+                className="mt-2"
+                dataSource={dataSourceShorts}
+                columns={columnsShort}
+                pagination={false}
+                footer={() => (
+                  <Space className="flex justify-end">
+                    <Button
+                      onClick={handleAddRowClickShorts}
+                      icon={<PlusOutlined className="text-cyan-500" />}
+                    />
+                    <Button
+                      onClick={handleEmptyClickShorts}
+                      icon={<ClearOutlined className="text-red-500" />}
+                    />
+                  </Space>
+                )}
+              />
+            </Form>
+          </div>
+        )}
+
+        <div className="flex justify-center mb-4">
+          <div className="flex items-center space-x-2">
+            <GiUnderwearShorts
+              className={`w-10 h-10 text-green-500 ${isShortForm ? 'block' : 'hidden'}`}
+            />
+            <GiGoalKeeper
+              className={`w-10 h-10 text-green-500 ${!isShortForm ? 'block' : 'hidden'}`}
+            />
+            <Switch
+              onChange={handleSwitchChangeShort}
+              checked={isShortForm}
+              className="w-14 h-7"
+              checkedChildren={<span className="invisible" />}
+              unCheckedChildren={<span className="invisible" />}
+            />
+          </div>
+        </div>
+
+        {isShortForm ? (
+          <div className="overflow-auto">
+            <Form form={ShortForm} layout="vertical" className="p-4">
+              <div className="grid grid-cols-2 gap-2 bg-gray-100 p-4 rounded-md ">
+                <Form.Item label="Tela short">
+                  <Select>
+                    {disciplines.map((discipline) => (
+                      <Option key={discipline} value={discipline}>
+                        {discipline}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+                <Form.Item label="Color de tela">
+                  <Input />
+                </Form.Item>
+                <Form.Item label="Vista de short">
+                  <Select>
+                    {shortLooks.map((shortLook) => (
+                      <Option key={shortLook} value={shortLook}>
+                        {shortLook}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+                <Form.Item label="Tela de vista">
+                  <Select>
+                    {cloths.map((cloths) => (
+                      <Option key={cloths} value={cloths}>
+                        {cloths}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+                <Form.Item label="Color de tela">
+                  <Input />
+                </Form.Item>
+                <Form.Item label="DTF short">
+                  <Input />
+                </Form.Item>
+                <Form.Item label="Tramos short">
+                  <Select>
+                    {sections.map((section) => (
+                      <Option key={section} value={section}>
+                        {section}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </div>
+
+              <Table
+                className="mt-2"
+                dataSource={dataSourceShorts}
+                columns={columnsShort}
+                pagination={false}
+                footer={() => (
+                  <Space className="flex justify-end">
+                    <Button
+                      onClick={handleAddRowClickShorts}
+                      icon={<PlusOutlined className="text-cyan-500" />}
+                    />
+                    <Button
+                      onClick={handleEmptyClickShorts}
+                      icon={<ClearOutlined className="text-red-500" />}
+                    />
+                  </Space>
+                )}
+              />
+            </Form>
+          </div>
+        ) : (
+          <div className="overflow-auto">
+            <Form form={EditForm} layout="vertical" className="p-4">
+              <div className="grid grid-cols-2 gap-2 bg-gray-100 p-4 rounded-md">
+                {/* Formulario de Portero */}
+                <Form.Item label="Tela short">
+                  <Select>
+                    {disciplines.map((discipline) => (
+                      <Option key={discipline} value={discipline}>
+                        {discipline}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+                {/* ... otros elementos del formulario ... */}
+                <Form.Item label="Tramos short">
+                  <Select>
+                    {sections.map((section) => (
+                      <Option key={section} value={section}>
+                        {section}
+                      </Option>
+                    ))}
+                  </Select>
+                </Form.Item>
+              </div>
+
+              <Table
+                className="mt-2"
+                dataSource={dataSourceShorts}
+                columns={columnsShort}
+                pagination={false}
+                footer={() => (
+                  <Space className="flex justify-end">
+                    <Button
+                      onClick={handleAddRowClickShorts}
+                      icon={<PlusOutlined className="text-cyan-500" />}
+                    />
+                    <Button
+                      onClick={handleEmptyClickShorts}
+                      icon={<ClearOutlined className="text-red-500" />}
+                    />
+                  </Space>
+                )}
+              />
+            </Form>
+          </div>
+        )}
+      </Drawer>
 
       <div className="flex flex-row justify-between mb-4">
         <div>
