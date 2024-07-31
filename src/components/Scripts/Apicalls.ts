@@ -1,5 +1,5 @@
 import axios from 'axios'
-import { Material,FormDataShirt } from 'components/Scripts/Interfaces'
+import { Material,FormDataShirt,FormDataShirtView } from 'components/Scripts/Interfaces'
 const API_BASE_URL = 'http://localhost:3001/api'
 
 const getAuthHeaders = () => ({
@@ -312,28 +312,16 @@ export const fetchOrders = async () => {
   return response.data
 }
 
-export const fetchOrder = async (id: string) => {
+export const fetchOrder = async (id: number): Promise<FormDataShirtView[]> => {
   try {
     const response = await axios.get(
       `${API_BASE_URL}/cutting-order/${id}`,
       getAuthHeaders()
     );
-    return response.data;
+    return response.data.quotation.quotationProductShirts;
   } catch (error) {
     console.error('Error fetching cutting order:', error);
     throw error;
   }
 };
 
-export const fetchQuotationDetails = async (quotationId: string): Promise<FormDataShirt[]> => {
-  try {
-    const response = await axios.get(
-      `${API_BASE_URL}/quotation-product-shirt/${quotationId}`,
-      getAuthHeaders()
-    );
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching quotation product shirt details:', error);
-    throw error;
-  }
-};

@@ -1,5 +1,5 @@
-import { fetchOrders,fetchOrder,fetchQuotationDetails } from 'components/Scripts/Apicalls'
-import { CuttingOrderData,FormDataShirt } from 'components/Scripts/Interfaces'
+import { fetchOrders,fetchOrder} from 'components/Scripts/Apicalls'
+import { CuttingOrderData,FormDataShirt,FormDataShirtView } from 'components/Scripts/Interfaces'
 
 export const fetchAndSetOrders = async (setOrders: React.Dispatch<React.SetStateAction<CuttingOrderData[]>>) => {
     try {
@@ -9,16 +9,15 @@ export const fetchAndSetOrders = async (setOrders: React.Dispatch<React.SetState
       console.error('Error fetching and setting quotations:', error)
     }
   }
-
   export const handleView = async (
-    id: string,
-    setQuotationProducts: (products: FormDataShirt[]) => void,
+    id: number,
+    setQuotationProducts: (products: FormDataShirtView[]) => void,
     setVisible: (visible: boolean) => void
   ) => {
     try {
-      const quotationId = await fetchOrder(id);
-      const quotationProducts = await fetchQuotationDetails(quotationId);
-      setQuotationProducts(quotationProducts);
+      const products = await fetchOrder(id);
+      console.log('Products:', products); 
+      setQuotationProducts(products);
       setVisible(true);
     } catch (error) {
       console.error('Error handling view:', error);
