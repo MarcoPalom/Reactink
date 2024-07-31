@@ -11,24 +11,33 @@ import {
   Select,
   InputNumber,
   Drawer,
-  Switch
+  Switch,
+  DatePicker
 } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import {
   PlusOutlined,
   FilePdfOutlined,
-  FileExcelOutlined,
-  PrinterOutlined,
   EditOutlined,
   DeleteOutlined,
   DatabaseOutlined,
   SendOutlined,
   ClearOutlined,
-  ScissorOutlined
+  ScissorOutlined,
+  EyeOutlined,
+  EyeInvisibleOutlined,
+  MoreOutlined,
+  SaveOutlined
 } from '@ant-design/icons'
 import axios from 'axios'
 import useTokenRenewal from 'components/Scripts/useTokenRenewal'
-import { Quotation, QuotationAdd, Client } from 'components/Scripts/Interfaces'
+import {
+  Quotation,
+  Client,
+  Material,
+  FormDataShirt,
+  CuttingOrderData
+} from 'components/Scripts/Interfaces'
 import html2pdf from 'html2pdf.js'
 import {
   handleFinish,
@@ -37,6 +46,7 @@ import {
   handleFieldChange,
   calculateSubtotal,
   calculateTaxAndNetAmount,
+  calculateTaxAndNetAmountEdit,
   calculateTotal,
   filterQuotations,
   addKeysToQuotations,
@@ -53,10 +63,10 @@ import {
   cuffs,
   cuffsTypes,
   sizes,
-  handleSelectChangeShirt,
-  handleInputNumberChange,
-  handleInputChange,
-  handleGenderToggle,
+  calculateAndUpdateTotal,
+  handleInputNumberChangeShirts,
+  handleInputChangeShirts,
+  handleGenderToggleShirts,
   shortLooks,
   sections,
   handleAddRowShorts,
@@ -64,7 +74,12 @@ import {
   handleSelectChangeShirtShorts,
   handleInputNumberChangeShorts,
   handleInputChangeShorts,
-  handleGenderToggleShorts
+  handleGenderToggleShorts,
+  handleFormSubmitShirt,
+  useFormHandler,
+  isSaveButtonDisabled,
+  handleSubmitShirts,
+  genderMap
 } from 'components/Scripts/QuotationUtils'
 import {
   fetchQuotation,
@@ -73,7 +88,8 @@ import {
   deleteQuotation,
   deleteQuotationProduct,
   deleteQuotationProductMaquila,
-  addQuotationProduct
+  addQuotationProduct,
+  fetchMaterialName
 } from 'components/Scripts/Apicalls'
 import {
   handleView,
@@ -86,6 +102,8 @@ import TodayDate from 'components/Scripts/Utils'
 import Logo from 'assets/img/logo.png'
 import { FaTshirt } from 'react-icons/fa'
 import { GiUnderwearShorts, GiGoalKeeper } from 'react-icons/gi'
+import { generatePDF } from 'components/Scripts/Utils'
+import FormItem from 'antd/es/form/FormItem'
 
 const { Search } = Input
 const { confirm } = Modal
@@ -100,6 +118,8 @@ const CotationList = () => {
   const [visibleCut, setVisibleCut] = useState<boolean>(false)
   const [isShirtForm, setIsShirtForm] = useState(true)
   const [isShortForm, setIsShortForm] = useState(true)
+  const [isShirtFormVisible, setIsShirtFormVisible] = useState(false)
+  const [isShortFormVisible, setIsShortFormVisible] = useState(false)
   const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(
     null
   )
@@ -115,6 +135,7 @@ const CotationList = () => {
   const [netAmount, setNetAmount] = useState(0)
   const [total, setTotal] = useState(0)
   const [clients, setClients] = useState<Client[]>([])
+  const [materials, setMaterials] = useState<Material[]>([])
   const [quotationProducts, setQuotationProducts] = useState([])
   const [quotationProductsMaquila, setQuotationProductsMaquila] = useState([])
   const modalRef = useRef(null)
@@ -122,9 +143,22 @@ const CotationList = () => {
   const [subtotal] = useState(0)
   const [EditForm] = Form.useForm()
   const [ShirtForm] = Form.useForm()
+  const [CuttingForm] = Form.useForm()
   const [ShortForm] = Form.useForm()
+  const [GoalkeeperShirtForm] = Form.useForm()
+  const [GoalkeeperShortForm] = Form.useForm()
   const [addForm] = Form.useForm()
   const [currentTable, setCurrentTable] = useState('cotizacion_producto')
+  const { colors, handleMaterialChange } = useFormHandler(materials)
+  const [shirts, setShirts] = useState<FormDataShirt[]>([])
+  const [CuttingOrderDt, setCuttingOrderDt] = useState<CuttingOrderData[]>([])
+  const [isModalShirtsTempVisible, SetisModalShirtsTempVisible] =
+    useState<boolean>(false)
+  const [selectedShirt, setSelectedShirt] = useState<FormDataShirt | null>(null)
+  const [isObservationFilled, setIsObservationFilled] = useState(false)
+  const isSaveDisabled = isSaveButtonDisabled(shirts)
+  const [productType, setProductType] = useState<number | null>(null)
+  const [id, setId] = useState<any>(0)
 
   useTokenRenewal(navigate)
 
@@ -156,7 +190,9 @@ const CotationList = () => {
     }
     fetchQuotations()
     fetchClients()
+    fetchMaterialName(setMaterials)
   }, [visibleAdd])
+
   useEffect(() => {
     const fetchQuotationProducts = async () => {
       try {
@@ -225,6 +261,7 @@ const CotationList = () => {
 
   const handleClose = () => {
     setVisible(false)
+    setTaxLocked(false)
   }
   const handleCloseEdit = () => {
     EditForm.resetFields()
@@ -341,10 +378,19 @@ const CotationList = () => {
       setQuotationProducts
     )
   }
+  const toggleShirtForm = () => {
+    setIsShirtFormVisible(!isShirtFormVisible)
+    setProductType(isShirtFormVisible ? null : 1)
+  }
+
+  const toggleShortForm = () => {
+    setIsShortFormVisible(!isShortFormVisible)
+  }
+
   const filteredQuotations = filterQuotations(Quotations, searchText)
   const filteredQuotationsWithKeys = addKeysToQuotations(filteredQuotations)
 
-  const generatePDF = () => {
+  const generatePDFS = () => {
     const element = modalRef.current
     const options = {
       margin: 0.5,
@@ -361,6 +407,132 @@ const CotationList = () => {
     setCurrentTable(value)
     setDataSource([])
   }
+
+  const handleViewDetails = (record: any) => {
+    setSelectedShirt(record)
+    SetisModalShirtsTempVisible(true)
+  }
+
+  const handlecutSummitShirts = async () => {
+    if (selectedQuotation) {
+      await handleSubmitShirts(shirts,CuttingOrderDt, selectedQuotation.id)
+    } else {
+      console.error('No quotation selected')
+    }
+  }
+
+  const columnsTempShirt = [
+    {
+      title: 'No.',
+      dataIndex: 'id',
+      key: 'id',
+      render: (text: string, record: any, index: any) => `Orden # ${index + 1}`
+    },
+    {
+      title: 'Datos',
+      key: 'action',
+      render: (text: string, record: any) => (
+        <Button
+          icon={<MoreOutlined />}
+          onClick={() => handleViewDetails(record)}
+        ></Button>
+      )
+    },
+    {
+      title: 'Talla',
+      dataIndex: 'size',
+      key: 'size',
+      render: (text: any, record: any) => (
+        <Select
+          className="w-16"
+          defaultValue={text}
+          onChange={(value) =>
+            handleInputNumberChangeShirts(
+              shirts,
+              setShirts,
+              value,
+              record.key,
+              'size'
+            )
+          }
+        >
+          {sizes.map((size) => (
+            <Option key={size} value={size}>
+              {size}
+            </Option>
+          ))}
+        </Select>
+      )
+    },
+    {
+      title: 'Cantidad',
+      dataIndex: 'quantity',
+      key: 'quantity',
+      render: (text: any, record: any) => (
+        <InputNumber
+          className="w-12"
+          min={0}
+          defaultValue={text}
+          onChange={(value) =>
+            calculateAndUpdateTotal(shirts, setShirts, record.key, value)
+          }
+        />
+      )
+    },
+    {
+      title: 'Total',
+      dataIndex: 'total',
+      key: 'total',
+      render: (text: any, record: any) => record.total || '0.00'
+    },
+    {
+      title: 'Género',
+      dataIndex: 'gender',
+      key: 'gender',
+      render: (text: any, record: any) => {
+        const genderText = genderMap[text] || '?'; 
+        
+        const buttonClass =
+        genderText === 'H'
+            ? 'bg-blue-500 text-white'
+            : genderText === 'M'
+              ? 'bg-pink-500 text-white'
+              : 'bg-white text-black border border-gray-300';
+    
+        return (
+          <Button
+            className={`w-10 ${buttonClass}`}
+            onClick={() =>
+              handleGenderToggleShirts(shirts, setShirts, record.key)
+              
+            }
+          >
+            {genderText}
+          </Button>
+        );
+      }
+    },
+    {
+      title: 'Observación',
+      dataIndex: 'observation',
+      key: 'observation',
+      render: (text: any, record: any) => (
+        <Input
+          defaultValue={text}
+          onChange={(e) =>
+            handleInputChangeShirts(
+              shirts,
+              setShirts,
+              e,
+              record.key,
+              'observation',
+              setIsObservationFilled
+            )
+          }
+        />
+      )
+    }
+  ]
 
   const columnsAddQuotation = [
     {
@@ -565,6 +737,7 @@ const CotationList = () => {
       title: 'Fecha de Expiracion',
       dataIndex: 'expirationDate',
       key: 'expirationDate',
+      className: 'hidden lg:table-cell',
       render: (expirationDate: string) =>
         new Date(expirationDate).toLocaleDateString()
     },
@@ -581,35 +754,41 @@ const CotationList = () => {
       title: 'Subtotal',
       dataIndex: 'subtotal',
       key: 'subtotal',
+      className: 'hidden lg:table-cell',
       render: (subtotal: number) => `$${Number(subtotal).toFixed(2)}`
     },
     {
       title: 'Impuesto',
       dataIndex: 'tax',
       key: 'tax',
+      className: 'hidden lg:table-cell',
       render: (tax: number) => `${Number(tax).toFixed(2)}%`
     },
     {
       title: 'Valor neto',
       dataIndex: 'netAmount',
       key: 'netAmount',
+      className: 'hidden lg:table-cell',
       render: (netAmount: number) => `$${Number(netAmount).toFixed(2)}`
     },
     {
       title: 'Avance',
       dataIndex: 'advance',
       key: 'advance',
+      className: 'hidden lg:table-cell',
       render: (advance: number) => `$${Number(advance).toFixed(2)}`
     },
     {
       title: 'Total',
       dataIndex: 'total',
       key: 'total',
+      className: 'hidden lg:table-cell',
       render: (total: number) => `$${Number(total).toFixed(2)}`
     },
     {
       title: 'Accion',
       key: 'action',
+      className: 'action-column',
       render: (text: any, record: any) => (
         <Space size="middle">
           <Button
@@ -626,97 +805,16 @@ const CotationList = () => {
           />
           <Button
             icon={<ScissorOutlined className="text-gray-700" />}
-            onClick={() => handleAddCut()}
+            onClick={() => {
+              setSelectedQuotation(record)
+              handleAddCut()
+            }}
           />
         </Space>
       )
     }
   ]
 
-  const columnsShirt = [
-    {
-      title: 'Talla',
-      dataIndex: 'talla',
-      key: 'talla',
-      render: (text: any, record: any) => (
-        <Select
-          className="w-20"
-          defaultValue={text}
-          onChange={(value) =>
-            handleSelectChangeShirt(
-              dataSource,
-              setDataSource,
-              value,
-              record.key,
-              'talla'
-            )
-          }
-        >
-          {sizes.map((size) => (
-            <Option key={size} value={size}>
-              {size}
-            </Option>
-          ))}
-        </Select>
-      )
-    },
-    {
-      title: 'Cantidad',
-      dataIndex: 'cantidad',
-      key: 'cantidad',
-      render: (text: any, record: any) => (
-        <InputNumber
-          min={0}
-          defaultValue={text}
-          onChange={(value) =>
-            handleInputNumberChange(
-              dataSource,
-              setDataSource,
-              value,
-              record.key,
-              'cantidad'
-            )
-          }
-        />
-      )
-    },
-    {
-      title: 'Genero',
-      dataIndex: 'genero',
-      key: 'genero',
-      render: (text: any, record: any) => (
-        <Button
-          className={`w-10 ${
-            text === 'H' ? 'bg-blue-500 text-white' : 'bg-pink-500 text-white'
-          }`}
-          onClick={() =>
-            handleGenderToggle(dataSource, setDataSource, record.key)
-          }
-        >
-          {text}
-        </Button>
-      )
-    },
-    {
-      title: 'Observación',
-      dataIndex: 'observacion',
-      key: 'observacion',
-      render: (text: any, record: any) => (
-        <Input
-          defaultValue={text}
-          onChange={(e) =>
-            handleInputChange(
-              dataSource,
-              setDataSource,
-              e,
-              record.key,
-              'observacion'
-            )
-          }
-        />
-      )
-    }
-  ]
   const columnsShort = [
     {
       title: 'Talla',
@@ -816,7 +914,7 @@ const CotationList = () => {
           <Button
             key="pdf"
             icon={<FilePdfOutlined className="text-red-500" />}
-            onClick={generatePDF}
+            onClick={generatePDFS}
           ></Button>
         ]}
       >
@@ -1015,29 +1113,44 @@ const CotationList = () => {
               <div>
                 <Form.Item name="tax" label="Impuesto">
                   <InputNumber
+                    min={0}
                     onChange={(value) => {
                       if (value !== null) {
                         setTaxPercentage(value)
-                        const newNetAmount = calculateTaxAndNetAmount(EditForm)
+                        const newNetAmount =
+                          calculateTaxAndNetAmountEdit(EditForm)
                         EditForm.setFieldsValue({ netAmount: newNetAmount })
-                        EditForm.setFieldsValue({ total: newNetAmount })
+                        if (EditForm.getFieldValue('advance') !== null) {
+                          const Advance = EditForm.getFieldValue('advance')
+                          EditForm.setFieldsValue({
+                            total: newNetAmount - Advance
+                          })
+                        }
+                      } else {
+                        const newNetAmount = EditForm.getFieldValue('subtotal')
+                        EditForm.setFieldsValue({ netAmount: newNetAmount })
+                        if (EditForm.getFieldValue('advance') !== null) {
+                          const Advance = EditForm.getFieldValue('advance')
+                          EditForm.setFieldsValue({
+                            total: newNetAmount - Advance
+                          })
+                        }
                       }
                     }}
-                    defaultValue={0}
                     className="w-full"
                     disabled={taxLocked}
                   />
                 </Form.Item>
 
                 <Form.Item name="netAmount" label="Total Neto">
-                  <InputNumber className="w-full" />
+                  <InputNumber readOnly className="w-full" />
                 </Form.Item>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Form.Item name="subtotal" label="Subtotal">
-                  <InputNumber className="w-full" />
+                  <InputNumber readOnly className="w-full" />
                 </Form.Item>
               </div>
               <div>
@@ -1066,7 +1179,7 @@ const CotationList = () => {
             <div className="grid grid-cols-1 gap-4">
               <div>
                 <Form.Item name="total" label="Total">
-                  <InputNumber className="w-full" />
+                  <InputNumber readOnly className="w-full" />
                 </Form.Item>
 
                 <Form.Item name="clientId" label="Cliente">
@@ -1247,381 +1360,550 @@ const CotationList = () => {
         </div>
       </Drawer>
 
-      <Drawer open={visibleCut} onClose={handleAddCutCancel} size="large">
-        <div className="flex justify-center mb-4">
-          <div className="flex items-center space-x-2">
-            <FaTshirt
-              className={`w-10 h-10 text-green-500 ${isShirtForm ? 'block' : 'hidden'}`}
-            />
-            <GiGoalKeeper
-              className={`w-10 h-10 text-green-500 ${!isShirtForm ? 'block' : 'hidden'}`}
-            />
-            <Switch
-              onChange={handleSwitchChange}
-              checked={isShirtForm}
-              className="w-14 h-7"
-              checkedChildren={<span className="invisible" />}
-              unCheckedChildren={<span className="invisible" />}
-            />
+      <Drawer
+        open={visibleCut}
+        onClose={handleAddCutCancel}
+        size="large"
+        title={
+          <div className="flex items-center justify-between">
+            <span className="text-lg font-semibold">Orden de corte</span>
+            <div className="flex space-x-4">
+              <Button
+                onClick={toggleShirtForm}
+                className="flex items-center justify-center space-x-2 transition-transform duration-300 hover:scale-110"
+              >
+                <FaTshirt
+                  className={`w-10 h-10 ${isShirtFormVisible ? 'text-green-500' : 'text-red-500'}`}
+                />
+                {isShirtFormVisible ? (
+                  <EyeOutlined />
+                ) : (
+                  <EyeInvisibleOutlined />
+                )}
+              </Button>
+              <Button
+                onClick={toggleShortForm}
+                className="flex items-center justify-center space-x-2 transition-transform duration-300 hover:scale-110"
+              >
+                <GiUnderwearShorts
+                  className={`w-10 h-10 ${isShortFormVisible ? 'text-green-500' : 'text-red-500'}`}
+                />
+                {isShortFormVisible ? (
+                  <EyeOutlined />
+                ) : (
+                  <EyeInvisibleOutlined />
+                )}
+              </Button>
+            </div>
           </div>
-        </div>
-
-        {isShirtForm ? (
-          <div className="overflow-auto">
-            <Form form={EditForm} layout="vertical" className="p-4">
-              <div className="grid grid-cols-2 gap-2 bg-gray-100 p-4 rounded-md ">
-                <Form.Item label="Disciplina">
-                  <Select>
-                    {disciplines.map((discipline) => (
-                      <Option key={discipline} value={discipline}>
-                        {discipline}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-                <Form.Item label="Tela playera frente">
-                  <Select>
-                    {cloths.map((cloths) => (
-                      <Option key={cloths} value={cloths}>
-                        {cloths}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-                <Form.Item label="Tela playera espalda">
-                  <Select>
-                    {cloths.map((cloths) => (
-                      <Option key={cloths} value={cloths}>
-                        {cloths}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-                <Form.Item label="Color de tela">
-                  <Input />
-                </Form.Item>
-                <Form.Item label="Forma cuello">
-                  <Select>
-                    {neckForms.map((neckForm) => (
-                      <Option key={neckForm} value={neckForm}>
-                        {neckForm}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-                <Form.Item label="Tipo cuello">
-                  <Select>
-                    {neckTypes.map((neckType) => (
-                      <Option key={neckType} value={neckType}>
-                        {neckType}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-                <Form.Item label="Tela cuello">
-                  <Select>
-                    {cloths.map((cloths) => (
-                      <Option key={cloths} value={cloths}>
-                        {cloths}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-                <Form.Item label="Color de tela">
-                  <Input />
-                </Form.Item>
-                <Form.Item label="Forma de manga">
-                  <Select>
-                    {sleeveForms.map((sleeveForm) => (
-                      <Option key={sleeveForm} value={sleeveForm}>
-                        {sleeveForm}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-                <Form.Item label="Tipo de manga">
-                  <Select>
-                    {sleeveTypes.map((sleeveType) => (
-                      <Option key={sleeveType} value={sleeveType}>
-                        {sleeveType}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-                <Form.Item label="Tela de manga">
-                  <Select>
-                    {cloths.map((cloths) => (
-                      <Option key={cloths} value={cloths}>
-                        {cloths}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-                <Form.Item label="Color de tela">
-                  <Input />
-                </Form.Item>
-                <Form.Item label="Puño">
-                  <Select>
-                    {cuffs.map((cuff) => (
-                      <Option key={cuff} value={cuff}>
-                        {cuff}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-                <Form.Item label="Tipo de puño">
-                  <Select>
-                    {cuffsTypes.map((cuffsType) => (
-                      <Option key={cuffsType} value={cuffsType}>
-                        {cuffsType}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-                <Form.Item label="Tela de puño">
-                  <Select>
-                    {cloths.map((cloths) => (
-                      <Option key={cloths} value={cloths}>
-                        {cloths}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-                <Form.Item label="Color de tela">
-                  <Input />
-                </Form.Item>
-                <Form.Item label="DTF playera">
-                  <Input />
-                </Form.Item>
-                <Form.Item label="Tramos playera">
-                  <Input />
-                </Form.Item>
+        }
+      >
+        {isShirtFormVisible && (
+          <div>
+            <div className="flex justify-center mb-4">
+              <div className="flex items-center space-x-2">
+                <FaTshirt
+                  className={`w-10 h-10 text-green-500 ${isShirtForm ? 'block' : 'hidden'}`}
+                />
+                <GiGoalKeeper
+                  className={`w-10 h-10 text-green-500 ${!isShirtForm ? 'block' : 'hidden'}`}
+                />
+                <Switch
+                  onChange={handleSwitchChange}
+                  checked={isShirtForm}
+                  className="w-14 h-7"
+                  checkedChildren={<span className="invisible" />}
+                  unCheckedChildren={<span className="invisible" />}
+                />
               </div>
+            </div>
+            <Form form={CuttingForm} layout="vertical">
+              <div className="grid grid-cols-2 gap-2">
+                <FormItem name="dateReceipt" label="Fecha de recibido">
+                  <Input type="date" className="w-full" />
+                </FormItem>
+                <FormItem name="dueDate" label="Fecha de entrega">
+                  <Input type="date" className="w-full" />
+                </FormItem>
+              </div>
+            </Form>
 
-              <Table
-                className="mt-2"
-                dataSource={dataSource}
-                columns={columnsShirt}
-                pagination={false}
-                footer={() => (
-                  <Space className="flex justify-end">
-                    <Button
-                      onClick={handleAddRowClick}
-                      icon={<PlusOutlined className="text-cyan-500" />}
-                    />
-                    <Button
-                      onClick={handleEmptyClick}
-                      icon={<ClearOutlined className="text-red-500" />}
+            {isShirtForm ? (
+              <div className="overflow-auto">
+                <Form form={ShirtForm} layout="vertical" className="p-4">
+                  <div className="grid grid-cols-2 gap-2 bg-gray-100 p-4 rounded-md ">
+                    <Form.Item name="discipline" label="Disciplina">
+                      <Select>
+                        {disciplines.map((discipline) => (
+                          <Option key={discipline} value={discipline}>
+                            {discipline}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                    <Form.Item
+                      name="clothFrontShirtId"
+                      label="Tela playera frente"
+                    >
+                      <Select
+                        placeholder="Tela playera frente"
+                        onChange={(value) =>
+                          handleMaterialChange(
+                            'frontClothColor',
+                            value,
+                            ShirtForm
+                          )
+                        }
+                      >
+                        {materials.map((material: any) => (
+                          <Option key={material.id} value={material.id}>
+                            {material.name}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+
+                    <Form.Item
+                      name="clothBackShirtId"
+                      label="Tela playera espalda"
+                    >
+                      <Select placeholder="Tela playera espalda">
+                        {materials.map((material: any) => (
+                          <Option key={material.id} value={material.id}>
+                            {material.name}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                    <Form.Item name="frontClothColor" label="Color de tela">
+                      <Input value={colors.frontClothColor} readOnly />
+                    </Form.Item>
+                    <Form.Item name="neckline" label="Forma cuello">
+                      <Select>
+                        {neckForms.map((neckForm) => (
+                          <Option key={neckForm} value={neckForm}>
+                            {neckForm}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                    <Form.Item name="typeNeckline" label="Tipo cuello">
+                      <Select>
+                        {neckTypes.map((neckType) => (
+                          <Option key={neckType} value={neckType}>
+                            {neckType}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+
+                    <Form.Item name="clothNecklineId" label="Tela cuello">
+                      <Select
+                        placeholder="Tela cuello"
+                        onChange={(value) =>
+                          handleMaterialChange(
+                            'neckClothColor',
+                            value,
+                            ShirtForm
+                          )
+                        }
+                      >
+                        {materials.map((material: any) => (
+                          <Option key={material.id} value={material.id}>
+                            {material.name}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                    <Form.Item name="neckClothColor" label="Color de tela">
+                      <Input value={colors.frontClothColor} readOnly />
+                    </Form.Item>
+                    <Form.Item name="sleeveShape" label="Forma de manga">
+                      <Select>
+                        {sleeveForms.map((sleeveForm) => (
+                          <Option key={sleeveForm} value={sleeveForm}>
+                            {sleeveForm}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                    <Form.Item name="sleeveType" label="Tipo de manga">
+                      <Select>
+                        {sleeveTypes.map((sleeveType) => (
+                          <Option key={sleeveType} value={sleeveType}>
+                            {sleeveType}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                    <Form.Item name="clothSleeveId" label=" Tela de manga">
+                      <Select
+                        placeholder="Tela de manga"
+                        onChange={(value) =>
+                          handleMaterialChange(
+                            'sleeveClothColor',
+                            value,
+                            ShirtForm
+                          )
+                        }
+                      >
+                        {materials.map((material: any) => (
+                          <Option key={material.id} value={material.id}>
+                            {material.name}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                    <Form.Item name="sleeveClothColor" label="Color de tela">
+                      <Input value={colors.sleeveClothColor} readOnly />
+                    </Form.Item>
+                    <Form.Item name="cuff" label="Puño">
+                      <Select>
+                        {cuffs.map((cuff) => (
+                          <Option key={cuff} value={cuff}>
+                            {cuff}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                    <Form.Item name="typeCuff" label="Tipo de puño">
+                      <Select>
+                        {cuffsTypes.map((cuffsType) => (
+                          <Option key={cuffsType} value={cuffsType}>
+                            {cuffsType}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                    <Form.Item name="clothCuffId" label="Tela de puño">
+                      <Select
+                        placeholder="Tela de puño"
+                        onChange={(value) =>
+                          handleMaterialChange(
+                            'cuffClothColor',
+                            value,
+                            ShirtForm
+                          )
+                        }
+                      >
+                        {materials.map((material: any) => (
+                          <Option key={material.id} value={material.id}>
+                            {material.name}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                    <Form.Item name="cuffClothColor" label="Color de tela">
+                      <Input value={colors.cuffClothColor} readOnly />
+                    </Form.Item>
+                    <Form.Item name="dtfShirt" label="DTF playera">
+                      <Input />
+                    </Form.Item>
+                    <Form.Item
+                      name="tShirtSection"
+                      label="Tramos playera"
+                      rules={[
+                        {
+                          required: true,
+                          message: 'Por favor, seleccione una opción.'
+                        }
+                      ]}
+                    >
+                      <Select
+                        placeholder="Seleccionar"
+                      >
+                        <Option value={true}>Sí</Option>
+                        <Option value={false}>No</Option>
+                      </Select>
+                    </Form.Item>
+                    <Form.Item name="priceUnit" label="Precio C/U">
+                      <InputNumber className="w-full" />
+                    </Form.Item>
+                    <Form.Item name="tax" label="Impuesto">
+                      <InputNumber className="w-full" />
+                    </Form.Item>
+                    <div></div>
+                    <div className="flex justify-end">
+                      <Button
+                        icon={<SaveOutlined className="text-blue-500" />}
+                        onClick={() =>
+                          handleFormSubmitShirt(
+                            ShirtForm,
+                            setShirts,
+                            CuttingForm, 
+                            setCuttingOrderDt,
+                            shirts, 
+                            CuttingOrderDt, 
+                            productType
+                          )
+                        }
+                        disabled={isSaveDisabled}
+                      />
+                    </div>
+                  </div>
+                  <Space>
+                    <Table
+                      columns={columnsTempShirt}
+                      dataSource={shirts.map((shirt, index) => ({
+                        ...shirt,
+                        key: index
+                      }))}
                     />
                   </Space>
-                )}
-              />
-            </Form>
-          </div>
-        ) : (
-          <div className="overflow-auto">
-            <Form form={EditForm} layout="vertical" className="p-4">
-              <div className="grid grid-cols-2 gap-2 bg-gray-100 p-4 rounded-md">
-                <Form.Item label="Tipo de tela">
-                  <Select>
-                    {cloths.map((cloths) => (
-                      <Option key={cloths} value={cloths}>
-                        {cloths}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-                <Form.Item label="Color de tela">
-                  <Input></Input>
-                </Form.Item>
-                <Form.Item label="Forma cuello">
-                  <Select>
-                    {neckForms.map((neckForm) => (
-                      <Option key={neckForm} value={neckForm}>
-                        {neckForm}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-                <Form.Item label="Forma de manga">
-                  <Select>
-                    {sleeveForms.map((sleeveForm) => (
-                      <Option key={sleeveForm} value={sleeveForm}>
-                        {sleeveForm}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-                <Form.Item label="Tipo de puño">
-                  <Select>
-                    {cuffsTypes.map((cuffsType) => (
-                      <Option key={cuffsType} value={cuffsType}>
-                        {cuffsType}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-                <Form.Item label="DTF playera">
-                  <Input />
-                </Form.Item>
+                  <Button
+                    type="primary"
+                    onClick={() => handlecutSummitShirts()}
+                  >
+                    Mostrar contenido de Shirts
+                  </Button>
+                  <Modal
+                    title={`Orden`}
+                    open={isModalShirtsTempVisible}
+                    onCancel={() => SetisModalShirtsTempVisible(false)}
+                    footer={null}
+                  >
+                    {selectedShirt && (
+                      <div>
+                        <p>Disciplina: {selectedShirt.discipline}</p>
+                        <p>
+                          Tela playera frente: {selectedShirt.clothFrontShirtId}
+                        </p>
+                        <p>
+                          Tela playera espalda: {selectedShirt.clothBackShirtId}
+                        </p>
+                        <p>Forma cuello: {selectedShirt.neckline}</p>
+                        <p>Tipo cuello: {selectedShirt.typeNeckline}</p>
+                        <p>Tela cuello: {selectedShirt.clothNecklineId}</p>
+                        <p>Forma de manga: {selectedShirt.sleeveShape}</p>
+                        <p>Tipo de manga: {selectedShirt.sleeveType}</p>
+                        <p>Tela de manga: {selectedShirt.clothSleeveId}</p>
+                        <p>Puño: {selectedShirt.cuff}</p>
+                        <p>Tipo de puño: {selectedShirt.typeCuff}</p>
+                        <p>Tela de puño: {selectedShirt.clothCuffId}</p>
+                        <p>DTF playera: {selectedShirt.dtfShirt}</p>
+                        <p>Tramos playera: {selectedShirt.tShirtSection}</p>
+                      </div>
+                    )}
+                  </Modal>
+                </Form>
               </div>
+            ) : (
+              <div className="overflow-auto">
+                <Form
+                  form={GoalkeeperShirtForm}
+                  layout="vertical"
+                  className="p-4"
+                >
+                  <div className="grid grid-cols-2 gap-2 bg-gray-100 p-4 rounded-md">
+                    <Form.Item label="Tipo de tela">
+                      <Select>
+                        {cloths.map((cloths) => (
+                          <Option key={cloths} value={cloths}>
+                            {cloths}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                    <Form.Item label="Color de tela">
+                      <Input></Input>
+                    </Form.Item>
+                    <Form.Item label="Forma cuello">
+                      <Select>
+                        {neckForms.map((neckForm) => (
+                          <Option key={neckForm} value={neckForm}>
+                            {neckForm}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                    <Form.Item label="Forma de manga">
+                      <Select>
+                        {sleeveForms.map((sleeveForm) => (
+                          <Option key={sleeveForm} value={sleeveForm}>
+                            {sleeveForm}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                    <Form.Item label="Tipo de puño">
+                      <Select>
+                        {cuffsTypes.map((cuffsType) => (
+                          <Option key={cuffsType} value={cuffsType}>
+                            {cuffsType}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                    <Form.Item label="DTF playera">
+                      <Input />
+                    </Form.Item>
+                  </div>
 
-              <Table
-                className="mt-2"
-                dataSource={dataSourceShorts}
-                columns={columnsShort}
-                pagination={false}
-                footer={() => (
-                  <Space className="flex justify-end">
-                    <Button
-                      onClick={handleAddRowClickShorts}
-                      icon={<PlusOutlined className="text-cyan-500" />}
-                    />
-                    <Button
-                      onClick={handleEmptyClickShorts}
-                      icon={<ClearOutlined className="text-red-500" />}
-                    />
-                  </Space>
-                )}
-              />
-            </Form>
+                  <Table
+                    className="mt-2"
+                    dataSource={dataSourceShorts}
+                    columns={columnsShort}
+                    pagination={false}
+                    footer={() => (
+                      <Space className="flex justify-end">
+                        <Button
+                          onClick={handleAddRowClickShorts}
+                          icon={<PlusOutlined className="text-cyan-500" />}
+                        />
+                        <Button
+                          onClick={handleEmptyClickShorts}
+                          icon={<ClearOutlined className="text-red-500" />}
+                        />
+                      </Space>
+                    )}
+                  />
+                </Form>
+              </div>
+            )}
           </div>
         )}
-
-        <div className="flex justify-center mb-4">
-          <div className="flex items-center space-x-2">
-            <GiUnderwearShorts
-              className={`w-10 h-10 text-green-500 ${isShortForm ? 'block' : 'hidden'}`}
-            />
-            <GiGoalKeeper
-              className={`w-10 h-10 text-green-500 ${!isShortForm ? 'block' : 'hidden'}`}
-            />
-            <Switch
-              onChange={handleSwitchChangeShort}
-              checked={isShortForm}
-              className="w-14 h-7"
-              checkedChildren={<span className="invisible" />}
-              unCheckedChildren={<span className="invisible" />}
-            />
-          </div>
-        </div>
-
-        {isShortForm ? (
-          <div className="overflow-auto">
-            <Form form={ShortForm} layout="vertical" className="p-4">
-              <div className="grid grid-cols-2 gap-2 bg-gray-100 p-4 rounded-md ">
-                <Form.Item label="Tela short">
-                  <Select>
-                    {disciplines.map((discipline) => (
-                      <Option key={discipline} value={discipline}>
-                        {discipline}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-                <Form.Item label="Color de tela">
-                  <Input />
-                </Form.Item>
-                <Form.Item label="Vista de short">
-                  <Select>
-                    {shortLooks.map((shortLook) => (
-                      <Option key={shortLook} value={shortLook}>
-                        {shortLook}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-                <Form.Item label="Tela de vista">
-                  <Select>
-                    {cloths.map((cloths) => (
-                      <Option key={cloths} value={cloths}>
-                        {cloths}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-                <Form.Item label="Color de tela">
-                  <Input />
-                </Form.Item>
-                <Form.Item label="DTF short">
-                  <Input />
-                </Form.Item>
-                <Form.Item label="Tramos short">
-                  <Select>
-                    {sections.map((section) => (
-                      <Option key={section} value={section}>
-                        {section}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
+        {isShortFormVisible && (
+          <div>
+            <div className="flex justify-center mb-4">
+              <div className="flex items-center space-x-2">
+                <GiUnderwearShorts
+                  className={`w-10 h-10 text-green-500 ${isShortForm ? 'block' : 'hidden'}`}
+                />
+                <GiGoalKeeper
+                  className={`w-10 h-10 text-green-500 ${!isShortForm ? 'block' : 'hidden'}`}
+                />
+                <Switch
+                  onChange={handleSwitchChangeShort}
+                  checked={isShortForm}
+                  className="w-14 h-7"
+                  checkedChildren={<span className="invisible" />}
+                  unCheckedChildren={<span className="invisible" />}
+                />
               </div>
+            </div>
 
-              <Table
-                className="mt-2"
-                dataSource={dataSourceShorts}
-                columns={columnsShort}
-                pagination={false}
-                footer={() => (
-                  <Space className="flex justify-end">
-                    <Button
-                      onClick={handleAddRowClickShorts}
-                      icon={<PlusOutlined className="text-cyan-500" />}
-                    />
-                    <Button
-                      onClick={handleEmptyClickShorts}
-                      icon={<ClearOutlined className="text-red-500" />}
-                    />
-                  </Space>
-                )}
-              />
-            </Form>
-          </div>
-        ) : (
-          <div className="overflow-auto">
-            <Form form={EditForm} layout="vertical" className="p-4">
-              <div className="grid grid-cols-2 gap-2 bg-gray-100 p-4 rounded-md">
-                {/* Formulario de Portero */}
-                <Form.Item label="Tela short">
-                  <Select>
-                    {disciplines.map((discipline) => (
-                      <Option key={discipline} value={discipline}>
-                        {discipline}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-                {/* ... otros elementos del formulario ... */}
-                <Form.Item label="Tramos short">
-                  <Select>
-                    {sections.map((section) => (
-                      <Option key={section} value={section}>
-                        {section}
-                      </Option>
-                    ))}
-                  </Select>
-                </Form.Item>
+            {isShortForm ? (
+              <div className="overflow-auto">
+                <Form form={ShortForm} layout="vertical" className="p-4">
+                  <div className="grid grid-cols-2 gap-2 bg-gray-100 p-4 rounded-md ">
+                    <Form.Item label="Tela short">
+                      <Select>
+                        {disciplines.map((discipline) => (
+                          <Option key={discipline} value={discipline}>
+                            {discipline}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                    <Form.Item label="Color de tela">
+                      <Input />
+                    </Form.Item>
+                    <Form.Item label="Vista de short">
+                      <Select>
+                        {shortLooks.map((shortLook) => (
+                          <Option key={shortLook} value={shortLook}>
+                            {shortLook}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                    <Form.Item label="Tela de vista">
+                      <Select>
+                        {cloths.map((cloths) => (
+                          <Option key={cloths} value={cloths}>
+                            {cloths}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                    <Form.Item label="Color de tela">
+                      <Input />
+                    </Form.Item>
+                    <Form.Item label="DTF short">
+                      <Input />
+                    </Form.Item>
+                    <Form.Item label="Tramos short">
+                      <Select>
+                        {sections.map((section) => (
+                          <Option key={section} value={section}>
+                            {section}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                  </div>
+
+                  <Table
+                    className="mt-2"
+                    dataSource={dataSourceShorts}
+                    columns={columnsShort}
+                    pagination={false}
+                    footer={() => (
+                      <Space className="flex justify-end">
+                        <Button
+                          onClick={handleAddRowClickShorts}
+                          icon={<PlusOutlined className="text-cyan-500" />}
+                        />
+                        <Button
+                          onClick={handleEmptyClickShorts}
+                          icon={<ClearOutlined className="text-red-500" />}
+                        />
+                      </Space>
+                    )}
+                  />
+                </Form>
               </div>
+            ) : (
+              <div className="overflow-auto">
+                <Form
+                  form={GoalkeeperShortForm}
+                  layout="vertical"
+                  className="p-4"
+                >
+                  <div className="grid grid-cols-2 gap-2 bg-gray-100 p-4 rounded-md">
+                    {/* Formulario de Portero */}
+                    <Form.Item label="Tela short">
+                      <Select>
+                        {disciplines.map((discipline) => (
+                          <Option key={discipline} value={discipline}>
+                            {discipline}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                    {/* ... otros elementos del formulario ... */}
+                    <Form.Item label="Tramos short">
+                      <Select>
+                        {sections.map((section) => (
+                          <Option key={section} value={section}>
+                            {section}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                  </div>
 
-              <Table
-                className="mt-2"
-                dataSource={dataSourceShorts}
-                columns={columnsShort}
-                pagination={false}
-                footer={() => (
-                  <Space className="flex justify-end">
-                    <Button
-                      onClick={handleAddRowClickShorts}
-                      icon={<PlusOutlined className="text-cyan-500" />}
-                    />
-                    <Button
-                      onClick={handleEmptyClickShorts}
-                      icon={<ClearOutlined className="text-red-500" />}
-                    />
-                  </Space>
-                )}
-              />
-            </Form>
+                  <Table
+                    className="mt-2"
+                    dataSource={dataSourceShorts}
+                    columns={columnsShort}
+                    pagination={false}
+                    footer={() => (
+                      <Space className="flex justify-end">
+                        <Button
+                          onClick={handleAddRowClickShorts}
+                          icon={<PlusOutlined className="text-cyan-500" />}
+                        />
+                        <Button
+                          onClick={handleEmptyClickShorts}
+                          icon={<ClearOutlined className="text-red-500" />}
+                        />
+                      </Space>
+                    )}
+                  />
+                </Form>
+              </div>
+            )}
           </div>
         )}
       </Drawer>
@@ -1655,16 +1937,23 @@ const CotationList = () => {
             />
           </div>
           <div className="flex flex-row gap-4 text-lg">
-            <FilePdfOutlined className="text-red-500" />
-            <FileExcelOutlined className="text-lime-500" />
-            <PrinterOutlined />
+            <FilePdfOutlined className="text-red-500" onClick={generatePDF} />
           </div>
         </Space>
-        <Table
-          columns={columns}
-          dataSource={filteredQuotationsWithKeys}
-          scroll={{ y: 500 }}
-        />
+        <div id="PDFtable">
+          <div className="mt-5 flex justify-between mb-5">
+            <img src={Logo} alt="Ink Sports" className="h-10 " />
+            <span className="text-end">
+              {' '}
+              Ciudad victoria, Tamaulipas a<TodayDate></TodayDate>{' '}
+            </span>
+          </div>
+          <Table
+            className="w-full border-collapse border border-gray-200"
+            columns={columns}
+            dataSource={filteredQuotationsWithKeys}
+          />
+        </div>
       </Card>
     </>
   )

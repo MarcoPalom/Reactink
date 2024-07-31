@@ -9,6 +9,8 @@ import ClientList from 'pages/personal/client-list/ClientList';
 import EmployeList from 'pages/personal/employe-list/EmployeList';
 import Login from 'pages/Login';
 import Production from 'pages/Production/Production';
+import DebtList from 'pages/finance/debt-list/DebtList';
+import CuttingOrderList from 'pages/finance/cuttingorder-list/CuttingOrderList';
 
 const AppRoutes = () => {
     return (
@@ -20,6 +22,8 @@ const AppRoutes = () => {
                 <Route path='/finanzas/cotizaciones' element={<CotationList/>}/>
                 <Route path='/finanzas/ventas' element={<SaleList/>}/>
                 <Route path='/finanzas/gastos' element={<ExpenseList/>}/>
+                <Route path='/finanzas/deudas' element={<DebtList/>}/>
+                <Route path='/finanzas/cuttingorders' element={<CuttingOrderList/>}/>
                 <Route path='/personal/empleados' element={<EmployeList/>}/>
                 <Route path='/personal/clientes' element={<ClientList/>}/>
                 <Route path='/produccion' element={<Production/>}/>

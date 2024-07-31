@@ -23,6 +23,10 @@ import axios from 'axios';
 import useTokenRenewal from 'components/Scripts/useTokenRenewal';
 import { Client } from 'components/Scripts/Interfaces';
 import * as clientUtils from 'components/Scripts/ClientUtils'; 
+import { generatePDF } from 'components/Scripts/Utils'
+import Logo from 'assets/img/logo.png'
+import TodayDate from '../../../components/Scripts/Utils'
+
 
 const { Search } = Input;
 
@@ -73,22 +77,26 @@ const ClientList = () => {
       title: 'Organizacion',
       dataIndex: 'organization',
       key: 'organization',
+      className: 'hidden lg:table-cell',
       sorter: (a: any, b: any) => a.organization.length - b.organization.length
     },
     {
       title: 'Correo',
       dataIndex: 'email',
       key: 'email',
+      className: 'hidden lg:table-cell',
       sorter: (a: any, b: any) => a.email.length - b.email.length
     },
     {
       title: 'Telefono',
       dataIndex: 'phone',
-      key: 'phone'
+      key: 'phone',
+      className: 'hidden lg:table-cell',
     },
     {
       title: 'Acción',
       key: 'action',
+      className: 'action-column',
       render: (text: any, record: any) => (
         <Space size="middle">
           <Button
@@ -229,19 +237,27 @@ const ClientList = () => {
             />
           </div>
           <div className="flex flex-row gap-4 text-lg">
-            <FilePdfOutlined className="text-red-500" />
-            <FileExcelOutlined className="text-lime-500" />
-            <PrinterOutlined />
+            <FilePdfOutlined className="text-red-500" onClick={generatePDF} />
           </div>
         </Space>
-        <Table
-          columns={columns}
-          dataSource={clientUtils.addKeysToFilteredClients(clientUtils.filterClients(Clients, searchText))}
-          scroll={{ y: 500 }}
-        />
+        <div id="PDFtable">
+          <div className="mt-5 flex justify-between mb-5">
+            <img src={Logo} alt="Ink Sports" className="h-10 " />
+            <h1 className="text-end">
+              {' '}
+              Ciudad victoria, Tamaulipas a<TodayDate></TodayDate>{' '}
+            </h1>
+          </div>
+          <Table
+            className="w-full border-collapse border border-gray-200"
+            columns={columns}
+            dataSource={clientUtils.addKeysToFilteredClients(clientUtils.filterClients(Clients, searchText))}
+          />
+        </div>
       </Card>
     </>
   );
 };
+
 
 export default ClientList;

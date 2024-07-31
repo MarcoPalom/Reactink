@@ -4,19 +4,21 @@ import {
   updateQuotation,
   addQuotation,
   addQuotationProduct,
-  deleteQuotation,
   addQuotationProductMaquila,
   EditQuotationProduct,
   EditQuotationProductMaquila,
-  deleteQuotationProduct,
-  deleteQuotationProductMaquila
+  addQuotationProductShirt,
+  addCuttingOrder
 } from 'components/Scripts/Apicalls'
 import {
   Quotation,
   QuotationProduct,
-  QuotationProductMaquila
+  QuotationProductMaquila,
+  FormDataShirt,
+  CuttingOrderData
 } from 'components/Scripts/Interfaces'
 import { FormInstance } from 'antd'
+import { useState } from 'react';
 
 const { confirm } = Modal
 
@@ -51,6 +53,7 @@ export const handleAdvanceChange = (
     setTaxLocked(true)
   }
 }
+
 
 export const disciplines = [
   'Futbol soccer',
@@ -127,6 +130,10 @@ export const sizes = [
 export const shortLooks = ['SI', 'Laterales', 'Puño', 'NO']
 export const sections = ['SI', 'NO']
 
+export const genderMap: { [key: number]: string } = {
+  1: 'H', 
+  2: 'M', 
+};
 //handlers de cotizacion
 
 export const handleView = async (
@@ -189,7 +196,6 @@ export const handleSave = async (
             tax: item.tax,
             total: item.total
           }
-          console.log(pivotDataProduct)
 
           await EditQuotationProduct(item.id, pivotDataProduct)
         }
@@ -248,7 +254,6 @@ export const handleAddSave = async (
             tax: item.tax,
             total: item.total
           }
-          console.log(pivotDataProduct)
 
           await addQuotationProduct({
             ...pivotDataProduct,
@@ -267,7 +272,6 @@ export const handleAddSave = async (
             price_meter: item.price_meter,
             amount: item.amount
           }
-          console.log(pivotDataProductMaquila)
 
           await addQuotationProductMaquila({
             ...pivotDataProductMaquila,
@@ -339,7 +343,6 @@ export const handleDeleteProduct = (
           )
           setQuotationProducts(updatedProducts)
         } else if ('price_meter' in record) {
-          console.log()
           await deleteQuotationProductMaquila(record.id, emptyData)
 
           const updatedProducts = quotationProductsMaquila.filter(
@@ -466,7 +469,30 @@ export const calculateTaxAndNetAmount = (addForm: any) => {
     const taxAmount = (subtotal * taxPercentage) / 100
     newNetAmount = subtotal + taxAmount
   } else if (taxPercentage < 1) {
-    console.log('hola')
+    newNetAmount = subtotal
+  }
+
+  return newNetAmount
+}
+
+export const calculateTaxAndNetAmountEdit = (EditForm: any) => {
+  let subtotal = EditForm.getFieldValue('subtotal') || 0
+  let taxPercentage = EditForm.getFieldValue('tax') || 0
+
+  if (isNaN(subtotal) || isNaN(taxPercentage)) {
+    return 0
+  }
+
+  subtotal = parseFloat(subtotal)
+  taxPercentage = parseFloat(taxPercentage)
+
+  let newNetAmount = 0
+
+  if (taxPercentage > 0) {
+    const taxAmount = (subtotal * taxPercentage) / 100
+
+    newNetAmount = subtotal + taxAmount
+  } else if (taxPercentage < 1) {
     newNetAmount = subtotal
   }
 
@@ -614,68 +640,6 @@ export const handleGenderToggleShorts = (
   setDataSourceShorts(newData)
 }
 
-export const handleSelectChangeShirt = (
-  dataSource: any,
-  setDataSourceShorts: any,
-  value: any,
-  key: any,
-  column: any
-) => {
-  const newData = [...dataSource]
-  const index = newData.findIndex((item) => key === item.key)
-  if (index > -1) {
-    const item = newData[index]
-    newData.splice(index, 1, { ...item, [column]: value })
-    setDataSourceShorts(newData)
-  }
-}
-
-export const handleInputNumberChange = (
-  dataSource: any,
-  setDataSource: any,
-  value: any,
-  key: any,
-  column: any
-) => {
-  const newData = [...dataSource]
-  const index = newData.findIndex((item) => key === item.key)
-  if (index > -1) {
-    const item = newData[index]
-    newData.splice(index, 1, { ...item, [column]: value })
-    setDataSource(newData)
-  }
-}
-
-export const handleInputChange = (
-  dataSource: any,
-  setDataSource: any,
-  e: any,
-  key: any,
-  column: any
-) => {
-  const newData = [...dataSource]
-  const index = newData.findIndex((item) => key === item.key)
-  if (index > -1) {
-    const item = newData[index]
-    newData.splice(index, 1, { ...item, [column]: e.target.value })
-    setDataSource(newData)
-  }
-}
-
-export const handleGenderToggle = (
-  dataSource: any,
-  setDataSource: any,
-  key: any
-) => {
-  const newData = dataSource.map((item: any) => {
-    if (item.key === key) {
-      return { ...item, genero: item.genero === 'H' ? 'M' : 'H' }
-    }
-    return item
-  })
-  setDataSource(newData)
-}
-
 export const handleAddRowShorts = (
   count: number,
   setCount: any,
@@ -693,10 +657,7 @@ export const handleAddRowShorts = (
   setCount(count + 1)
 }
 
-export const handleEmptyShorts = (
-  confirm: any,
-  setDataSourceShorts: any,
-) => {
+export const handleEmptyShorts = (confirm: any, setDataSourceShorts: any) => {
   confirm({
     title: 'Confirmación de Eliminación',
     content: `¿Estás seguro de que quieres limpiar la tabla?`,
@@ -708,3 +669,195 @@ export const handleEmptyShorts = (
     }
   })
 }
+
+//TEMPORALES CAMISAS
+
+export const handleSelectChangeShirt = (
+  dataSource: any,
+  setDataSourceShorts: any,
+  value: any,
+  key: any,
+  column: any
+) => {
+  const newData = [...dataSource]
+  const index = newData.findIndex((item) => key === item.key)
+  if (index > -1) {
+    const item = newData[index]
+    newData.splice(index, 1, { ...item, [column]: value })
+    setDataSourceShorts(newData)
+  }
+}
+
+export const handleInputNumberChangeShirts = (
+  shirts: FormDataShirt[],
+  setShirts: React.Dispatch<React.SetStateAction<FormDataShirt[]>>,
+  value: any,
+  key: any,
+  column: any
+) => {
+  const updatedShirts = shirts.map((shirt,index) =>
+    index === key ? { ...shirt, [column]: value } : shirt
+  );
+  setShirts(updatedShirts);
+};
+
+export const calculateAndUpdateTotal = (
+  shirts: FormDataShirt[],
+  setShirts: React.Dispatch<React.SetStateAction<FormDataShirt[]>>,
+  key: any,
+  quantity: number
+) => {
+  const updatedShirts = shirts.map((shirt,index) => {
+    if (index === key) {
+      const price = parseFloat(shirt.priceUnit?.toString() ?? '0');
+      const tax = parseFloat(shirt.tax?.toString() ?? '0');
+      const total = quantity * price * (1 + tax / 100);
+      return { ...shirt, quantity, total: total.toFixed(2) };
+    }
+    return shirt;
+  });
+  setShirts(updatedShirts);
+};
+
+export const handleInputChangeShirts = (
+  shirts: FormDataShirt[],
+  setShirts: React.Dispatch<React.SetStateAction<FormDataShirt[]>>,
+  e: any,
+  key: any,
+  column: string,
+  setIsObservationFilled: React.Dispatch<React.SetStateAction<boolean>>
+) => {
+  if (column === 'observation') {
+    const updatedShirts = shirts.map((shirt, index) =>
+      index === key ? { ...shirt, [column]: e.target.value } : shirt
+    );
+    setShirts(updatedShirts);
+
+    if (e.target.value.trim() !== '') {
+      setIsObservationFilled(true);
+    }
+  }
+};
+
+export const handleCaptureColumns = (
+  key: any,
+  shirts: FormDataShirt[],
+  setShirts: React.Dispatch<React.SetStateAction<FormDataShirt[]>>,
+  ShirtForm: FormInstance
+) => {
+  ShirtForm.validateFields().then((values) => {
+    const updatedShirts = shirts.map((shirt, index) =>
+      index === key ? { ...shirt, ...values } : shirt
+    );
+    setShirts(updatedShirts);
+  }).catch((errorInfo) => {
+    console.error('Failed:', errorInfo);
+  });
+};
+
+export const handleGenderToggleShirts = (
+  shirts: FormDataShirt[],
+  setShirts: React.Dispatch<React.SetStateAction<FormDataShirt[]>>,
+  key: any 
+) => {
+  const updatedShirts = shirts.map((shirt,index) =>
+    index === key ? { ...shirt, gender: shirt.gender === 1 ? 2 : 1  } : shirt
+  );
+  setShirts(updatedShirts);
+};
+
+export const isSaveButtonDisabled = (shirts: FormDataShirt[]): boolean => {
+  return shirts.some(shirt => !shirt.observation || !shirt.observation.trim());
+};
+
+
+export const handleFormSubmitShirt = (
+  ShirtForm: FormInstance,
+  setShirts: any,
+  CuttingForm: FormInstance,
+  setCuttingOrderDt:any,
+  shirts: FormDataShirt[],
+  CuttingOrderDt:any,
+  productType: number | null
+) => {
+  ShirtForm
+    .validateFields()
+    .then((values) => {
+      const {
+        frontClothColor,
+        neckClothColor,
+        sleeveClothColor,
+        cuffClothColor,
+        ...restValues
+      } = values;
+      const formData: FormDataShirt = {
+        ...restValues,
+        productType: productType
+      };
+
+      setShirts([...shirts, { ...formData }]);
+      ShirtForm.resetFields();
+    })
+    .catch((errorInfo) => {
+      console.error('Failed:', errorInfo);
+    });
+
+    CuttingForm
+    .validateFields()
+    .then((values) => {
+      const formDataCut: CuttingOrderData = {
+        ...values
+      };
+
+      setCuttingOrderDt([...CuttingOrderDt, { ...formDataCut }]);
+    })
+    .catch((errorInfo) => {
+      console.error('Failed:', errorInfo);
+    });
+};
+
+export const useFormHandler = (materials: any[]) => {
+  const [colors, setColors] = useState({
+    frontClothColor: '',
+    neckClothColor: '',
+    sleeveClothColor: '',
+    cuffClothColor: '',
+  });
+
+  const handleMaterialChange = (field: string, materialId: string, ShirtForm: FormInstance) => {
+    const selectedMaterial = materials.find(material => material.id === materialId);
+    if (selectedMaterial) {
+      setColors(prevColors => ({
+        ...prevColors,
+        [field]: selectedMaterial.color,
+      }));
+      ShirtForm.setFieldsValue({
+        [field]: selectedMaterial.color,
+      });
+    }
+  };
+
+  return {
+    colors,
+    handleMaterialChange,
+  };
+};
+
+export const handleSubmitShirts = async (
+  shirts: FormDataShirt[],
+  CuttingOrderDt: CuttingOrderData[],
+  quotationId: string
+) => {
+  try {
+    for (const shirt of shirts) {
+      const response = await addQuotationProductShirt({ ...shirt, quotationId });
+    }
+
+    if (CuttingOrderDt.length > 0) {
+      const cuttingOrderResponse = await addCuttingOrder({ ...CuttingOrderDt[0], quotationId });
+    }
+    message.success('Orden de corte generada con éxito');
+  } catch (error) {
+    console.error('Error al enviar datos de las camisetas o generar la orden de corte:', error);
+  }
+};

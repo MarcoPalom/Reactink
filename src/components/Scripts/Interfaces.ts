@@ -57,6 +57,12 @@ export interface Employee {
     
 
   }
+  export interface MaterialSize{
+    materialId:string
+    size:number
+    consumption:number
+    performance:number
+  }
 
   export interface MaterialAdd {
     name: string
@@ -145,6 +151,35 @@ export interface Employee {
     meters_impression: number;
     price_unit: number;
     amount: number;
+  }
+
+  export interface FormDataShirt {
+    productType: boolean;
+    discipline: string;
+    clothFrontShirtId: string;
+    clothBackShirtId: string;
+    neckline: string;
+    typeNeckline: string;
+    clothNecklineId: string;
+    sleeveShape: string;
+    sleeveType: string;
+    clothSleeveId: string;
+    cuff: string;
+    typeCuff: string;
+    clothCuffId: string;
+    dtfShirt: string;
+    tShirtSection: boolean;
+    gender:number;
+    quantity:number;
+    size:string;
+    priceUnit:number;
+    tax:number;
+    observation:string;
+  }
+
+  export interface CuttingOrderData{
+    dateReceipt:string;
+    dueDate:string;
   }
 
 

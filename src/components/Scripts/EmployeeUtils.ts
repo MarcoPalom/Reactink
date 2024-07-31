@@ -6,9 +6,9 @@ import {
 } from './Apicalls'
 import { message, Modal } from 'antd'
 import { Employee } from './Interfaces'
+import axios from 'axios'
 
-const { confirm } = Modal;
-
+const { confirm } = Modal
 
 export const handleView = async (
   id: string,
@@ -24,32 +24,6 @@ export const handleView = async (
   }
 }
 
-export const handleSave = async (
-  EditForm: any,
-  editingEmployee: any,
-  employees: any[],
-  setEmployees: (employees: any[]) => void,
-  setVisibleEdit: (visible: boolean) => void
-) => {
-  try {
-    const values = await EditForm.validateFields()
-    const response = await updateEmployee(editingEmployee?.id, values)
-
-    message.success('Empleado actualizado exitosamente')
-    const updatedEmployees = employees.map((employee) =>
-      employee.id === editingEmployee?.id
-        ? { ...employee, ...values }
-        : employee
-    )
-    setEmployees(updatedEmployees)
-    setVisibleEdit(false)
-    EditForm.resetFields()
-  } catch (error) {
-    console.error('Error updating employee:', error)
-    message.error('Error al actualizar el empleado')
-  }
-}
-
 export const handleAddSave = async (
   addForm: any,
   setEmployees: (employees: (prevEmployees: Employee[]) => Employee[]) => void,
@@ -60,11 +34,15 @@ export const handleAddSave = async (
     if (values.password !== values.confirmPassword) {
       throw new Error('Las contraseñas no coinciden')
     }
+
+    const formData = new FormData()
+
     const employeeData = {
-      ...values
+      ...values,
     }
+
     const response = await addEmployee(employeeData)
-    setEmployees((prevEmployees: any) => [...prevEmployees, response])
+    setEmployees((prevEmployees: Employee[]) => [...prevEmployees, response])
     message.success('Empleado agregado exitosamente')
     setVisibleAdd(false)
     addForm.resetFields()
@@ -76,6 +54,56 @@ export const handleAddSave = async (
   }
 }
 
+export const handleSave = async (
+  EditForm: any,
+  editingEmployee: any,
+  employees: any[],
+  setEmployees: (employees: any[]) => void,
+  setVisibleEdit: (visible: boolean) => void,
+  fileString: string
+) => {
+  try {
+    const values = await EditForm.validateFields();
+    const updatedEmployeeData = {
+      ...values,
+      image: fileString
+    };
+
+    const response = await updateEmployee(
+      editingEmployee?.id,
+      updatedEmployeeData
+    );
+    message.success('Empleado actualizado exitosamente');
+
+    const updatedEmployees = employees.map((employee: Employee) =>
+      employee.id === editingEmployee?.id
+        ? { ...employee, ...updatedEmployeeData }
+        : employee
+    );
+
+    setEmployees(updatedEmployees);
+    setVisibleEdit(false);
+    EditForm.resetFields();
+
+    if (fileString) {
+      console.log("valor de la ur antes de mandar" , fileString)
+
+      const imageData = {
+        fileString
+      }
+  
+      const response = await uploadImage(imageData);
+
+      message.success('Imagen subida exitosamente');
+    } else {
+      console.warn('No se seleccionó ninguna imagen para subir.');
+    }
+
+  } catch (error) {
+    console.error('Error updating employee:', error);
+    message.error('Error al actualizar el empleado');
+  }
+};
 export const deleteUser = async (
   id: string,
   employees: Employee[],
@@ -92,84 +120,97 @@ export const deleteUser = async (
   }
 }
 
-
 export const handleDelete = (
-    record: Employee,
-    employees: Employee[],
-    setEmployees: (employees: Employee[]) => void
-  ) => {
-    confirm({
-      title: 'Confirmación de Eliminación',
-      content: `¿Estás seguro de que quieres eliminar al empleado ${record.name} ${record.surname}?`,
-      okText: 'Eliminar',
-      okType: 'danger',
-      cancelText: 'Cancelar',
-      onOk() {
-        deleteUser(record.id, employees, setEmployees);
-      },
-    });
-  };
-
-  export const handleClose = (
-    setVisible: (visible: boolean) => void
-  ) => {
-    setVisible(false);
-  };
-  
-  export const handleCloseEdit = (
-    EditForm: any,
-    setVisibleEdit: (visible: boolean) => void
-  ) => {
-    EditForm.resetFields();
-    setVisibleEdit(false);
-  };
-  
-  export const handleAdd = (
-    setVisibleAdd: (visible: boolean) => void
-  ) => {
-    setVisibleAdd(true);
-  };
-  
-  export const handleAddCancel = (
-    setVisibleAdd: (visible: boolean) => void,
-    EditForm: any,
-    addForm: any
-  ) => {
-    setVisibleAdd(false);
-    EditForm.resetFields();
-    addForm.resetFields();
-  };
-  
-  export const handleEdit = async (
-    record: Employee,
-    setEditingEmployee: (employee: Employee) => void,
-    EditForm: any,
-    setVisibleEdit: (visible: boolean) => void
-  ) => {
-    try {
-      setEditingEmployee(record);
-      EditForm.setFieldsValue(record);
-      setVisibleEdit(true);
-    } catch (error) {
-      console.error('Error al editar el empleado:', error);
+  record: Employee,
+  employees: Employee[],
+  setEmployees: (employees: Employee[]) => void
+) => {
+  confirm({
+    title: 'Confirmación de Eliminación',
+    content: `¿Estás seguro de que quieres eliminar al empleado ${record.name} ${record.surname}?`,
+    okText: 'Eliminar',
+    okType: 'danger',
+    cancelText: 'Cancelar',
+    onOk() {
+      deleteUser(record.id, employees, setEmployees)
     }
-  };
+  })
+}
 
-  export const filterEmployees = (employees: Employee[], searchText: string): Employee[] => {
-    return searchText
-      ? employees.filter((employee) =>
-          Object.values(employee).some(
-            (value) =>
-              typeof value === 'string' &&
-              value.toLowerCase().includes(searchText.toLowerCase())
-          )
+export const handleClose = (setVisible: (visible: boolean) => void) => {
+  setVisible(false)
+}
+
+export const handleCloseEdit = (
+  EditForm: any,
+  setVisibleEdit: (visible: boolean) => void
+) => {
+  EditForm.resetFields()
+  setVisibleEdit(false)
+}
+
+export const handleAdd = (setVisibleAdd: (visible: boolean) => void) => {
+  setVisibleAdd(true)
+}
+
+export const handleAddCancel = (
+  setVisibleAdd: (visible: boolean) => void,
+  EditForm: any,
+  addForm: any
+) => {
+  setVisibleAdd(false)
+  EditForm.resetFields()
+  addForm.resetFields()
+}
+
+export const handleEdit = async (
+  record: Employee,
+  setEditingEmployee: (employee: Employee) => void,
+  EditForm: any,
+  setVisibleEdit: (visible: boolean) => void
+) => {
+  try {
+    setEditingEmployee(record)
+    EditForm.setFieldsValue(record)
+    setVisibleEdit(true)
+  } catch (error) {
+    console.error('Error al editar el empleado:', error)
+  }
+}
+
+export const filterEmployees = (
+  employees: Employee[],
+  searchText: string
+): Employee[] => {
+  return searchText
+    ? employees.filter((employee) =>
+        Object.values(employee).some(
+          (value) =>
+            typeof value === 'string' &&
+            value.toLowerCase().includes(searchText.toLowerCase())
         )
-      : employees;
-  };
-  
-  export const addKeysToEmployees = (employees: Employee[]): (Employee & { key: string })[] => {
-    return employees.map((employee, index) => ({
-      ...employee,
-      key: index.toString()
-    }));
-  };
+      )
+    : employees
+}
+
+export const addKeysToEmployees = (
+  employees: Employee[]
+): (Employee & { key: string })[] => {
+  return employees.map((employee, index) => ({
+    ...employee,
+    key: index.toString()
+  }))
+}
+
+const uploadImage = async (imageData: any) => {
+  console.log("post :", imageData)
+  try {
+    const response = await axios.post('http://localhost:3001/api/upload/single/user', {
+      imageData
+    });
+    console.log('Image uploaded:', response.data);
+  } catch (error) {
+    console.error('Error uploading image:', error);
+    throw error;
+  }
+};

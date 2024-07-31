@@ -35,9 +35,6 @@ const TopNav = () => {
     <div className="h-16 px-5 flex flex-row items-center justify-end shadow-lg">
       <div className="flex items-center gap-5">
         <div>
-          <Search placeholder="Busqueda..." className="w-44" />
-        </div>
-        <div>
           <Popover
             placement="bottomRight"
             trigger="click"
