@@ -846,7 +846,7 @@ export const useFormHandler = (materials: any[]) => {
 export const handleSubmitShirts = async (
   shirts: FormDataShirt[],
   CuttingOrderDt: CuttingOrderData[],
-  quotationId: string
+  quotationId: number
 ) => {
   try {
     for (const shirt of shirts) {

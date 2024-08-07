@@ -54,8 +54,6 @@ export interface Employee {
     serial: string
     location: string
     image: string
-    
-
   }
   export interface MaterialSize{
     materialId:string
@@ -104,7 +102,7 @@ export interface Employee {
 
   
   export interface Quotation {
-    id: string
+    id: number
     dateReceipt: string
     expirationDate: string
     clientId: string
@@ -201,6 +199,7 @@ export interface Employee {
     tax:number;
     observation:string;
     total:number;
+    quotationId:number
   }
 
   export interface CuttingOrderData{
@@ -208,7 +207,10 @@ export interface Employee {
     dueDate:string;
   }
 
-
+  export interface Props {
+    selectedProduct: FormDataShirtView;
+    materials: Material[];
+  }
 
 
   export {}

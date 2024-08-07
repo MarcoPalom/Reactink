@@ -1,5 +1,6 @@
+
 import axios from 'axios'
-import { Material,FormDataShirt,FormDataShirtView } from 'components/Scripts/Interfaces'
+import { Material,Quotation,FormDataShirtView } from 'components/Scripts/Interfaces'
 const API_BASE_URL = 'http://localhost:3001/api'
 
 const getAuthHeaders = () => ({
@@ -312,7 +313,7 @@ export const fetchOrders = async () => {
   return response.data
 }
 
-export const fetchOrder = async (id: number): Promise<FormDataShirtView[]> => {
+export const fetchOrder = async (id: number): Promise<FormDataShirtView[]>  =>  {
   try {
     const response = await axios.get(
       `${API_BASE_URL}/cutting-order/${id}`,
@@ -325,3 +326,24 @@ export const fetchOrder = async (id: number): Promise<FormDataShirtView[]> => {
   }
 };
 
+export const fetchMaterials = async () => {
+  const response = await axios.get(
+    `${API_BASE_URL}/material/`,
+    getAuthHeaders()
+  )
+  return response.data
+}
+
+
+export const fetchQuotationOrder = async (id: string): Promise<Quotation[]>  =>  {
+  try {
+    const response = await axios.get(
+      `${API_BASE_URL}/cutting-order/${id}`,
+      getAuthHeaders()
+    );
+    return response.data.quotation
+  } catch (error) {
+    console.error('Error fetching cutting order:', error);
+    throw error;
+  }
+};
