@@ -8,7 +8,8 @@ import {
   EditQuotationProduct,
   EditQuotationProductMaquila,
   addQuotationProductShirt,
-  addCuttingOrder
+  addCuttingOrder,
+  addDesign
 } from 'components/Scripts/Apicalls'
 import {
   Quotation,
@@ -19,6 +20,7 @@ import {
 } from 'components/Scripts/Interfaces'
 import { FormInstance } from 'antd'
 import { useState } from 'react';
+import axios from 'axios'
 
 const { confirm } = Modal
 
@@ -709,10 +711,7 @@ export const calculateAndUpdateTotal = (
 ) => {
   const updatedShirts = shirts.map((shirt,index) => {
     if (index === key) {
-      const price = parseFloat(shirt.priceUnit?.toString() ?? '0');
-      const tax = parseFloat(shirt.tax?.toString() ?? '0');
-      const total = quantity * price * (1 + tax / 100);
-      return { ...shirt, quantity, total: total.toFixed(2) };
+      return { ...shirt, quantity };
     }
     return shirt;
   });
@@ -739,21 +738,6 @@ export const handleInputChangeShirts = (
   }
 };
 
-export const handleCaptureColumns = (
-  key: any,
-  shirts: FormDataShirt[],
-  setShirts: React.Dispatch<React.SetStateAction<FormDataShirt[]>>,
-  ShirtForm: FormInstance
-) => {
-  ShirtForm.validateFields().then((values) => {
-    const updatedShirts = shirts.map((shirt, index) =>
-      index === key ? { ...shirt, ...values } : shirt
-    );
-    setShirts(updatedShirts);
-  }).catch((errorInfo) => {
-    console.error('Failed:', errorInfo);
-  });
-};
 
 export const handleGenderToggleShirts = (
   shirts: FormDataShirt[],
@@ -771,50 +755,71 @@ export const isSaveButtonDisabled = (shirts: FormDataShirt[]): boolean => {
 };
 
 
-export const handleFormSubmitShirt = (
+export const handleFormSubmitShirt = async (
   ShirtForm: FormInstance,
   setShirts: any,
   CuttingForm: FormInstance,
-  setCuttingOrderDt:any,
+  setCuttingOrderDt: any,
   shirts: FormDataShirt[],
-  CuttingOrderDt:any,
-  productType: number | null
+  CuttingOrderDt: any,
+  productType: number | null,
+  file: File | null, 
+  setImageFileName: (fileName: string | null) => void
 ) => {
-  ShirtForm
-    .validateFields()
-    .then((values) => {
-      const {
-        frontClothColor,
-        neckClothColor,
-        sleeveClothColor,
-        cuffClothColor,
-        ...restValues
-      } = values;
-      const formData: FormDataShirt = {
-        ...restValues,
-        productType: productType
-      };
+  
+  // Intentar validar y procesar datos del formulario de camisetas
+  try {
+    const values = await ShirtForm.validateFields();
+    const {
+      frontClothColor,
+      neckClothColor,
+      sleeveClothColor,
+      cuffClothColor,
+      image,
+      ...restValues
+    } = values;
 
-      setShirts([...shirts, { ...formData }]);
-      ShirtForm.resetFields();
-    })
-    .catch((errorInfo) => {
-      console.error('Failed:', errorInfo);
-    });
+    // Si hay un archivo de imagen, intentar subirlo
+    if (file) {
+      try {
+        const response = await uploadImage(file);
+        setImageFileName(response); 
+        message.success('Imagen subida exitosamente');
+      } catch (uploadError) {
+        console.error('Error al subir la imagen:', uploadError);
+        message.error('Error al subir la imagen');
+        return null;
+      }
+    }
 
-    CuttingForm
-    .validateFields()
-    .then((values) => {
-      const formDataCut: CuttingOrderData = {
-        ...values
-      };
+    const formData: FormDataShirt = {
+      ...restValues,
+      productType: productType
+    };
+    
+    console.log(formData);
+    setShirts([...shirts, { ...formData }]);
+    ShirtForm.resetFields();
 
-      setCuttingOrderDt([...CuttingOrderDt, { ...formDataCut }]);
-    })
-    .catch((errorInfo) => {
-      console.error('Failed:', errorInfo);
-    });
+  } catch (errorInfo) {
+    console.error('Failed:', errorInfo);
+  }
+
+
+  try {
+    const values = await CuttingForm.validateFields();
+    const formDataCut: CuttingOrderData = {
+      ...values
+    };
+
+    console.log(formDataCut);
+    setCuttingOrderDt([...CuttingOrderDt, { ...formDataCut }]);
+    
+  } catch (errorInfo) {
+    console.error('Failed:', errorInfo);
+  }
 };
+
 
 export const useFormHandler = (materials: any[]) => {
   const [colors, setColors] = useState({
@@ -846,18 +851,71 @@ export const useFormHandler = (materials: any[]) => {
 export const handleSubmitShirts = async (
   shirts: FormDataShirt[],
   CuttingOrderDt: CuttingOrderData[],
-  quotationId: number
+  quotationId: number,
+  imageFileName: string | null 
 ) => {
+  console.log(imageFileName)
+  const Type: boolean = true;
+  const DesignData = {
+    quotationId,
+    ...(imageFileName ? { design: imageFileName } : {}),
+    typeProduct: Type
+  };
+
   try {
     for (const shirt of shirts) {
-      const response = await addQuotationProductShirt({ ...shirt, quotationId });
+      const shirtData = { ...shirt, quotationId };
+      const response = await addQuotationProductShirt(shirtData);
+      
+      if (response.status=true) {
+        message.success('Camiseta agregada con éxito');
+      } else {
+        message.error('Error al agregar camiseta');
+      }
     }
 
-    if (CuttingOrderDt.length > 0) {
-      const cuttingOrderResponse = await addCuttingOrder({ ...CuttingOrderDt[0], quotationId });
+    const designResponse = await addDesign(DesignData);
+    if (designResponse.status=true) {
+      message.success('Diseño agregado con éxito');
+
+      if (CuttingOrderDt.length > 0) {
+        const cuttingOrderResponse = await addCuttingOrder({ ...CuttingOrderDt[0], quotationId });
+
+        if (cuttingOrderResponse.status=true) {
+          message.success('Orden de corte generada con éxito');
+        } else {
+          message.error('Error al generar la orden de corte');
+        }
+      }
+    } else {
+      message.error('Error al agregar el diseño');
     }
-    message.success('Orden de corte generada con éxito');
   } catch (error) {
-    console.error('Error al enviar datos de las camisetas o generar la orden de corte:', error);
+    console.error('Error al enviar datos de las camisetas, diseño o generar la orden de corte:', error);
+    message.error('Ocurrió un error durante el proceso');
   }
 };
+
+
+
+
+const uploadImage = async (file: File): Promise<string> => {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  try {
+    const response = await axios.post(
+      'http://localhost:3001/api/upload/single/quotation_shirt',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      }
+    )
+    return response.data.fileName 
+  } catch (error) {
+    console.error('Error al subir la imagen:', error)
+    throw error
+  }
+}

@@ -12,7 +12,7 @@ import {
   InputNumber,
   Drawer,
   Switch,
-  DatePicker
+  Upload
 } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -27,7 +27,8 @@ import {
   EyeOutlined,
   EyeInvisibleOutlined,
   MoreOutlined,
-  SaveOutlined
+  SaveOutlined,
+  UploadOutlined
 } from '@ant-design/icons'
 import axios from 'axios'
 import useTokenRenewal from 'components/Scripts/useTokenRenewal'
@@ -82,13 +83,9 @@ import {
   genderMap
 } from 'components/Scripts/QuotationUtils'
 import {
-  fetchQuotation,
-  updateQuotation,
-  addQuotation,
   deleteQuotation,
   deleteQuotationProduct,
   deleteQuotationProductMaquila,
-  addQuotationProduct,
   fetchMaterialName
 } from 'components/Scripts/Apicalls'
 import {
@@ -104,6 +101,7 @@ import { FaTshirt } from 'react-icons/fa'
 import { GiUnderwearShorts, GiGoalKeeper } from 'react-icons/gi'
 import { generatePDF } from 'components/Scripts/Utils'
 import FormItem from 'antd/es/form/FormItem'
+import {  UploadChangeParam } from 'antd/lib/upload'
 
 const { Search } = Input
 const { confirm } = Modal
@@ -158,7 +156,9 @@ const CotationList = () => {
   const [isObservationFilled, setIsObservationFilled] = useState(false)
   const isSaveDisabled = isSaveButtonDisabled(shirts)
   const [productType, setProductType] = useState<number | null>(null)
-  const [id, setId] = useState<any>(0)
+  const [file, setFile] = useState<File | null>(null)
+  const [imageFileName, setImageFileName] = useState<string | null>(null)
+
 
   useTokenRenewal(navigate)
 
@@ -245,6 +245,11 @@ const CotationList = () => {
     fetchQuotationProducts()
     fetchQuotationProductsMaquila()
   }, [selectedQuotation])
+
+  const handleFileChange = (info: UploadChangeParam) => {
+    const fileList = [...info.fileList]
+    setFile(fileList[0]?.originFileObj as File)
+  }
 
   const filterProductsByQuotationId = (products: any, quotationId: any) => {
     return products.filter(
@@ -415,10 +420,15 @@ const CotationList = () => {
 
   const handlecutSummitShirts = async () => {
     if (selectedQuotation) {
-      await handleSubmitShirts(shirts,CuttingOrderDt, selectedQuotation.id)
+      await handleSubmitShirts(shirts, CuttingOrderDt, selectedQuotation.id, imageFileName)
     } else {
       console.error('No quotation selected')
     }
+  }
+
+  const handleDuplicateOrder = (shirtToDuplicate: any) => {
+    const newShirt = { ...shirtToDuplicate, key: Date.now() } 
+    setShirts((prevShirts) => [...prevShirts, newShirt]) 
   }
 
   const columnsTempShirt = [
@@ -480,36 +490,29 @@ const CotationList = () => {
       )
     },
     {
-      title: 'Total',
-      dataIndex: 'total',
-      key: 'total',
-      render: (text: any, record: any) => record.total || '0.00'
-    },
-    {
       title: 'Género',
       dataIndex: 'gender',
       key: 'gender',
       render: (text: any, record: any) => {
-        const genderText = genderMap[text] || '?'; 
-        
+        const genderText = genderMap[text] || '?'
+
         const buttonClass =
-        genderText === 'H'
+          genderText === 'H'
             ? 'bg-blue-500 text-white'
             : genderText === 'M'
               ? 'bg-pink-500 text-white'
-              : 'bg-white text-black border border-gray-300';
-    
+              : 'bg-white text-black border border-gray-300'
+
         return (
           <Button
             className={`w-10 ${buttonClass}`}
             onClick={() =>
               handleGenderToggleShirts(shirts, setShirts, record.key)
-              
             }
           >
             {genderText}
           </Button>
-        );
+        )
       }
     },
     {
@@ -530,6 +533,18 @@ const CotationList = () => {
             )
           }
         />
+      )
+    },
+    {
+      title: 'Mas',
+      key: 'actions',
+      render: (_: any, record: any) => (
+        <Space>
+          <Button
+            icon={<PlusOutlined />}
+            onClick={() => handleDuplicateOrder(record)}
+          ></Button>
+        </Space>
       )
     }
   ]
@@ -1609,20 +1624,35 @@ const CotationList = () => {
                         }
                       ]}
                     >
-                      <Select
-                        placeholder="Seleccionar"
-                      >
+                      <Select placeholder="Seleccionar">
                         <Option value={true}>Sí</Option>
                         <Option value={false}>No</Option>
                       </Select>
                     </Form.Item>
-                    <Form.Item name="priceUnit" label="Precio C/U">
-                      <InputNumber className="w-full" />
+                    <Form.Item
+                      name="image"
+                      label="Imagen"
+                      getValueFromEvent={(e) => {
+                        if (Array.isArray(e)) {
+                          return e
+                        }
+                        if (e && e.fileList) {
+                          return e.fileList
+                        }
+                        return []
+                      }}
+                    >
+                      <Upload
+                        name="image"
+                        listType="picture"
+                        beforeUpload={() => false}
+                        onChange={handleFileChange}
+                      >
+                        <Button icon={<UploadOutlined />}>
+                          Click para subir
+                        </Button>
+                      </Upload>
                     </Form.Item>
-                    <Form.Item name="tax" label="Impuesto">
-                      <InputNumber className="w-full" />
-                    </Form.Item>
-                    <div></div>
                     <div className="flex justify-end">
                       <Button
                         icon={<SaveOutlined className="text-blue-500" />}
@@ -1630,11 +1660,13 @@ const CotationList = () => {
                           handleFormSubmitShirt(
                             ShirtForm,
                             setShirts,
-                            CuttingForm, 
+                            CuttingForm,
                             setCuttingOrderDt,
-                            shirts, 
-                            CuttingOrderDt, 
-                            productType
+                            shirts,
+                            CuttingOrderDt,
+                            productType,
+                            file,
+                            setImageFileName
                           )
                         }
                         disabled={isSaveDisabled}

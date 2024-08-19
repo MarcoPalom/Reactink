@@ -82,8 +82,7 @@ const DebtList = () => {
 
       <Card>
         <Space
-          style={{ marginBottom: 16 }}
-          className="flex flex-row justify-between"
+          className="mb-4 flex flex-row justify-between"
         >
           <div className="flex flex-row gap-1">
             <Search placeholder="Busqueda..." className="w-44" />

@@ -4,7 +4,6 @@ import { BellOutlined, UserOutlined } from '@ant-design/icons'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { Button } from 'antd/es/radio'
 
-const { Search } = Input
 
 const TopNav = () => {
   const location = useLocation()

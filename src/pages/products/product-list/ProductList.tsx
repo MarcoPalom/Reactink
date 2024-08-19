@@ -9,7 +9,8 @@ import {
   Modal,
   Form,
   Select,
-  Drawer
+  Drawer,
+  Upload
 } from 'antd'
 import * as MaterialUtils from 'components/Scripts/MaterialUtils'
 import { useNavigate } from 'react-router-dom'
@@ -19,7 +20,8 @@ import {
   EditOutlined,
   DeleteOutlined,
   DatabaseOutlined,
-  RiseOutlined
+  RiseOutlined,
+  UploadOutlined
 } from '@ant-design/icons'
 import axios from 'axios'
 import useTokenRenewal from 'components/Scripts/useTokenRenewal'
@@ -28,115 +30,54 @@ import {
   Category,
   Supplier,
   SupplierAdd,
-  MaterialSize
 } from 'components/Scripts/Interfaces'
 import { generatePDF } from 'components/Scripts/Utils'
 import Logo from 'assets/img/logo.png'
 import TodayDate from '../../../components/Scripts/Utils'
+import {  UploadChangeParam } from 'antd/lib/upload'
+import Missing from 'assets/img/noUserPhoto.jpg'
 
 const { Search } = Input
-const { confirm } = Modal
 
 const MaterialList = () => {
   const [Materials, setMaterials] = useState<Material[]>([])
-  const [EditingMaterialSize, setEditingMaterialSize] = useState<MaterialSize[]>([])
   const [searchText, setSearchText] = useState('')
   const [visible, setVisible] = useState<boolean>(false)
   const [visibleEdit, setVisibleEdit] = useState<boolean>(false)
   const [visibleAdd, setVisibleAdd] = useState<boolean>(false)
   const [VisibleMaterialSize, setVisibleMaterialSize] = useState<boolean>(false)
-  const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(
-    null
-  )
+  const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null)
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
-  const [isAddCategoryModalVisible, setIsAddCategoryModalVisible] =
-    useState(false)
+  const [isAddCategoryModalVisible, setIsAddCategoryModalVisible] =useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [Suppliers, setSuppliers] = useState<Supplier[]>([])
-  const [isAddSupplierModalVisible, setIsAddSupplierModalVisible] =
-    useState(false)
-  const [newSupplier, setNewSupplier] = useState<SupplierAdd>({
-    name: '',
-    email: '',
-    phone: ''
-  })
+  const [isAddSupplierModalVisible, setIsAddSupplierModalVisible] =useState(false)
+  const [newSupplier, setNewSupplier] = useState<SupplierAdd>({ name: '',email: '',phone: ''})
   const [userName, setUserName] = useState<string>('')
   const navigate = useNavigate()
   const [EditForm] = Form.useForm()
   const [addForm] = Form.useForm()
   const [MaterialSizeform] = Form.useForm()
-  const { Option } = Select
   const filteredMaterials = MaterialUtils.filterMaterials(Materials, searchText);
   const filteredMaterialsWithKeys = MaterialUtils.addKeysToMaterials(filteredMaterials);
+  const [file, setFile] = useState<File | null>(null)
+  const [image, setImage] = useState<string | null>(null)
+
+  const { Option } = Select
 
   useTokenRenewal(navigate)
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [
-          materialsResponse,
-          categoriesResponse,
-          suppliersResponse,
-          userResponse
-        ] = await Promise.all([
-          axios.get('http://localhost:3001/api/material/', {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem('token')}`
-            }
-          }),
-          axios.get('http://localhost:3001/api/category/', {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem('token')}`
-            }
-          }),
-          axios.get('http://localhost:3001/api/supplier/', {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem('token')}`
-            }
-          }),
-          axios.get(`http://localhost:3001/api/user/`, {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem('token')}`
-            }
-          })
-        ])
-
-        const materials: Material[] = materialsResponse.data.map(
-          (material: any) => ({
-            ...material,
-            categoryName: categoriesResponse.data.find(
-              (category: Category) => category.id === material.categoryId
-            )?.name,
-            supplierName: suppliersResponse.data.find(
-              (supplier: Supplier) => supplier.id === material.supplierId
-            )?.name,
-            userName: userResponse.data.find(
-              (user: any) => user.id === material.userId
-            )?.name
-          })
-        )
-
-        setMaterials(materials)
-        setCategories(categoriesResponse.data)
-        setSuppliers(suppliersResponse.data)
-        setUserName(userResponse.data.name)
-      } catch (error) {
-        console.error('Error fetching data:', error)
-      }
-    }
-
-    fetchData()
+      MaterialUtils.fetchAndSetData(setMaterials, setCategories, setSuppliers, setUserName);
   }, [visibleAdd])
 
   const handleAddSupplier = () => setIsAddSupplierModalVisible(true)
   const handleAddCategory = () => setIsAddCategoryModalVisible(true)
-
-
-
-
-  
+  const handleFileChange = (info: UploadChangeParam) => {
+    const fileList = [...info.fileList]
+    setFile(fileList[0]?.originFileObj as File)
+  }
 
   const columns = [
     {
@@ -222,7 +163,8 @@ const MaterialList = () => {
               MaterialUtils.handleView(
                 record.id.toString(),
                 setSelectedMaterial,
-                setVisible
+                setVisible,
+                setImage
               )
             }
           />
@@ -243,18 +185,23 @@ const MaterialList = () => {
     }
   ]
 
-
-
   return (
     <>
       <Modal
         title="Detalles del Material"
         open={visible}
-        onCancel={()=> MaterialUtils.handleClose(setVisible)}
+        onCancel={()=> MaterialUtils.handleClose(setVisible,setImage)}
         footer={[]}
       >
         {selectedMaterial && (
           <>
+          <div className="flex justify-center">
+              {image ? (
+                <img className="w-44 h-44" src={image} alt="Image" />
+              ) : (
+                <img className="w-44 h-44" src={Missing} alt="missing image" />
+              )}
+            </div>
             <p>
               <strong>Nombre:</strong> {selectedMaterial.name}
             </p>
@@ -277,7 +224,8 @@ const MaterialList = () => {
               <strong>Unidad:</strong> {selectedMaterial.unitMeasure}
             </p>
             <p>
-              <strong>Recibido:</strong> {selectedMaterial.dateReceipt}
+              <strong>Recibido:</strong>{' '} 
+              {new Date(selectedMaterial.dateReceipt).toLocaleDateString('es-ES')}
             </p>
             <p>
               <strong>Serial:</strong> {selectedMaterial.serial}
@@ -324,7 +272,7 @@ const MaterialList = () => {
 
       <Drawer
   title="Editar Material"
-  visible={visibleEdit}
+  open={visibleEdit}
   onClose={() => MaterialUtils.handleCloseEdit(setVisibleEdit, EditForm)}
   footer={
     <div style={{ textAlign: 'right' }}>
@@ -335,7 +283,8 @@ const MaterialList = () => {
             EditForm,
             Materials,
             setMaterials,
-            setVisibleEdit
+            setVisibleEdit,
+            file
           )
         }
         type="primary"
@@ -433,6 +382,28 @@ const MaterialList = () => {
     <Form.Item name="location" label="Ubicación">
       <Input />
     </Form.Item>
+    <Form.Item
+            name="image"
+            label="Imagen"
+            getValueFromEvent={(e) => {
+              if (Array.isArray(e)) {
+                return e
+              }
+              if (e && e.fileList) {
+                return e.fileList
+              }
+              return []
+            }}
+          >
+            <Upload
+              name="image"
+              listType="picture"
+              beforeUpload={() => false}
+              onChange={handleFileChange}
+            >
+              <Button icon={<UploadOutlined />}>Click para subir</Button>
+            </Upload>
+          </Form.Item>
   </Form>
 </Drawer>
 
@@ -448,7 +419,9 @@ const MaterialList = () => {
                   addForm,
                   setMaterials,
                   Materials,
-                  setVisibleAdd
+                  setVisibleAdd,
+                  file,
+                  setFile
                 )
               }
               type="primary"
@@ -550,6 +523,7 @@ const MaterialList = () => {
               <Select.Option value="IN">Pulgada(in)</Select.Option>
               <Select.Option value="M">Metros(M)</Select.Option>
               <Select.Option value="KG">Kilos(KG)</Select.Option>
+              <Select.Option value="U">Unidades(KG)</Select.Option>
             </Select>
           </Form.Item>
           <Form.Item name="dateReceipt" label="Fecha de recibido">
@@ -560,6 +534,28 @@ const MaterialList = () => {
           </Form.Item>
           <Form.Item name="location" label="Ubicacion">
             <Input />
+          </Form.Item>
+          <Form.Item
+            name="image"
+            label="Imagen"
+            getValueFromEvent={(e) => {
+              if (Array.isArray(e)) {
+                return e
+              }
+              if (e && e.fileList) {
+                return e.fileList
+              }
+              return []
+            }}
+          >
+            <Upload
+              name="image"
+              listType="picture"
+              beforeUpload={() => false}
+              onChange={handleFileChange}
+            >
+              <Button icon={<UploadOutlined />}>Click para subir</Button>
+            </Upload>
           </Form.Item>
         </Form>
       </Drawer>
@@ -717,10 +713,10 @@ const MaterialList = () => {
         <div id="PDFtable">
           <div className="mt-5 flex justify-between mb-5">
             <img src={Logo} alt="Ink Sports" className="h-10 " />
-            <h1 className="text-end">
+            <span className="text-end">
               {' '}
               Ciudad victoria, Tamaulipas a<TodayDate></TodayDate>{' '}
-            </h1>
+            </span>
           </div>
           <Table
             className="w-full border-collapse border border-gray-200"

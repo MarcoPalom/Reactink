@@ -1,9 +1,54 @@
-import { addSupplier, addCategory, fetchMaterial, updateMaterial, addMaterial, deleteMaterial, addMaterialSize } from 'components/Scripts/Apicalls'
-import { message, Modal,FormInstance  } from 'antd'
-import { Material,MaterialSize } from './Interfaces'
-
+import {
+  addSupplier,
+  addCategory,
+  fetchMaterial,
+  updateMaterial,
+  addMaterial,
+  deleteMaterial,
+  addMaterialSize,
+  fetchImage,
+  fetchMaterials,
+  fetchCategories,
+  fetchSuppliers,
+  fetchEmployees,
+  fetchSizes
+} from 'components/Scripts/Apicalls'
+import { message, Modal, FormInstance } from 'antd'
+import { Material, Supplier, SupplierAdd, Category,Employee } from './Interfaces'
+import axios from 'axios'
 
 const { confirm } = Modal
+
+export const fetchAndSetData = async (
+  setMaterials: React.Dispatch<React.SetStateAction<Material[]>>,
+  setCategories: React.Dispatch<React.SetStateAction<Category[]>>,
+  setSuppliers: React.Dispatch<React.SetStateAction<Supplier[]>>,
+  setUserName: React.Dispatch<React.SetStateAction<string>>
+) => {
+  try {
+    const [materials, categories, suppliers, users] = await Promise.all([
+      fetchMaterials(),
+      fetchCategories(),
+      fetchSuppliers(),
+      fetchEmployees(),
+    ]);
+
+    const enrichedMaterials = materials.map((material:Material) => ({
+      ...material,
+      categoryName: categories.find((category:Category) => category.id === material.categoryId)?.name,
+      supplierName: suppliers.find((supplier:Supplier) => supplier.id === material.supplierId)?.name,
+      userName: users.find((user:Employee) => user.id === material.userId)?.name,
+    }));
+
+    console.log(enrichedMaterials)
+    setMaterials(enrichedMaterials);
+    setCategories(categories);
+    setSuppliers(suppliers);
+    setUserName(users[0]?.name || '');
+  } catch (error) {
+    console.error('Error fetching and setting data:', error);
+  }
+};
 
 export const handleSaveMatSize = async (
   MaterialSizeform: FormInstance,
@@ -11,21 +56,21 @@ export const handleSaveMatSize = async (
   setVisibleMaterialSize: (visible: boolean) => void
 ) => {
   try {
-    const values = await MaterialSizeform.validateFields();
-    const materialSizeData = { ...values, materialId: selectedMaterial?.id };
-    await addMaterialSize(materialSizeData);
-    setVisibleMaterialSize(false);
+    const values = await MaterialSizeform.validateFields()
+    const materialSizeData = { ...values, materialId: selectedMaterial?.id }
+    await addMaterialSize(materialSizeData)
+    setVisibleMaterialSize(false)
     message.success('Rendimiento agregado exitosamente')
-    MaterialSizeform.resetFields();
+    MaterialSizeform.resetFields()
   } catch (error) {
-    console.error('Error saving material size:', error);
+    console.error('Error saving material size:', error)
   }
-};
+}
 
 export const handleNewSupplierSubmit = async (
-  newSupplier: any,
-  setSuppliers: (suppliers: any[]) => void,
-  Suppliers: any[],
+  newSupplier: SupplierAdd,
+  setSuppliers: (suppliers: Supplier[]) => void,
+  Suppliers: Supplier[],
   setIsAddSupplierModalVisible: (visible: boolean) => void
 ) => {
   try {
@@ -41,96 +86,148 @@ export const handleNewSupplierSubmit = async (
 
 export const handleNewCategorySubmit = async (
   newCategoryName: string,
-  setCategories: (categories: any[]) => void,
-  categories: any[],
+  setCategories: (categories: Category[]) => void,
+  categories: Category[],
   setIsAddCategoryModalVisible: (visible: boolean) => void,
   setNewCategoryName: (name: string) => void
 ) => {
   try {
-    const response = await addCategory({ name: newCategoryName });
-    setCategories([...categories, response]);
-    setIsAddCategoryModalVisible(false);
-    setNewCategoryName('');
+    const response = await addCategory({ name: newCategoryName })
+    setCategories([...categories, response])
+    setIsAddCategoryModalVisible(false)
+    setNewCategoryName('')
     message.success('Categoria agregada exitosamente')
   } catch (error) {
-    console.error('There was an error adding the category!', error);
+    console.error('There was an error adding the category!', error)
   }
-};
+}
 
 export const handleView = async (
   id: string,
-  setSelectedMaterial: (material: any) => void,
-  setVisible: (visible: boolean) => void
+  setSelectedMaterial: (material: Material) => void,
+  setVisible: (visible: boolean) => void,
+  setImage: (imageUrl: string) => void
 ) => {
   try {
-    const material = await fetchMaterial(id);
-    setSelectedMaterial(material);
-    setVisible(true);
+    const material = await fetchMaterial(id)
+    const imageExtension = 'material'
+    const imageName = material.image
+    if (imageName != null) {
+      const img = await fetchImage(imageName, imageExtension)
+      const imgURL = URL.createObjectURL(img)
+      setImage(imgURL)
+    }
+    setSelectedMaterial(material)
+    setVisible(true)
   } catch (error) {
-    console.error('Error fetching Material details:', error);
+    console.error('Error fetching Material details:', error)
   }
-};
+}
 
 export const handleSave = async (
-  editingMaterial: any,
+  editingMaterial: Material | null,
   EditForm: FormInstance,
-  Materials: any[],
-  setMaterials: (materials: any[]) => void,
-  setVisibleEdit: (visible: boolean) => void
+  Materials: Material[],
+  setMaterials: (materials: Material[]) => void,
+  setVisibleEdit: (visible: boolean) => void,
+  file: File | null
 ) => {
   try {
-    const values = await EditForm.validateFields();
-    await updateMaterial(editingMaterial.id, values);
-    message.success('Material actualizado exitosamente');
-    const updatedMaterials = Materials.map((Material) =>
-      Material.id === editingMaterial.id ? { ...Material, ...values } : Material
-    );
-    setMaterials(updatedMaterials);
-    setVisibleEdit(false);
-    EditForm.resetFields();
+    let imageFileName: string | null = null
+    if (file) {
+      try {
+        imageFileName = await uploadImage(file)
+        message.success('Imagen subida exitosamente')
+      } catch (uploadError) {
+        console.error('Error al subir la imagen:', uploadError)
+        message.error('Error al subir la imagen')
+        return
+      }
+    } else {
+      console.warn('No se seleccionó ninguna imagen para subir.')
+    }
+    const values = await EditForm.validateFields()
+    const updatedMaterialData = {
+      ...values,
+      ...(imageFileName ? { image: imageFileName } : {})
+    }
+    if (editingMaterial) {
+      await updateMaterial(editingMaterial.id, updatedMaterialData)
+      message.success('Material actualizado exitosamente')
+      const updatedMaterials = Materials.map((material: Material) =>
+        material.id === editingMaterial.id
+          ? { ...material, ...updatedMaterialData }
+          : material
+      )
+      setMaterials(updatedMaterials)
+    } else {
+      message.error('No hay empleado para actualizar')
+    }
   } catch (error) {
-    console.error('Error updating Material:', error);
-    message.error('Error al actualizar el Material');
+    console.error('Error al actualizar el Material:', error)
+    message.error('Error al actualizar el Material')
+  } finally {
+    setVisibleEdit(false)
+    EditForm.resetFields()
   }
-};
+}
 
 export const handleAddSave = async (
   addForm: FormInstance,
-  setMaterials: (materials: any[]) => void,
-  Materials: any[],
-  setVisibleAdd: (visible: boolean) => void
+  setMaterials: (materials: Material[]) => void,
+  Materials: Material[],
+  setVisibleAdd: (visibleAdd: boolean) => void,
+  file: File | null,
+  setFile: (file: File | null) => void
 ) => {
   try {
-    const values = await addForm.validateFields();
-    const MaterialData = { ...values };
+    const values = await addForm.validateFields()
+    let imageFileName: string | null = null
+    if (file) {
+      try {
+        imageFileName = await uploadImage(file)
+        message.success('Imagen subida exitosamente')
+      } catch (uploadError) {
+        console.error('Error al subir la imagen:', uploadError)
+        message.error('Error al subir la imagen')
+        return
+      }
+    }
 
-    const response = await addMaterial(MaterialData);
-    setMaterials([...Materials, response]);
-    message.success('Material agregado exitosamente');
-    setVisibleAdd(false);
-    addForm.resetFields();
+    const materialData = {
+      ...values,
+      ...(imageFileName ? { image: imageFileName } : {})
+    }
+    const response = await addMaterial(materialData)
+    setMaterials([...Materials, response])
+    message.success('Material agregado exitosamente')
   } catch (error: any) {
-    console.error('Error adding Material:', error);
-    message.error(error.response?.data.message || 'Error al agregar el Material');
+    console.error('Error al agregar el Material:', error)
+    message.error(
+      error.response?.data.message || 'Error al agregar el Material'
+    )
+  } finally {
+    setVisibleAdd(false)
+    addForm.resetFields()
+    setFile(null)
   }
-};
+}
 
 export const handleDeleteMaterial = async (
   id: string,
-  Materials: any[],
-  setMaterials: (materials: any[]) => void
+  Materials: Material[],
+  setMaterials: (materials: Material[]) => void
 ) => {
   try {
-    await deleteMaterial(id);
-    message.success('Material eliminado exitosamente');
-    const updatedMaterials = Materials.filter((Material) => Material.id !== id);
-    setMaterials(updatedMaterials);
+    await deleteMaterial(id)
+    message.success('Material eliminado exitosamente')
+    const updatedMaterials = Materials.filter((Material) => Material.id !== id)
+    setMaterials(updatedMaterials)
   } catch (error) {
-    console.error('Error deleting Material:', error);
-    message.error('Error al eliminar el Material');
+    console.error('Error deleting Material:', error)
+    message.error('Error al eliminar el Material')
   }
-};
-
+}
 
 export const handleDelete = (
   record: Material,
@@ -144,10 +241,10 @@ export const handleDelete = (
     okType: 'danger',
     cancelText: 'Cancelar',
     onOk() {
-      handleDeleteMaterial(record.id, Materials, setMaterials);
+      handleDeleteMaterial(record.id, Materials, setMaterials)
     }
-  });
-};
+  })
+}
 
 export const handleEdit = async (
   record: Material,
@@ -156,29 +253,39 @@ export const handleEdit = async (
   setVisibleEdit: (visible: boolean) => void
 ) => {
   try {
-    setEditingMaterial(record);
-    EditForm.setFieldsValue(record);
-    setVisibleEdit(true);
+    setEditingMaterial(record)
+    EditForm.setFieldsValue(record)
+    setVisibleEdit(true)
   } catch (error) {
-    console.error('Error al editar el Material:', error);
+    console.error('Error al editar el Material:', error)
   }
-};
-
+}
 
 export const handleCloseMaterialSize = (
   MaterialSizeform: FormInstance,
   setVisibleMaterialSize: (visible: boolean) => void
 ) => {
-  setVisibleMaterialSize(false);
-  MaterialSizeform.resetFields();
-};
+  setVisibleMaterialSize(false)
+  MaterialSizeform.resetFields()
+}
 
-export const openMaterialSizeModal = (
+export const openMaterialSizeModal = async (
   material: Material,
   setSelectedMaterial: (material: Material | null) => void,
   setVisibleMaterialSize: (visible: boolean) => void
 ) => {
+  // Establece el material seleccionado
   setSelectedMaterial(material);
+  
+  // Llama a fetchSizes con el ID del material seleccionado
+  try {
+    const sizes = await fetchSizes(material.id);
+    console.log('Fetched sizes:', sizes);
+  } catch (error) {
+    console.error('Error fetching sizes:', error);
+  }
+
+  // Muestra el modal
   setVisibleMaterialSize(true);
 };
 
@@ -187,28 +294,35 @@ export const handleAddCancel = (
   EditForm: FormInstance,
   addForm: FormInstance
 ) => {
-  setVisibleAdd(false);
-  EditForm.resetFields();
-  addForm.resetFields();
-};
+  setVisibleAdd(false)
+  EditForm.resetFields()
+  addForm.resetFields()
+}
 
 export const handleCloseEdit = (
   setVisibleEdit: (visible: boolean) => void,
   EditForm: FormInstance
 ) => {
-  EditForm.resetFields();
-  setVisibleEdit(false);
-};
+  EditForm.resetFields()
+  setVisibleEdit(false)
+}
 
-export const handleClose = (setVisible: (visible: boolean) => void) => {
-  setVisible(false);
-};
+export const handleClose = (
+  setVisible: (visible: boolean) => void,
+  setImage: (image: string | null) => void
+) => {
+  setVisible(false)
+  setImage(null)
+}
 
 export const handleAdd = (setVisibleAdd: (visible: boolean) => void) => {
-  setVisibleAdd(true);
-};
+  setVisibleAdd(true)
+}
 
-export const filterMaterials = (materials: Material[], searchText: string): Material[] => {
+export const filterMaterials = (
+  materials: Material[],
+  searchText: string
+): Material[] => {
   return searchText
     ? materials.filter((material) =>
         Object.values(material).some(
@@ -217,12 +331,35 @@ export const filterMaterials = (materials: Material[], searchText: string): Mate
             value.toLowerCase().includes(searchText.toLowerCase())
         )
       )
-    : materials;
-};
+    : materials
+}
 
-export const addKeysToMaterials = (materials: Material[]): (Material & { key: string })[] => {
+export const addKeysToMaterials = (
+  materials: Material[]
+): (Material & { key: string })[] => {
   return materials.map((material, index) => ({
     ...material,
     key: index.toString()
-  }));
-};
+  }))
+}
+
+const uploadImage = async (file: File): Promise<string> => {
+  const formData = new FormData()
+  formData.append('file', file)
+
+  try {
+    const response = await axios.post(
+      'http://localhost:3001/api/upload/single/material',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      }
+    )
+    return response.data.fileName
+  } catch (error) {
+    console.error('Error al subir la imagen:', error)
+    throw error
+  }
+}

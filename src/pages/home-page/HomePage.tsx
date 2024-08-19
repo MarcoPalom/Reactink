@@ -44,18 +44,10 @@ const HomePage = () => {
     
 
     return (
-
-
         <div>
-
             <DashCount />
-
             <ChartNTable/>
-
-
             <ActivitiesList/>
-
-
         </div>
     )
 }

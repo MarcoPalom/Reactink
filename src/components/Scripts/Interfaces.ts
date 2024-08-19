@@ -62,6 +62,7 @@ export interface Employee {
     performance:number
   }
 
+
   export interface MaterialAdd {
     name: string
     description: string
@@ -210,6 +211,13 @@ export interface Employee {
   export interface Props {
     selectedProduct: FormDataShirtView;
     materials: Material[];
+  }
+
+  export interface quotationDesigns{
+    design:string
+    id:number
+    quotationId:number
+    typeProduct:boolean
   }
 
 

@@ -7,12 +7,13 @@ import * as CuttingUtils from 'components/Scripts/CuttingUtils'
 import { generatePDF } from 'components/Scripts/Utils'
 import Logo from 'assets/img/logo.png'
 import TodayDate from '../../../components/Scripts/Utils'
+import Missing from 'assets/img/noUserPhoto.jpg'
 import {
   CuttingOrderData,
   Quotation,
   FormDataShirtView,
   Material,
-  Props
+  quotationDesigns
 } from 'components/Scripts/Interfaces'
 
 const { Search } = Input
@@ -21,13 +22,15 @@ const CuttingOrderList = () => {
   const navigate = useNavigate()
   const [Orders, setOrders] = useState<CuttingOrderData[]>([])
   const [Materials, setMaterials] = useState<Material[]>([])
+  const [Designs, setDesigns] = useState<quotationDesigns[]>([])
   const [quotationProducts, setQuotationProducts] = useState<FormDataShirtView[]>([])
   const [cuttingOrder, setCuttingOrder] = useState<Quotation[]>([])
-  const [selectedProduct, setSelectedProduct] =useState<FormDataShirtView | null>(null)
+  const [selectedProduct, setSelectedProduct] = useState<FormDataShirtView | null>(null)
   const [visible, setVisible] = useState<boolean>(false)
-  const [searchText, setSearchText] = useState('')
+  const [searchText] = useState('')
   const filteredOrders = CuttingUtils.filterOrders(Orders, searchText)
   const filteredOrdersWithKeys = CuttingUtils.addKeysToOrders(filteredOrders)
+  const [image, setImage] = useState<string | null>(null)
   const { Option } = Select
 
   useTokenRenewal(navigate)
@@ -35,20 +38,26 @@ const CuttingOrderList = () => {
   useEffect(() => {
     CuttingUtils.fetchAndSetOrders(setOrders)
     CuttingUtils.fetchAndSetMaterials(setMaterials)
+    CuttingUtils.fetchAndSetQuotations(setDesigns)
   }, [])
 
-  const handleSelectChange = (value: number) => {
-    const product = quotationProducts.find((product) => product.id === value)
-    setSelectedProduct(product || null)
-    console.log(cuttingOrder)
-    console.log(Materials)
-  }
-
-  const materialMap = new Map(Materials.map(material => [material.id, material.name]));
+  const materialMap = new Map(
+    Materials.map((material) => [material.id, material.name])
+  )
 
   const getMaterialName = (id: string) => {
-    return materialMap.get(id) || 'Unknown';
-  };
+    return materialMap.get(id) || 'Unknown'
+  }
+
+  const onProductSelectChange = (value: number) => {
+    CuttingUtils.handleSelectChange(
+      value,
+      quotationProducts,
+      Designs,
+      setSelectedProduct,
+      setImage
+    )
+  }
 
   const columns = [
     {
@@ -133,16 +142,15 @@ const CuttingOrderList = () => {
         onClose={() => setVisible(false)}
         open={visible}
         width={600}
-
       >
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700 mb-2">
-            Selecciona una cotizacion
+            Selecciona una orden
           </label>
           <Select
             className="w-full"
             placeholder="Selecciona una cotizacion"
-            onChange={handleSelectChange}
+            onChange={onProductSelectChange}
           >
             {quotationProducts.map((product) => (
               <Option key={product.id} value={product.id}>
@@ -155,13 +163,14 @@ const CuttingOrderList = () => {
         {selectedProduct && (
           <Card className="p-4">
             <div className="">
-              <div >
-                <div className='flex justify-center mb-2'>
-                <img src={Logo} alt="Ink Sports" className="h-8" />
+              <div>
+                <div className="flex justify-center mb-2">
+                  <img src={Logo} alt="Ink Sports" className="h-8" />
                 </div>
-                <div className='flex justify-between'>
+                <div className="flex justify-between">
                   <p>
-                    <strong>Cotizacion Folio:</strong> {selectedProduct.quotationId}
+                    <strong>Cotizacion Folio:</strong>{' '}
+                    {selectedProduct.quotationId}
                   </p>
                   <p>
                     <strong>Cliente:</strong> {}
@@ -173,37 +182,49 @@ const CuttingOrderList = () => {
 
               <div>
                 <h3 className="flex justify-center text-lg leading-6 font-medium text-gray-900 mb-4">
-                  Cotizacion de camisas
+                  Orden de corte
                 </h3>
               </div>
 
               <div className="flex">
-                <div className="w-80 h-48 bg-gray-200 flex items-center justify-center">
-                  {/* Imagen */}
-                  <p className="text-gray-500">Imagen</p>
+                <div className="flex justify-center">
+                  {image ? (
+                    <img className="w-64 h-44" src={image} alt="Image" />
+                  ) : (
+                    <img
+                      className="w-64 h-44"
+                      src={Missing}
+                      alt="missing image"
+                    />
+                  )}
                 </div>
                 <div className="w-3/4 pl-4">
-                  <div className="text-sm text-gray-500 space-y-2">
+                  <div className="text-center text-sm text-gray-500 space-y-2">
                     <p>
                       <strong>Disciplina:</strong> {selectedProduct.discipline}
                     </p>
                     <p>
+                      <strong>Tela espalda:</strong>{' '}
+                      {getMaterialName(selectedProduct.clothBackShirtId)}
+                    </p>
+                    <p>
+                      <strong>Tela Manga:</strong>{' '}
+                      {getMaterialName(selectedProduct.clothSleeveId)}
+                    </p>
+                    <p>
+                      <strong>Tela cuello:</strong>{' '}
+                      {getMaterialName(selectedProduct.clothNecklineId)}
+                    </p>
+                    <p>
+                      <strong>Tela frente:</strong>{' '}
+                      {getMaterialName(selectedProduct.clothFrontShirtId)}
+                    </p>
+                    <p>
+                      <strong>Tela Puño:</strong>{' '}
+                      {getMaterialName(selectedProduct.clothCuffId)}
+                    </p>
+                    <p>
                       <strong>Talla:</strong> {selectedProduct.size}
-                    </p>
-                    <p>
-                      <strong>Tela espalda:</strong> {getMaterialName(selectedProduct.clothBackShirtId)}
-                    </p>
-                    <p>
-                      <strong>Tela frente:</strong> {getMaterialName(selectedProduct.clothFrontShirtId)}
-                    </p>
-                    <p>
-                      <strong>Tela Puño:</strong> {getMaterialName(selectedProduct.clothCuffId)}
-                    </p>
-                    <p>
-                      <strong>Tela cuello:</strong> {getMaterialName(selectedProduct.clothNecklineId)}
-                    </p>
-                    <p>
-                      <strong>Tela Manga:</strong> {getMaterialName(selectedProduct.clothSleeveId)}
                     </p>
                   </div>
                 </div>
@@ -233,12 +254,6 @@ const CuttingOrderList = () => {
                 <div className="gird grid-cols-1 justify-end mt-4">
                   <p>
                     <strong>Cantidad:</strong> {selectedProduct.quantity}
-                  </p>
-                  <p>
-                    <strong>Impuesto:</strong> {selectedProduct.tax}
-                  </p>
-                  <p>
-                    <strong>Total:</strong> {selectedProduct.total}
                   </p>
                 </div>
                 <div className="flex mt-14">

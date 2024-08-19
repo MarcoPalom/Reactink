@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import  { useState, useEffect } from 'react'
 import {
   Button,
   Space,
@@ -9,36 +9,27 @@ import {
   Form,
   message,
   Select,
-  Upload
+  Upload,
 } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import {
   PlusOutlined,
   FilePdfOutlined,
-  FileExcelOutlined,
-  PrinterOutlined,
   EditOutlined,
   DeleteOutlined,
   DatabaseOutlined,
   UploadOutlined
 } from '@ant-design/icons'
-import axios from 'axios'
 import useTokenRenewal from 'components/Scripts/useTokenRenewal'
 import { Employee } from 'components/Scripts/Interfaces'
 import * as EmployeeUtils from 'components/Scripts/EmployeeUtils'
-import { RcFile, UploadChangeParam } from 'antd/lib/upload'
+import {  UploadChangeParam } from 'antd/lib/upload'
 import { generatePDF } from 'components/Scripts/Utils'
 import Logo from 'assets/img/logo.png'
+import Missing from 'assets/img/noUserPhoto.jpg'
 import TodayDate from '../../../components/Scripts/Utils'
 
 const { Search } = Input
-const { confirm } = Modal
-
-const roleMapping: Record<number, string> = {
-  1: 'Administrador',
-  2: 'Financiero',
-  3: 'Auxiliar'
-}
 
 const EmployeList = () => {
   const [employees, setEmployees] = useState<Employee[]>([])
@@ -46,81 +37,25 @@ const EmployeList = () => {
   const [visible, setVisible] = useState<boolean>(false)
   const [visibleEdit, setVisibleEdit] = useState<boolean>(false)
   const [visibleAdd, setVisibleAdd] = useState<boolean>(false)
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
-    null
-  )
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
   const navigate = useNavigate()
   const [EditForm] = Form.useForm()
   const [addForm] = Form.useForm()
   const filteredEmployees = EmployeeUtils.filterEmployees(employees, searchText)
-  const filteredEmployeesWithKeys =
-    EmployeeUtils.addKeysToEmployees(filteredEmployees)
-  const [fileString, setFileString] = useState<string>('')
+  const filteredEmployeesWithKeys = EmployeeUtils.addKeysToEmployees(filteredEmployees)
+  const [file, setFile] = useState<File | null>(null)
+  const [image, setImage] = useState<any>(null)
 
   useTokenRenewal(navigate)
 
   useEffect(() => {
-    const fetchEmployees = async () => {
-      try {
-        const response = await axios.get('http://localhost:3001/api/user/', {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
-        })
-        setEmployees(response.data)
-      } catch (error) {
-        console.error('Error fetching employees:', error)
-      }
-    }
-    fetchEmployees()
+    EmployeeUtils.fetchAndSetEmployees(setEmployees)
   }, [visibleAdd])
 
   const handleFileChange = (info: UploadChangeParam) => {
     const fileList = [...info.fileList]
-    const file = fileList[0]?.originFileObj as RcFile
-
-    if (!file) {
-      return
-    }
-
-    const reader = new FileReader()
-    reader.onload = async () => {
-      const img = new Image()
-      img.src = reader.result as string
-
-      img.onload = async () => {
-        const canvas = document.createElement('canvas')
-        const MAX_WIDTH = 800
-        const MAX_HEIGHT = 600
-        let width = img.width
-        let height = img.height
-
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width
-            width = MAX_WIDTH
-          }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height
-            height = MAX_HEIGHT
-          }
-        }
-
-        canvas.width = width
-        canvas.height = height
-        const ctx = canvas.getContext('2d')
-        ctx?.drawImage(img, 0, 0, width, height)
-
-        const base64Image = canvas.toDataURL('image/jpeg', 0.6)
-        const maxLength = 255
-        const trimmedBase64 = base64Image.substring(0, maxLength)
-        setFileString(trimmedBase64)
-      }
-    }
-
-    reader.readAsDataURL(file)
+    setFile(fileList[0]?.originFileObj as File)
   }
 
   const columns = [
@@ -147,7 +82,7 @@ const EmployeList = () => {
       title: 'Telefono',
       dataIndex: 'phone',
       key: 'phone',
-      className: 'hidden lg:table-cell',
+      className: 'hidden lg:table-cell'
     },
     {
       title: 'Direccion',
@@ -156,7 +91,7 @@ const EmployeList = () => {
       className: 'hidden lg:table-cell',
       sorter: (a: any, b: any) => a.address.length - b.address.length
     },
-    
+
     {
       title: 'Sueldo',
       dataIndex: 'salary',
@@ -180,7 +115,7 @@ const EmployeList = () => {
       className: 'hidden lg:table-cell',
       sorter: (a: any, b: any) => a.role - b.role,
       render: (role: number) => {
-        return roleMapping[role] || 'Desconocido'
+        return EmployeeUtils.roleMapping[role] || 'Desconocido'
       }
     },
     {
@@ -191,24 +126,25 @@ const EmployeList = () => {
         <Space className="md:flex-wrap md:items-center" size="middle">
           <Button
             icon={<DatabaseOutlined className="text-green-700" />}
-            onClick={() =>
-              EmployeeUtils.handleView(
+            onClick={async () => {
+              await EmployeeUtils.handleView(
                 record.id.toString(),
                 setSelectedEmployee,
-                setVisible
+                setVisible,
+                setImage
               )
-            }
+            }}
           />
           <Button
             icon={<EditOutlined className="text-blue-700" />}
-            onClick={() =>
+            onClick={() =>{
               EmployeeUtils.handleEdit(
                 record,
                 setEditingEmployee,
                 EditForm,
                 setVisibleEdit
               )
-            }
+            }}
           />
           <Button
             icon={<DeleteOutlined className="text-red-700" />}
@@ -226,11 +162,19 @@ const EmployeList = () => {
       <Modal
         title="Detalles del Empleado"
         open={visible}
-        onCancel={() => EmployeeUtils.handleClose(setVisible)}
+        onCancel={() => EmployeeUtils.handleClose(setVisible, setImage)}
         footer={[]}
       >
         {selectedEmployee && (
           <>
+            <div className="flex justify-center">
+              {image ? (
+                <img className="w-44 h-44" src={image} alt="Image" />
+              ) : (
+                <img className="w-44 h-44" src={Missing} alt="missing image" />
+              )}
+            </div>
+
             <p>
               <strong>Nombre:</strong> {selectedEmployee.name}
             </p>
@@ -238,10 +182,15 @@ const EmployeList = () => {
               <strong>Apellido:</strong> {selectedEmployee.surname}
             </p>
             <p>
-              <strong>Correo:</strong> {selectedEmployee.email}
+              <strong>Rol:</strong>{' '}
+              {EmployeeUtils.roleMapping[selectedEmployee.role] || 'Desconocido'}
             </p>
             <p>
               <strong>Teléfono:</strong> {selectedEmployee.phone}
+            </p>
+
+            <p>
+              <strong>Correo:</strong> {selectedEmployee.email}
             </p>
             <p>
               <strong>Dirección:</strong> {selectedEmployee.address}
@@ -252,10 +201,6 @@ const EmployeList = () => {
             <p>
               <strong>Fecha de inicio:</strong>{' '}
               {new Date(selectedEmployee.startDate).toLocaleDateString('es-ES')}
-            </p>
-            <p>
-              <strong>Rol:</strong>{' '}
-              {roleMapping[selectedEmployee.role] || 'Desconocido'}
             </p>
           </>
         )}
@@ -274,7 +219,8 @@ const EmployeList = () => {
                 employees,
                 setEmployees,
                 setVisibleEdit,
-                fileString
+                file,
+                setFile
               )
             })
             .catch((errorInfo) => {
@@ -324,7 +270,6 @@ const EmployeList = () => {
               }
               return []
             }}
-            rules={[{ required: true, message: 'Por favor sube una imagen' }]}
           >
             <Upload
               name="image"
@@ -342,10 +287,10 @@ const EmployeList = () => {
         title="Añadir Nuevo Empleado"
         open={visibleAdd}
         onCancel={() =>
-          EmployeeUtils.handleAddCancel(setVisibleAdd, EditForm, addForm)
+          EmployeeUtils.handleAddCancel(setVisibleAdd, addForm)
         }
         onOk={() =>
-          EmployeeUtils.handleAddSave(addForm, setEmployees, setVisibleAdd)
+          EmployeeUtils.handleAddSave(addForm, setEmployees, setVisibleAdd,file,setFile)
         }
       >
         <Form form={addForm} layout="vertical">
@@ -379,7 +324,9 @@ const EmployeList = () => {
               }
             ]}
           >
-            <Input />
+            <Input 
+             autoComplete="username"
+            />
           </Form.Item>
           <Form.Item
             name="password"
@@ -388,7 +335,9 @@ const EmployeList = () => {
               { required: true, message: 'Por favor ingrese la contraseña' }
             ]}
           >
-            <Input.Password />
+            <Input.Password 
+            autoComplete="new-password"
+            />
           </Form.Item>
           <Form.Item
             name="confirmPassword"
@@ -397,26 +346,80 @@ const EmployeList = () => {
               { required: true, message: 'Por favor confirme la contraseña' }
             ]}
           >
-            <Input.Password />
+            <Input.Password 
+            autoComplete="new-password"
+            />
           </Form.Item>
-          <Form.Item name="phone" label="Teléfono">
+          <Form.Item
+           name="phone" 
+           label="Teléfono"
+           rules={[
+            { required: true, message: 'Por favor ingrese el telefono' }
+          ]}
+           >
             <Input />
           </Form.Item>
-          <Form.Item name="address" label="Dirección">
+          <Form.Item
+           name="address" 
+           label="Dirección"
+           rules={[
+            { required: true, message: 'Por favor confirme la dirección' }
+          ]}
+           >
             <Input />
           </Form.Item>
-          <Form.Item name="salary" label="Salario">
+          <Form.Item 
+          name="salary" 
+          label="Salario"
+          rules={[
+            { required: true, message: 'Por favor confirme el salario' }
+          ]}
+          >
             <Input type="number" />
           </Form.Item>
-          <Form.Item name="startDate" label="Fecha de Inicio">
+          <Form.Item 
+          name="startDate" 
+          label="Fecha de Inicio"
+          rules={[
+            { required: true, message: 'Por favor confirme la fecha de inicio' }
+          ]}
+          >
             <Input type="date" />
           </Form.Item>
-          <Form.Item name="role" label="Puesto">
+          <Form.Item 
+          name="role" 
+          label="Puesto"
+          rules={[
+            { required: true, message: 'Por favor confirme el puesto' }
+          ]}
+          >
             <Select placeholder="Selecciona un puesto">
               <Select.Option value={1}>Administrador</Select.Option>
               <Select.Option value={2}>Financiero</Select.Option>
               <Select.Option value={3}>Auxiliar</Select.Option>
             </Select>
+          </Form.Item>
+          <Form.Item
+            name="image"
+            label="Imagen"
+            getValueFromEvent={(e) => {
+              if (Array.isArray(e)) {
+                return e
+              }
+              if (e && e.fileList) {
+                return e.fileList
+              }
+              return []
+            }}
+          >
+            <Upload
+              name="image"
+              listType="picture"
+              beforeUpload={() => false}
+              onChange={handleFileChange}
+            >
+              <Button icon={<UploadOutlined />}>Click para subir</Button>
+            </Upload>
           </Form.Item>
         </Form>
       </Modal>
@@ -431,15 +434,13 @@ const EmployeList = () => {
           onClick={() => EmployeeUtils.handleAdd(setVisibleAdd)}
         >
           <a>
-            <PlusOutlined className="text-white font-bold" /> Añadir nuevo
-            empleado{' '}
+            <PlusOutlined className="text-white font-bold" /> Añadir nuevo empleado{' '}
           </a>
         </Button>
       </div>
-      <Card>
+      <Card >
         <Space
-          style={{ marginBottom: 16 }}
-          className="flex flex-row justify-between"
+          className="mb-4 flex flex-row justify-between"
         >
           <div className="flex flex-row gap-1">
             <Search
@@ -455,10 +456,10 @@ const EmployeList = () => {
         <div id="PDFtable">
           <div className="mt-5 flex justify-between mb-5">
             <img src={Logo} alt="Ink Sports" className="h-10 " />
-            <h1 className="text-end">
+            <span className="text-end">
               {' '}
               Ciudad victoria, Tamaulipas a<TodayDate></TodayDate>{' '}
-            </h1>
+            </span>
           </div>
           <Table
             className="w-full border-collapse border border-gray-200"

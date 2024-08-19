@@ -2,108 +2,147 @@ import {
   fetchEmployeeDetails,
   updateEmployee,
   addEmployee,
-  deleteEmployee
+  deleteEmployee,
+  fetchImage,
+  fetchEmployees
 } from './Apicalls'
 import { message, Modal } from 'antd'
 import { Employee } from './Interfaces'
 import axios from 'axios'
+import { FormInstance } from 'antd'
 
 const { confirm } = Modal
 
+export const fetchAndSetEmployees = async (setEmployees: React.Dispatch<React.SetStateAction<Employee[]>>) => {
+  try {
+    const response = await fetchEmployees()
+    setEmployees(response)
+  } catch (error) {
+    console.error('Error fetching and setting quotations:', error)
+  }
+}
+
+export const roleMapping: Record<number, string> = {
+  1: 'Administrador',
+  2: 'Financiero',
+  3: 'Auxiliar'
+}
+
 export const handleView = async (
   id: string,
-  setSelectedEmployee: any,
-  setVisible: (visible: boolean) => void
+  setSelectedEmployee: (employee: Employee | null)=>void,
+  setVisible: (visible: boolean) => void,
+  setImage: (imageUrl: string) => void 
 ) => {
   try {
     const employeeDetails = await fetchEmployeeDetails(id)
-    setSelectedEmployee(employeeDetails)
+    const imageExtension = 'user'
+    const imageName = employeeDetails.image
+    if(imageName!=null){
+      const img = await fetchImage(imageName, imageExtension)
+      const imgURL = URL.createObjectURL(img)
+      setImage(imgURL)
+    }
+   
+    setSelectedEmployee({ ...employeeDetails })
     setVisible(true)
   } catch (error) {
     console.error('Error fetching employee details:', error)
   }
 }
 
-export const handleAddSave = async (
-  addForm: any,
-  setEmployees: (employees: (prevEmployees: Employee[]) => Employee[]) => void,
-  setVisibleAdd: (visible: boolean) => void
+export const handleSave = async (
+  EditForm: FormInstance,
+  editingEmployee: Employee | null,
+  employees: Employee[],
+  setEmployees: (employees: Employee[]) => void,
+  setVisibleEdit: (visible: boolean) => void,
+  file: File | null,
+  setFile: (file: File | null) => void 
 ) => {
   try {
-    const values = await addForm.validateFields()
-    if (values.password !== values.confirmPassword) {
-      throw new Error('Las contraseñas no coinciden')
+    let imageFileName: string | null = null
+    if (file) {
+      try {
+        imageFileName = await uploadImage(file)
+        message.success('Imagen subida exitosamente')
+      } catch (uploadError) {
+        console.error('Error al subir la imagen:', uploadError)
+        message.error('Error al subir la imagen')
+      }
     }
-
-    const formData = new FormData()
-
-    const employeeData = {
+    const values = await EditForm.validateFields()
+    const updatedEmployeeData: Partial<Employee> = {
       ...values,
+      ...(imageFileName ? { image: imageFileName } : {}) 
     }
+    if (editingEmployee) {
+      await updateEmployee(editingEmployee.id, updatedEmployeeData)
+      message.success('Empleado actualizado exitosamente')
 
-    const response = await addEmployee(employeeData)
-    setEmployees((prevEmployees: Employee[]) => [...prevEmployees, response])
-    message.success('Empleado agregado exitosamente')
-    setVisibleAdd(false)
-    addForm.resetFields()
-  } catch (error: any) {
-    console.error('Error adding employee:', error)
-    message.error(
-      error.response?.data.message || 'Error al agregar el empleado'
-    )
+      const updatedEmployees = employees.map((employee: Employee) =>
+        employee.id === editingEmployee.id
+          ? { ...employee, ...updatedEmployeeData }
+          : employee
+      )
+
+      setEmployees(updatedEmployees)
+    } else {
+      message.error('No hay empleado para actualizar')
+    }
+  } catch (error) {
+    console.error('Error al actualizar el empleado:', error)
+    message.error('Error al actualizar el empleado')
+  }
+  finally {
+    setVisibleEdit(false)
+    EditForm.resetFields()
+    setFile(null)
   }
 }
 
-export const handleSave = async (
-  EditForm: any,
-  editingEmployee: any,
-  employees: any[],
-  setEmployees: (employees: any[]) => void,
-  setVisibleEdit: (visible: boolean) => void,
-  fileString: string
+export const handleAddSave = async (
+  addForm: FormInstance,
+  setEmployees: (employees: (prevEmployees: Employee[]) => Employee[]) => void,
+  setVisibleAdd: (visible: boolean) => void,
+  file: File | null, 
+  setFile: (file: File | null) => void  
 ) => {
   try {
-    const values = await EditForm.validateFields();
-    const updatedEmployeeData = {
-      ...values,
-      image: fileString
-    };
-
-    const response = await updateEmployee(
-      editingEmployee?.id,
-      updatedEmployeeData
-    );
-    message.success('Empleado actualizado exitosamente');
-
-    const updatedEmployees = employees.map((employee: Employee) =>
-      employee.id === editingEmployee?.id
-        ? { ...employee, ...updatedEmployeeData }
-        : employee
-    );
-
-    setEmployees(updatedEmployees);
-    setVisibleEdit(false);
-    EditForm.resetFields();
-
-    if (fileString) {
-      console.log("valor de la ur antes de mandar" , fileString)
-
-      const imageData = {
-        fileString
-      }
-  
-      const response = await uploadImage(imageData);
-
-      message.success('Imagen subida exitosamente');
-    } else {
-      console.warn('No se seleccionó ninguna imagen para subir.');
+    const values = await addForm.validateFields();
+    const { confirmPassword, ...employeeData } = values;
+    if (values.password !== confirmPassword) {
+      throw new Error('Las contraseñas no coinciden');
     }
-
-  } catch (error) {
-    console.error('Error updating employee:', error);
-    message.error('Error al actualizar el empleado');
+    let imageFileName: string | null = null;
+    if (file) {
+      try {
+        imageFileName = await uploadImage(file);
+        message.success('Imagen subida exitosamente');
+      } catch (uploadError) {
+        console.error('Error al subir la imagen:', uploadError);
+        message.error('Error al subir la imagen');
+      }
+    }
+    const employeeDataWithImage = {
+      ...employeeData,
+      ...(imageFileName ? { image: imageFileName } : {})
+    };
+    const response = await addEmployee(employeeDataWithImage);
+    setEmployees((prevEmployees: Employee[]) => [...prevEmployees, response]);
+    message.success('Empleado agregado exitosamente');
+  } catch (error: any) {
+    console.error('Error adding employee:', error);
+    message.error(
+      error.response?.data.message || 'Error al agregar el empleado'
+    );
+  } finally {
+    setVisibleAdd(false);
+    addForm.resetFields();
+    setFile(null);
   }
 };
+
 export const deleteUser = async (
   id: string,
   employees: Employee[],
@@ -137,37 +176,36 @@ export const handleDelete = (
   })
 }
 
-export const handleClose = (setVisible: (visible: boolean) => void) => {
+export const handleClose = (setVisible: (visible: boolean) => void, setImage: (image:string|null) => void) => {
   setVisible(false)
+  setImage(null)
 }
 
 export const handleCloseEdit = (
-  EditForm: any,
-  setVisibleEdit: (visible: boolean) => void
+  EditForm: FormInstance,
+  setVisibleEdit: (visibleEdit: boolean) => void
 ) => {
   EditForm.resetFields()
   setVisibleEdit(false)
 }
 
-export const handleAdd = (setVisibleAdd: (visible: boolean) => void) => {
+export const handleAdd = (setVisibleAdd: (visibleAdd: boolean) => void) => {
   setVisibleAdd(true)
 }
 
 export const handleAddCancel = (
-  setVisibleAdd: (visible: boolean) => void,
-  EditForm: any,
-  addForm: any
+  setVisibleAdd: (visibleAdd: boolean) => void,
+  addForm:  FormInstance
 ) => {
   setVisibleAdd(false)
-  EditForm.resetFields()
   addForm.resetFields()
 }
 
 export const handleEdit = async (
   record: Employee,
   setEditingEmployee: (employee: Employee) => void,
-  EditForm: any,
-  setVisibleEdit: (visible: boolean) => void
+  EditForm: FormInstance,
+  setVisibleEdit: (visibleEdit: boolean) => void
 ) => {
   try {
     setEditingEmployee(record)
@@ -193,24 +231,30 @@ export const filterEmployees = (
     : employees
 }
 
-export const addKeysToEmployees = (
-  employees: Employee[]
-): (Employee & { key: string })[] => {
+export const addKeysToEmployees = (employees: Employee[]): (Employee & { key: string })[] => {
   return employees.map((employee, index) => ({
     ...employee,
     key: index.toString()
   }))
 }
 
-const uploadImage = async (imageData: any) => {
-  console.log("post :", imageData)
+const uploadImage = async (file: File): Promise<string> => {
+  const formData = new FormData()
+  formData.append('file', file)
+
   try {
-    const response = await axios.post('http://localhost:3001/api/upload/single/user', {
-      imageData
-    });
-    console.log('Image uploaded:', response.data);
+    const response = await axios.post(
+      'http://localhost:3001/api/upload/single/user',
+      formData,
+      {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      }
+    )
+    return response.data.fileName 
   } catch (error) {
-    console.error('Error uploading image:', error);
-    throw error;
+    console.error('Error al subir la imagen:', error)
+    throw error
   }
-};
+}

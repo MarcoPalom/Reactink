@@ -8,18 +8,14 @@ import {
   Input,
   Modal,
   Form,
-  message
 } from 'antd';
 import {
   PlusOutlined,
   FilePdfOutlined,
-  FileExcelOutlined,
-  PrinterOutlined,
   EditOutlined,
   DeleteOutlined,
   DatabaseOutlined
 } from '@ant-design/icons';
-import axios from 'axios';
 import useTokenRenewal from 'components/Scripts/useTokenRenewal';
 import { Client } from 'components/Scripts/Interfaces';
 import * as clientUtils from 'components/Scripts/ClientUtils'; 
@@ -45,19 +41,7 @@ const ClientList = () => {
   useTokenRenewal(navigate);
 
   useEffect(() => {
-    const fetchClients = async () => {
-      try {
-        const response = await axios.get('http://localhost:3001/api/client/', {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
-        });
-        setClients(response.data);
-      } catch (error) {
-        console.error('Error fetching Clients:', error);
-      }
-    };
-    fetchClients();
+  clientUtils.fetchAndSetClients(setClients)
   }, [visibleAdd]);
 
   const columns = [
@@ -163,7 +147,7 @@ const ClientList = () => {
       <Modal
         title="Añadir Nuevo Cliente"
         visible={visibleAdd}
-        onCancel={() => clientUtils.handleAddCancel(EditForm, addForm, setVisibleAdd)}
+        onCancel={() => clientUtils.handleAddCancel(addForm, setVisibleAdd)}
         onOk={() => clientUtils.handleAddSave(addForm, setClients, setVisibleAdd)}
       >
         <Form form={addForm} layout="vertical">
@@ -226,8 +210,7 @@ const ClientList = () => {
       </div>
       <Card>
         <Space
-          style={{ marginBottom: 16 }}
-          className="flex flex-row justify-between"
+          className="mb-4 flex flex-row justify-between"
         >
           <div className="flex flex-row gap-1">
             <Search
@@ -243,10 +226,10 @@ const ClientList = () => {
         <div id="PDFtable">
           <div className="mt-5 flex justify-between mb-5">
             <img src={Logo} alt="Ink Sports" className="h-10 " />
-            <h1 className="text-end">
+            <span className="text-end">
               {' '}
               Ciudad victoria, Tamaulipas a<TodayDate></TodayDate>{' '}
-            </h1>
+            </span>
           </div>
           <Table
             className="w-full border-collapse border border-gray-200"

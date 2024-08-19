@@ -11,6 +11,19 @@ const getAuthHeaders = () => ({
 
 // Funciones relacionadas con empleados
 
+export const fetchEmployees = async () => {
+  try {
+    const response = await axios.get(
+      `${API_BASE_URL}/user/`,
+      getAuthHeaders()
+    )
+    return response.data
+  } catch (error) {
+    console.error('Error fetching employees:', error)
+    throw error
+  }
+}
+
 export const fetchEmployeeDetails = async (id: string) => {
   const response = await axios.get(
     `${API_BASE_URL}/user/${id}`,
@@ -18,6 +31,7 @@ export const fetchEmployeeDetails = async (id: string) => {
   )
   return response.data
 }
+
 export const updateEmployee = async (id: string, values: any) => {
   const response = await axios.put(
     `${API_BASE_URL}/user/update/${id}`,
@@ -273,6 +287,33 @@ export const addMaterialSize = async (materialSizeData: any) => {
   return response.data
 }
 
+export const fetchCategories = async () => {
+  try {
+    const response = await axios.get(
+      `${API_BASE_URL}/category/`,
+      getAuthHeaders()
+    )
+    return response.data
+  } catch (error) {
+    console.error('Error fetching employees:', error)
+    throw error
+  }
+}
+
+export const fetchSuppliers = async () => {
+  try {
+    const response = await axios.get(
+      `${API_BASE_URL}/supplier/`,
+      getAuthHeaders()
+    )
+    return response.data
+  } catch (error) {
+    console.error('Error fetching employees:', error)
+    throw error
+  }
+}
+
+
 //ordenes de corte 
 
 export const addQuotationProductShirt = async (
@@ -291,6 +332,22 @@ export const addQuotationProductShirt = async (
   }
 };
 
+
+export const addDesign = async (
+  DesignData: any,
+) => {
+  try {
+    const response = await axios.post(
+      `${API_BASE_URL}/quotation-design/`,
+      DesignData,
+      getAuthHeaders()
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error adding design:', error);
+    throw error;
+  }
+};
 
 export const addCuttingOrder = async (
   cuttingOrderData: any,
@@ -347,3 +404,26 @@ export const fetchQuotationOrder = async (id: string): Promise<Quotation[]>  => 
     throw error;
   }
 };
+
+export const fetchImage = async (imageName: string, imageExtension: string) => {
+  try {
+    const response = await axios.get(
+      `${API_BASE_URL}/image/${imageExtension}/${imageName}`,
+    {...getAuthHeaders(), responseType:'blob'}
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching employee image:', error);
+    throw error; 
+  }
+};
+
+
+export const fetchSizes = async (id: string) => {
+  const response = await axios.get(
+    `${API_BASE_URL}/material-size/${id}`,
+    getAuthHeaders()
+  )
+  return response.data
+}
+
