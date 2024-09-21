@@ -52,7 +52,7 @@ export const handleView = async (
 }
 
 export const handleSave = async (
-  EditForm: FormInstance,
+  editForm: FormInstance,
   editingEmployee: Employee | null,
   employees: Employee[],
   setEmployees: (employees: Employee[]) => void,
@@ -71,7 +71,7 @@ export const handleSave = async (
         message.error('Error al subir la imagen')
       }
     }
-    const values = await EditForm.validateFields()
+    const values = await editForm.validateFields()
     const updatedEmployeeData: Partial<Employee> = {
       ...values,
       ...(imageFileName ? { image: imageFileName } : {}) 
@@ -96,7 +96,7 @@ export const handleSave = async (
   }
   finally {
     setVisibleEdit(false)
-    EditForm.resetFields()
+    editForm.resetFields()
     setFile(null)
   }
 }
@@ -182,10 +182,10 @@ export const handleClose = (setVisible: (visible: boolean) => void, setImage: (i
 }
 
 export const handleCloseEdit = (
-  EditForm: FormInstance,
+  editForm: FormInstance,
   setVisibleEdit: (visibleEdit: boolean) => void
 ) => {
-  EditForm.resetFields()
+  editForm.resetFields()
   setVisibleEdit(false)
 }
 
@@ -204,12 +204,12 @@ export const handleAddCancel = (
 export const handleEdit = async (
   record: Employee,
   setEditingEmployee: (employee: Employee) => void,
-  EditForm: FormInstance,
+  editForm: FormInstance,
   setVisibleEdit: (visibleEdit: boolean) => void
 ) => {
   try {
     setEditingEmployee(record)
-    EditForm.setFieldsValue(record)
+    editForm.setFieldsValue(record)
     setVisibleEdit(true)
   } catch (error) {
     console.error('Error al editar el empleado:', error)

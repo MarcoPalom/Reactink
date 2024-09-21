@@ -1,48 +1,39 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import {
-  Button,
-  Space,
-  Table,
-  Card,
-  Input,
-  Modal,
-  Form,
-} from 'antd';
+import { Button, Space, Table, Card, Input, Modal, Form } from 'antd'
 import {
   PlusOutlined,
   FilePdfOutlined,
   EditOutlined,
   DeleteOutlined,
   DatabaseOutlined
-} from '@ant-design/icons';
-import useTokenRenewal from 'components/Scripts/useTokenRenewal';
-import { Client } from 'components/Scripts/Interfaces';
-import * as clientUtils from 'components/Scripts/ClientUtils'; 
+} from '@ant-design/icons'
+import useTokenRenewal from 'components/Scripts/useTokenRenewal'
+import { Client } from 'components/Scripts/Interfaces'
+import * as clientUtils from 'components/Scripts/ClientUtils'
 import { generatePDF } from 'components/Scripts/Utils'
 import Logo from 'assets/img/logo.png'
 import TodayDate from '../../../components/Scripts/Utils'
 
-
-const { Search } = Input;
+const { Search } = Input
 
 const ClientList = () => {
-  const [Clients, setClients] = useState<Client[]>([]);
-  const [searchText, setSearchText] = useState('');
-  const [visible, setVisible] = useState<boolean>(false);
-  const [visibleEdit, setVisibleEdit] = useState<boolean>(false);
-  const [visibleAdd, setVisibleAdd] = useState<boolean>(false);
-  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-  const [editingClient, setEditingClient] = useState<Client | null>(null);
-  const navigate = useNavigate();
-  const [EditForm] = Form.useForm();
-  const [addForm] = Form.useForm();
+  const [Clients, setClients] = useState<Client[]>([])
+  const [editingClient, setEditingClient] = useState<Client | null>(null)
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null)
+  const [searchText, setSearchText] = useState('')
+  const [visible, setVisible] = useState<boolean>(false)
+  const [visibleAdd, setVisibleAdd] = useState<boolean>(false)
+  const [visibleEdit, setVisibleEdit] = useState<boolean>(false)
+  const [EditForm] = Form.useForm()
+  const [addForm] = Form.useForm()
 
-  useTokenRenewal(navigate);
+  const navigate = useNavigate()
+  useTokenRenewal(navigate)
 
   useEffect(() => {
-  clientUtils.fetchAndSetClients(setClients)
-  }, [visibleAdd]);
+    clientUtils.fetchAndSetClients(setClients)
+  }, [visibleAdd])
 
   const columns = [
     {
@@ -75,55 +66,88 @@ const ClientList = () => {
       title: 'Telefono',
       dataIndex: 'phone',
       key: 'phone',
-      className: 'hidden lg:table-cell',
+      className: 'hidden lg:table-cell'
     },
     {
       title: 'Acción',
       key: 'action',
       className: 'action-column',
-      render: (text: any, record: any) => (
-        <Space size="middle">
+      render: (record: Client) => (
+        <Space className="md:flex-wrap md:items-center" size="middle">
           <Button
             icon={<DatabaseOutlined className="text-green-700" />}
-            onClick={() => clientUtils.handleView(record.id.toString(), setSelectedClient, setVisible)}
+            onClick={() =>
+              clientUtils.handleView(
+                record.id.toString(),
+                setSelectedClient,
+                setVisible
+              )
+            }
           />
           <Button
             icon={<EditOutlined className="text-blue-700" />}
-            onClick={() => clientUtils.handleEdit(record, setEditingClient, EditForm, setVisibleEdit)}
+            onClick={() =>
+              clientUtils.handleEdit(
+                record,
+                setEditingClient,
+                EditForm,
+                setVisibleEdit
+              )
+            }
           />
           <Button
             icon={<DeleteOutlined className="text-red-700" />}
-            onClick={() => clientUtils.handleDelete(record, Clients, setClients)}
+            onClick={() =>
+              clientUtils.handleDelete(record, Clients, setClients)
+            }
           />
         </Space>
       )
     }
-  ];
+  ]
 
   return (
     <>
       <Modal
         title="Detalles del Cliente"
-        visible={visible}
+        open={visible}
         onCancel={() => clientUtils.handleClose(setVisible)}
         footer={[]}
       >
         {selectedClient && (
           <>
-            <p><strong>Nombre:</strong> {selectedClient.name}</p>
-            <p><strong>Apellido:</strong> {selectedClient.surname}</p>
-            <p><strong>Organización:</strong> {selectedClient.organization}</p>
-            <p><strong>Email:</strong> {selectedClient.email}</p>
-            <p><strong>Teléfono:</strong> {selectedClient.phone}</p>
+            <p>
+              <strong>Nombre:</strong> {selectedClient.name}
+            </p>
+            <p>
+              <strong>Apellido:</strong> {selectedClient.surname}
+            </p>
+            <p>
+              <strong>Organización:</strong> {selectedClient.organization}
+            </p>
+            <p>
+              <strong>Email:</strong> {selectedClient.email}
+            </p>
+            <p>
+              <strong>Teléfono:</strong> {selectedClient.phone}
+            </p>
           </>
         )}
       </Modal>
 
       <Modal
         title="Editar Cliente"
-        visible={visibleEdit}
+        open={visibleEdit}
         onCancel={() => clientUtils.handleCloseEdit(EditForm, setVisibleEdit)}
-        onOk={() => clientUtils.handleSave(EditForm, editingClient, Clients, setClients, setVisibleEdit)}
+        onOk={() =>
+          clientUtils.handleSave(
+            EditForm,
+            editingClient,
+            Clients,
+            setClients,
+            setVisibleEdit
+          )
+        }
       >
         <Form form={EditForm} layout="vertical">
           <Form.Item name="name" label="Nombre">
@@ -146,9 +170,11 @@ const ClientList = () => {
 
       <Modal
         title="Añadir Nuevo Cliente"
-        visible={visibleAdd}
+        open={visibleAdd}
         onCancel={() => clientUtils.handleAddCancel(addForm, setVisibleAdd)}
-        onOk={() => clientUtils.handleAddSave(addForm, setClients, setVisibleAdd)}
+        onOk={() =>
+          clientUtils.handleAddSave(addForm, setClients, setVisibleAdd)
+        }
       >
         <Form form={addForm} layout="vertical">
           <Form.Item
@@ -161,14 +187,18 @@ const ClientList = () => {
           <Form.Item
             name="surname"
             label="Apellido"
-            rules={[{ required: true, message: 'Por favor ingrese el apellido' }]}
+            rules={[
+              { required: true, message: 'Por favor ingrese el apellido' }
+            ]}
           >
             <Input />
           </Form.Item>
           <Form.Item
             name="organization"
             label="Organización"
-            rules={[{ required: true, message: 'Por favor ingrese la organización' }]}
+            rules={[
+              { required: true, message: 'Por favor ingrese la organización' }
+            ]}
           >
             <Input />
           </Form.Item>
@@ -194,24 +224,23 @@ const ClientList = () => {
         </Form>
       </Modal>
 
-      <div className="flex flex-row justify-between mb-4">
-        <div>
+      <div className="flex flex-col md:flex-row md:justify-between mb-4">
+        <div className="flex-1 flex flex-col items-center justify-center md:items-start md:justify-start">
           <h4 className="font-bold text-lg">Personal</h4>
           <h6 className="text-sm">Lista de Clientes</h6>
         </div>
         <Button
-          className=" h-10 bg-indigo-900 rounded-md text-white text-base font-bold p-2 items-center "
+          className="h-10 bg-indigo-900 rounded-md text-white text-base font-bold p-2 mt-4 md:mt-0 md:self-end"
           onClick={() => clientUtils.handleAdd(setVisibleAdd)}
         >
           <a>
-            <PlusOutlined className="text-white font-bold" /> Añadir nuevo cliente
+            <PlusOutlined className="text-white font-bold" /> Añadir nuevo
+            cliente
           </a>
         </Button>
       </div>
       <Card>
-        <Space
-          className="mb-4 flex flex-row justify-between"
-        >
+        <Space className="mb-4 flex flex-row justify-between">
           <div className="flex flex-row gap-1">
             <Search
               placeholder="Búsqueda..."
@@ -234,13 +263,15 @@ const ClientList = () => {
           <Table
             className="w-full border-collapse border border-gray-200"
             columns={columns}
-            dataSource={clientUtils.addKeysToFilteredClients(clientUtils.filterClients(Clients, searchText))}
+            dataSource={clientUtils.addKeysToFilteredClients(
+              clientUtils.filterClients(Clients, searchText)
+            )}
+            tableLayout='fixed'
           />
         </div>
       </Card>
     </>
-  );
-};
+  )
+}
 
-
-export default ClientList;
+export default ClientList

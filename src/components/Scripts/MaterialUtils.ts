@@ -14,10 +14,22 @@ import {
   fetchSizes
 } from 'components/Scripts/Apicalls'
 import { message, Modal, FormInstance } from 'antd'
-import { Material, Supplier, SupplierAdd, Category,Employee } from './Interfaces'
+import {
+  Material,
+  Supplier,
+  SupplierAdd,
+  Category,
+  Employee,
+  MaterialRends
+} from './Interfaces'
 import axios from 'axios'
 
+
 const { confirm } = Modal
+
+export const sizes: string[] = [
+  '6', '8', '12', '14', '16', '18', 'CH', 'M', 'G', 'XG', 'XXG', 'XXXG', '4XG'
+];
 
 export const fetchAndSetData = async (
   setMaterials: React.Dispatch<React.SetStateAction<Material[]>>,
@@ -30,40 +42,27 @@ export const fetchAndSetData = async (
       fetchMaterials(),
       fetchCategories(),
       fetchSuppliers(),
-      fetchEmployees(),
-    ]);
+      fetchEmployees()
+    ])
 
-    const enrichedMaterials = materials.map((material:Material) => ({
+    const enrichedMaterials = materials.map((material: Material) => ({
       ...material,
-      categoryName: categories.find((category:Category) => category.id === material.categoryId)?.name,
-      supplierName: suppliers.find((supplier:Supplier) => supplier.id === material.supplierId)?.name,
-      userName: users.find((user:Employee) => user.id === material.userId)?.name,
-    }));
+      categoryName: categories.find(
+        (category: Category) => category.id === material.categoryId
+      )?.name,
+      supplierName: suppliers.find(
+        (supplier: Supplier) => supplier.id === material.supplierId
+      )?.name,
+      userName: users.find((user: Employee) => user.id === material.userId)
+        ?.name
+    }))
 
-    console.log(enrichedMaterials)
-    setMaterials(enrichedMaterials);
-    setCategories(categories);
-    setSuppliers(suppliers);
-    setUserName(users[0]?.name || '');
+    setMaterials(enrichedMaterials)
+    setCategories(categories)
+    setSuppliers(suppliers)
+    setUserName(users[0]?.name || '')
   } catch (error) {
-    console.error('Error fetching and setting data:', error);
-  }
-};
-
-export const handleSaveMatSize = async (
-  MaterialSizeform: FormInstance,
-  selectedMaterial: Material | null,
-  setVisibleMaterialSize: (visible: boolean) => void
-) => {
-  try {
-    const values = await MaterialSizeform.validateFields()
-    const materialSizeData = { ...values, materialId: selectedMaterial?.id }
-    await addMaterialSize(materialSizeData)
-    setVisibleMaterialSize(false)
-    message.success('Rendimiento agregado exitosamente')
-    MaterialSizeform.resetFields()
-  } catch (error) {
-    console.error('Error saving material size:', error)
+    console.error('Error fetching and setting data:', error)
   }
 }
 
@@ -214,7 +213,7 @@ export const handleAddSave = async (
 }
 
 export const handleDeleteMaterial = async (
-  id: string,
+  id: number,
   Materials: Material[],
   setMaterials: (materials: Material[]) => void
 ) => {
@@ -253,13 +252,53 @@ export const handleEdit = async (
   setVisibleEdit: (visible: boolean) => void
 ) => {
   try {
-    setEditingMaterial(record)
-    EditForm.setFieldsValue(record)
+    const formattedRecord = {
+      ...record,
+      dateReceipt: record.dateReceipt ? record.dateReceipt.split('T')[0] : null,
+    }
+    setEditingMaterial(formattedRecord)
+    EditForm.setFieldsValue(formattedRecord)
     setVisibleEdit(true)
   } catch (error) {
     console.error('Error al editar el Material:', error)
   }
 }
+
+export const handleSaveMatSize = async (
+  MaterialSizeform: FormInstance,
+  selectedMaterial: Material | null,
+  setVisibleMaterialSize: (visible: boolean) => void,
+  materialRends: MaterialRends[] | null, 
+  setMaterialRends: (materialRends: MaterialRends[]) => void,
+  setUsedSizes: (usedSizes: string[]) => void 
+) => {
+  try {
+    const values = await MaterialSizeform.validateFields();
+    const materialSizeData = { ...values, materialId: selectedMaterial?.id };
+    const newMaterialSize = await addMaterialSize(materialSizeData);
+    setVisibleMaterialSize(false);
+    message.success('Rendimiento agregado exitosamente');
+    MaterialSizeform.resetFields();
+    const updatedMaterialRends = materialRends
+      ? [...materialRends, newMaterialSize]
+      : [newMaterialSize];
+    setMaterialRends(updatedMaterialRends);
+    
+  } catch (error) {
+    console.error('Error saving material size:', error);
+  } finally {
+    if (selectedMaterial) {
+      try {
+        const fetchedsizes = await fetchSizes(selectedMaterial.id);
+        const usedSizes = fetchedsizes.map((size: MaterialRends) => size.size);
+        setUsedSizes(usedSizes);
+      } catch (error) {
+        console.error('Error fetching sizes:', error);
+      }
+    }
+    setVisibleMaterialSize(true);
+  }
+};
 
 export const handleCloseMaterialSize = (
   MaterialSizeform: FormInstance,
@@ -270,24 +309,29 @@ export const handleCloseMaterialSize = (
 }
 
 export const openMaterialSizeModal = async (
-  material: Material,
-  setSelectedMaterial: (material: Material | null) => void,
   setVisibleMaterialSize: (visible: boolean) => void
 ) => {
-  // Establece el material seleccionado
-  setSelectedMaterial(material);
-  
-  // Llama a fetchSizes con el ID del material seleccionado
+  setVisibleMaterialSize(true)
+}
+ 
+export const openMaterialRends = async (
+  record: Material,
+  setVisibleMaterialRen: (visible: boolean) => void,
+  setMaterialRends: (materialRends: MaterialRends[] | null) => void,
+  setSelectedMaterial: (material: Material) => void, 
+  setUsedSizes: (usedSizes: string[]) => void 
+) => {
+  setSelectedMaterial(record) 
+  setVisibleMaterialRen(true)
   try {
-    const sizes = await fetchSizes(material.id);
-    console.log('Fetched sizes:', sizes);
+    const fetchedsizes = await fetchSizes(record.id)
+    setMaterialRends(fetchedsizes)
+    const usedSizes = fetchedsizes.map((size: MaterialRends) => size.size)
+    setUsedSizes(usedSizes)
   } catch (error) {
-    console.error('Error fetching sizes:', error);
+    console.error('Error fetching sizes:', error)
   }
-
-  // Muestra el modal
-  setVisibleMaterialSize(true);
-};
+}
 
 export const handleAddCancel = (
   setVisibleAdd: (visible: boolean) => void,
@@ -342,6 +386,20 @@ export const addKeysToMaterials = (
     key: index.toString()
   }))
 }
+
+export const getAvailableSizes = (usedSizes: string[]): string[] => {
+  return sizes.filter(size => !usedSizes.includes(size));
+};
+
+export const getSupplierName = (id: string, suppliers: Supplier[]): string => {
+  const supplier = suppliers.find(supplier => supplier.id === id);
+  return supplier ? supplier.name : 'Desconocido';
+};
+
+export const getCategoryName = (id: string, categories: Category[]): string => {
+  const category = categories.find(category => category.id === id);
+  return category ? category.name : 'Desconocido';
+};
 
 const uploadImage = async (file: File): Promise<string> => {
   const formData = new FormData()

@@ -77,7 +77,7 @@ export const fetchQuotations = async () => {
   }
 }
 
-export const updateQuotation = async (id: string, values: any) => {
+export const updateQuotation = async (id: number, values: any) => {
   const response = await axios.put(
     `${API_BASE_URL}/quotation/update/${id}`,
     values,
@@ -94,6 +94,32 @@ export const addQuotation = async (quotationData: any) => {
   )
   return response.data
 }
+
+export const fetchQuotationProducts = async (quotationId: number) => {
+  try {
+    const response = await axios.get(
+      `${API_BASE_URL}/quotation-product/?quotationid=${quotationId}`,
+      getAuthHeaders()
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching quotation products:', error);
+    throw error; 
+  }
+};
+
+export const fetchQuotationProductsMaquila = async (quotationId: number) => {
+  try {
+    const response = await axios.get(
+      `${API_BASE_URL}/quotation-product-maquila/?quotationid=${quotationId}`,
+      getAuthHeaders()
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching quotation products:', error);
+    throw error; 
+  }
+};
 
 export const addQuotationProduct = async (pivotDataProduct: any) => {
   const response = await axios.post(
@@ -116,7 +142,7 @@ export const addQuotationProductMaquila = async (
 }
 
 export const EditQuotationProduct = async (
-  id: string,
+  id: number | undefined,
   pivotDataProduct: any
 ) => {
   const response = await axios.put(
@@ -128,7 +154,7 @@ export const EditQuotationProduct = async (
 }
 
 export const EditQuotationProductMaquila = async (
-  id: string,
+  id: number | undefined,
   pivotDataProductMaquila: any
 ) => {
   const response = await axios.put(
@@ -255,7 +281,7 @@ export const fetchMaterial = async (id: string) => {
   )
   return response.data
 }
-export const updateMaterial = async (id: string, materialData: any) => {
+export const updateMaterial = async (id: number, materialData: any) => {
   const response = await axios.put(
     `${API_BASE_URL}/material/update/${id}`,
     materialData,
@@ -271,7 +297,7 @@ export const addMaterial = async (materialData: any) => {
   )
   return response.data
 }
-export const deleteMaterial = async (id: string) => {
+export const deleteMaterial = async (id: number) => {
   const response = await axios.delete(
     `${API_BASE_URL}/material/delete/${id}`,
     getAuthHeaders()
@@ -332,6 +358,23 @@ export const addQuotationProductShirt = async (
   }
 };
 
+export const addQuotationProductShort = async (
+  shortData: any,
+) => {
+  try {
+    const response = await axios.post(
+      `${API_BASE_URL}/quotation-product-short/`,
+      shortData,
+      getAuthHeaders()
+    );
+    return response.data;
+  } catch (error) {
+    console.error('Error adding quotation product shirt:', error);
+    throw error;
+  }
+};
+
+
 
 export const addDesign = async (
   DesignData: any,
@@ -369,6 +412,14 @@ export const fetchOrders = async () => {
   const response = await axios.get(`${API_BASE_URL}/cutting-order/`, getAuthHeaders())
   return response.data
 }
+
+export const fetchSizes = async (materialId: number) => {
+  const response = await axios.get(
+    `${API_BASE_URL}/material-size/${materialId}`, 
+    getAuthHeaders()
+  );
+  return response.data;
+};
 
 export const fetchOrder = async (id: number): Promise<FormDataShirtView[]>  =>  {
   try {
@@ -419,11 +470,4 @@ export const fetchImage = async (imageName: string, imageExtension: string) => {
 };
 
 
-export const fetchSizes = async (id: string) => {
-  const response = await axios.get(
-    `${API_BASE_URL}/material-size/${id}`,
-    getAuthHeaders()
-  )
-  return response.data
-}
 

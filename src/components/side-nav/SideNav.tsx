@@ -32,6 +32,12 @@ const SideNav = () => {
   const navigate = useNavigate()
   const location = useLocation()
 
+  const userole = localStorage.getItem('userRole');
+  
+  if (userole && Number(userole) === 4) {
+    return null;
+  }
+
   const allowedRoutes = [
     '/homepage',
     '/inventario',
@@ -52,7 +58,7 @@ const SideNav = () => {
     getItem('Inicio', '/homepage', <DashboardOutlined />),
 
     getItem('Inventario', 'stock', <MailOutlined />, [
-      getItem('Materiales', '/inventario/productos'),
+      getItem('Materiales', '/inventario/productos')
     ]),
 
     getItem('Finanzas', 'finance', <CodeSandboxOutlined />, [
@@ -60,13 +66,12 @@ const SideNav = () => {
       getItem('Ventas', '/finanzas/ventas'),
       getItem('Gastos', '/finanzas/gastos'),
       getItem('Deudas', '/finanzas/deudas'),
-      getItem('Ordenes', '/finanzas/cuttingorders'),
+      getItem('Ordenes', '/finanzas/cuttingorders')
     ]),
 
     getItem('Personal', 'employees', <ShoppingCartOutlined />, [
       getItem('Empleados', '/personal/empleados'),
-      getItem('Clientes', '/personal/clientes'),
- 
+      getItem('Clientes', '/personal/clientes')
     ]),
 
     getItem('Producción', 'prod', <EyeOutlined />, [

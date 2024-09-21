@@ -14,34 +14,34 @@ const Login = () => {
     password: '',
   })
 
-  /*const emergencylog = () =>{
-    navigate('/homepage')
-  }
-    */
-
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
   
-
-   const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault()
-
     try {
       const response = await axios.post(
         'http://localhost:3001/api/user/login',
-        formData,
-      )
+        formData
+      );
   
-      console.log('Respuesta del servidor:', response.data)
+      console.log('Respuesta del servidor:', response.data);
+  
+      if (response.data.token && response.data.user) {
+        localStorage.setItem('token', response.data.token);
       
-      if (response.data.token) {
-        localStorage.setItem('token', response.data.token)
-        navigate('/homepage')
+        localStorage.setItem('userRole', response.data.user.role.toString());
+
+      
+        navigate('/homepage');
       } else {
-        console.error('No se recibió un token en la respuesta del servidor')
+        console.error('No se recibió un token o un usuario en la respuesta del servidor');
       }
     } catch (error) {
-      console.error('Error al hacer la solicitud:', error)
+      console.error('Error al hacer la solicitud:', error);
     }
-  }
+  };
+
+
+  
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [event.target.name]: event.target.value })
@@ -73,13 +73,7 @@ const Login = () => {
         >
           Entrar
         </Button>
-
-       {/* <Button
-          className="h-14 w-32 bg-indigo-900 rounded-md text-white text-base font-bold mt-6"
-          onClick={emergencylog}
-        >
-          Entrar emergencia
-  </Button>*/}
+        
   
       </div>
       <div className="md:w-2/4 md:block hidden">

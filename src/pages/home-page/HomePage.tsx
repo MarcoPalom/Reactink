@@ -1,54 +1,40 @@
 import DashCount from "./homepage-components/DashCount";
 import ChartNTable from "./homepage-components/ChartNTable";
 import ActivitiesList from "./homepage-components/ActivitiesList";
+import DesignArea from "./homepage-components/DesingArea";
 import {useNavigate} from 'react-router-dom'
-
-
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-
+import useTokenRenewal from 'components/Scripts/useTokenRenewal'
 
 
 const HomePage = () => {
 
     const navigate = useNavigate()
+    useTokenRenewal(navigate)
+    
+    const userole = localStorage.getItem('userRole');
 
-    useEffect(() => {
-
-        const renewToken = async () => {
-          try {
-            const token = localStorage.getItem('token');
+    // Convertimos a número para la comparación
+    const roleNumber = Number(userole);
     
-            if (!token) {
-              navigate('/');
-            }
-            const response = await axios.get('http://localhost:3001/api/user/renew-token', {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            });
-
-            localStorage.setItem('token', response.data.token);
-    
-            console.log('Token renovado con éxito:', response.data);
-          } catch (error) {
-            console.error('Error al renovar el token:', error);
-            navigate('/');
-          }
-        };
-    
-        renewToken();
-      } , []);
-    
-      
-    
-
     return (
+
         <div>
-            <DashCount />
-            <ChartNTable/>
-            <ActivitiesList/>
+      {roleNumber === 1 ? (
+        // Si el rol es 1, mostramos el primer div con los componentes
+        <div>
+          <DashCount />
+          <ChartNTable />
+          <ActivitiesList />
         </div>
+      ) : roleNumber === 4 ? (
+        // Si el rol es 4, mostramos el segundo div con "holamundo"
+        <DesignArea/>
+      ) : (
+        // Si el rol no es ni 1 ni 4, no mostramos nada o puedes agregar otro contenido si lo deseas
+        null
+      )}
+    </div>
+
     )
 }
 

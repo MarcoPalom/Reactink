@@ -23,18 +23,18 @@ import {
   RiseOutlined,
   UploadOutlined
 } from '@ant-design/icons'
-import axios from 'axios'
 import useTokenRenewal from 'components/Scripts/useTokenRenewal'
 import {
   Material,
   Category,
   Supplier,
   SupplierAdd,
+  MaterialRends
 } from 'components/Scripts/Interfaces'
 import { generatePDF } from 'components/Scripts/Utils'
 import Logo from 'assets/img/logo.png'
 import TodayDate from '../../../components/Scripts/Utils'
-import {  UploadChangeParam } from 'antd/lib/upload'
+import { UploadChangeParam } from 'antd/lib/upload'
 import Missing from 'assets/img/noUserPhoto.jpg'
 
 const { Search } = Input
@@ -46,34 +46,54 @@ const MaterialList = () => {
   const [visibleEdit, setVisibleEdit] = useState<boolean>(false)
   const [visibleAdd, setVisibleAdd] = useState<boolean>(false)
   const [VisibleMaterialSize, setVisibleMaterialSize] = useState<boolean>(false)
-  const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(null)
+  const [VisibleMaterialRen, setVisibleMaterialRen] = useState<boolean>(false)
+  const [selectedMaterial, setSelectedMaterial] = useState<Material | null>(
+    null
+  )
   const [editingMaterial, setEditingMaterial] = useState<Material | null>(null)
   const [categories, setCategories] = useState<Category[]>([])
-  const [isAddCategoryModalVisible, setIsAddCategoryModalVisible] =useState(false)
+  const [isAddCategoryModalVisible, setIsAddCategoryModalVisible] =
+    useState(false)
   const [newCategoryName, setNewCategoryName] = useState('')
   const [Suppliers, setSuppliers] = useState<Supplier[]>([])
-  const [isAddSupplierModalVisible, setIsAddSupplierModalVisible] =useState(false)
-  const [newSupplier, setNewSupplier] = useState<SupplierAdd>({ name: '',email: '',phone: ''})
+  const [isAddSupplierModalVisible, setIsAddSupplierModalVisible] =
+    useState(false)
+  const [newSupplier, setNewSupplier] = useState<SupplierAdd>({
+    name: '',
+    email: '',
+    phone: ''
+  })
   const [userName, setUserName] = useState<string>('')
   const navigate = useNavigate()
   const [EditForm] = Form.useForm()
   const [addForm] = Form.useForm()
   const [MaterialSizeform] = Form.useForm()
-  const filteredMaterials = MaterialUtils.filterMaterials(Materials, searchText);
-  const filteredMaterialsWithKeys = MaterialUtils.addKeysToMaterials(filteredMaterials);
+  const filteredMaterials = MaterialUtils.filterMaterials(Materials, searchText)
+  const filteredMaterialsWithKeys =
+    MaterialUtils.addKeysToMaterials(filteredMaterials)
   const [file, setFile] = useState<File | null>(null)
   const [image, setImage] = useState<string | null>(null)
+  const [materialRends, setMaterialRends] = useState<MaterialRends[] | null>(
+    null
+  )
+  const [usedSizes, setUsedSizes] = useState<string[]>([])
 
   const { Option } = Select
 
   useTokenRenewal(navigate)
 
   useEffect(() => {
-      MaterialUtils.fetchAndSetData(setMaterials, setCategories, setSuppliers, setUserName);
+    MaterialUtils.fetchAndSetData(
+      setMaterials,
+      setCategories,
+      setSuppliers,
+      setUserName
+    )
   }, [visibleAdd])
 
   const handleAddSupplier = () => setIsAddSupplierModalVisible(true)
   const handleAddCategory = () => setIsAddCategoryModalVisible(true)
+
   const handleFileChange = (info: UploadChangeParam) => {
     const fileList = [...info.fileList]
     setFile(fileList[0]?.originFileObj as File)
@@ -155,8 +175,8 @@ const MaterialList = () => {
       title: 'Accion',
       key: 'action',
       className: 'action-column',
-      render: (text: any, record: any) => (
-        <Space size="middle">
+      render: (record: Material) => (
+        <Space className="flex flex-col md:grid md:grid-cols-2" size="middle">
           <Button
             icon={<DatabaseOutlined className="text-green-700" />}
             onClick={() =>
@@ -170,16 +190,65 @@ const MaterialList = () => {
           />
           <Button
             icon={<EditOutlined className="text-blue-700" />}
-            onClick={() => MaterialUtils.handleEdit(record, setEditingMaterial, EditForm, setVisibleEdit)}
+            onClick={() =>
+              MaterialUtils.handleEdit(
+                record,
+                setEditingMaterial,
+                EditForm,
+                setVisibleEdit
+              )
+            }
           />
           <Button
             icon={<DeleteOutlined className="text-red-700" />}
-            onClick={() => MaterialUtils.handleDelete(record, Materials, setMaterials)}
+            onClick={() =>
+              MaterialUtils.handleDelete(record, Materials, setMaterials)
+            }
           />
-           <Button
-            icon={<RiseOutlined  className="text-yellow-700" />}
-            onClick={()=>MaterialUtils.openMaterialSizeModal(record,setSelectedMaterial,setVisibleMaterialSize)}
-          />
+          {record.unitMeasure !== 'U' && (
+            <Button
+              icon={<RiseOutlined className="text-yellow-700" />}
+              onClick={() =>
+                MaterialUtils.openMaterialRends(
+                  record,
+                  setVisibleMaterialRen,
+                  setMaterialRends,
+                  setSelectedMaterial,
+                  setUsedSizes
+                )
+              }
+            />
+          )}
+        </Space>
+      )
+    }
+  ]
+
+  const columnsRen = [
+    {
+      title: 'Talla',
+      dataIndex: 'size',
+      key: 'size'
+    },
+    {
+      title: 'Consumo',
+      dataIndex: 'consumption',
+      key: 'consumption',
+      sorter: (a: any, b: any) => a.surname.length - b.surname.length
+    },
+    {
+      title: 'Rendimiento',
+      dataIndex: 'performance',
+      key: 'performance',
+      sorter: (a: any, b: any) => a.surname.length - b.surname.length
+    },
+    {
+      title: 'Editar',
+      key: 'Edit',
+      className: 'action-column',
+      render: () => (
+        <Space size="middle">
+          <Button icon={<EditOutlined className="text-blue-700" />} />
         </Space>
       )
     }
@@ -190,16 +259,16 @@ const MaterialList = () => {
       <Modal
         title="Detalles del Material"
         open={visible}
-        onCancel={()=> MaterialUtils.handleClose(setVisible,setImage)}
+        onCancel={() => MaterialUtils.handleClose(setVisible, setImage)}
         footer={[]}
       >
         {selectedMaterial && (
           <>
-          <div className="flex justify-center">
+            <div className="flex justify-center">
               {image ? (
-                <img className="w-44 h-44" src={image} alt="Image" />
+                <img className="w-44 h-44" src={image} alt="Foto" />
               ) : (
-                <img className="w-44 h-44" src={Missing} alt="missing image" />
+                <img className="w-44 h-44" src={Missing} alt="Sin foto" />
               )}
             </div>
             <p>
@@ -212,10 +281,18 @@ const MaterialList = () => {
               <strong>Cantidad:</strong> {selectedMaterial.stock}
             </p>
             <p>
-              <strong>Provedor:</strong> {selectedMaterial.supplierId}
+              <strong>Provedor:</strong>{' '}
+              {MaterialUtils.getSupplierName(
+                selectedMaterial.supplierId,
+                Suppliers
+              )}
             </p>
             <p>
-              <strong>Categoria:</strong> {selectedMaterial.categoryId}
+              <strong>Categoría:</strong>{' '}
+              {MaterialUtils.getCategoryName(
+                selectedMaterial.categoryId,
+                categories
+              )}
             </p>
             <p>
               <strong>Usuario:</strong> {selectedMaterial.userId}
@@ -224,8 +301,12 @@ const MaterialList = () => {
               <strong>Unidad:</strong> {selectedMaterial.unitMeasure}
             </p>
             <p>
-              <strong>Recibido:</strong>{' '} 
-              {new Date(selectedMaterial.dateReceipt).toLocaleDateString('es-ES')}
+              <strong>Recibido:</strong>{' '}
+              {selectedMaterial.dateReceipt
+                ? new Date(selectedMaterial.dateReceipt).toLocaleDateString(
+                    'es-ES'
+                  )
+                : 'No disponible'}
             </p>
             <p>
               <strong>Serial:</strong> {selectedMaterial.serial}
@@ -240,149 +321,202 @@ const MaterialList = () => {
       <Modal
         title="Agregar Tamaño de Material"
         open={VisibleMaterialSize}
-        onOk={()=>MaterialUtils.handleSaveMatSize(MaterialSizeform,selectedMaterial,setVisibleMaterialSize)}
-        onCancel={()=>MaterialUtils.handleCloseMaterialSize(MaterialSizeform,setVisibleMaterialSize)}
+        onOk={() =>
+          MaterialUtils.handleSaveMatSize(
+            MaterialSizeform,
+            selectedMaterial,
+            setVisibleMaterialSize,
+            materialRends,
+            setMaterialRends,
+            setUsedSizes
+          )
+        }
+        onCancel={() =>
+          MaterialUtils.handleCloseMaterialSize(
+            MaterialSizeform,
+            setVisibleMaterialSize
+          )
+        }
       >
         <Form form={MaterialSizeform} layout="vertical">
-          <div className='flex flex-row justify-between'>
-          <Form.Item
-            name="size"
-            label="Tamaño"
-            rules={[{ required: true, message: 'Por favor ingrese el tamaño' }]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="consumption"
-            label="Consumo"
-            rules={[{ required: true, message: 'Por favor ingrese el consumo' }]}
-          >
-            <InputNumber min={0} />
-          </Form.Item>
-          <Form.Item
-            name="performance"
-            label="Desempeño"
-            rules={[{ required: true, message: 'Por favor ingrese el desempeño' }]}
-          >
-            <InputNumber min={0} />
-          </Form.Item>
+          <div className="flex flex-row justify-between">
+            <Form.Item
+              name="size"
+              label="Tamaño"
+              rules={[
+                { required: true, message: 'Por favor ingrese el tamaño' }
+              ]}
+            >
+              <Select placeholder="Selecciona un tamaño">
+                {MaterialUtils.getAvailableSizes(usedSizes).map((size) => (
+                  <Select.Option key={size} value={size}>
+                    {size}
+                  </Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+            <Form.Item
+              name="consumption"
+              label="Consumo"
+              rules={[
+                { required: true, message: 'Por favor ingrese el consumo' }
+              ]}
+            >
+              <InputNumber min={0} />
+            </Form.Item>
+            <Form.Item
+              name="performance"
+              label="Desempeño"
+              rules={[
+                { required: true, message: 'Por favor ingrese el desempeño' }
+              ]}
+            >
+              <InputNumber min={0} />
+            </Form.Item>
           </div>
         </Form>
       </Modal>
 
-      <Drawer
-  title="Editar Material"
-  open={visibleEdit}
-  onClose={() => MaterialUtils.handleCloseEdit(setVisibleEdit, EditForm)}
-  footer={
-    <div style={{ textAlign: 'right' }}>
-      <Button
-        onClick={() =>
-          MaterialUtils.handleSave(
-            editingMaterial,
-            EditForm,
-            Materials,
-            setMaterials,
-            setVisibleEdit,
-            file
-          )
+      <Modal
+        title="Rendimientos"
+        open={VisibleMaterialRen}
+        onCancel={() => setVisibleMaterialRen(false)}
+        footer={
+          <Button
+            onClick={() =>
+              MaterialUtils.openMaterialSizeModal(setVisibleMaterialSize)
+            }
+            icon={<PlusOutlined />}
+          >
+            Agregar rendimiento
+          </Button>
         }
-        type="primary"
       >
-        Guardar
-      </Button>
-    </div>
-  }
->
-  <Form form={EditForm} layout="vertical">
-    <Form.Item name="name" label="Nombre">
-      <Input />
-    </Form.Item>
-    <Form.Item name="description" label="Descripcion">
-      <Input />
-    </Form.Item>
-    <Form.Item name="stock" label="Cantidad">
-      <Input />
-    </Form.Item>
-    <Form.Item
-      name="categoryId"
-      label="Categoría"
-      rules={[
-        { required: true, message: 'Por favor seleccione una categoría' }
-      ]}
-    >
-      <Select
-        placeholder="Seleccione una categoría"
-        dropdownRender={(menu) => (
-          <>
-            {menu}
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                padding: 8
-              }}
-            ></div>
-          </>
-        )}
+        <Table
+          columns={columnsRen}
+          dataSource={
+            materialRends
+              ? materialRends.map((materialRend, index) => ({
+                  ...materialRend,
+                  key: index
+                }))
+              : []
+          }
+        />
+      </Modal>
+
+      <Drawer
+        title="Editar Material"
+        open={visibleEdit}
+        onClose={() => MaterialUtils.handleCloseEdit(setVisibleEdit, EditForm)}
+        footer={
+          <div style={{ textAlign: 'right' }}>
+            <Button
+              onClick={() =>
+                MaterialUtils.handleSave(
+                  editingMaterial,
+                  EditForm,
+                  Materials,
+                  setMaterials,
+                  setVisibleEdit,
+                  file
+                )
+              }
+              type="primary"
+            >
+              Guardar
+            </Button>
+          </div>
+        }
       >
-        {categories.map((category) => (
-          <Option key={category.id} value={category.id}>
-            {category.name}
-          </Option>
-        ))}
-      </Select>
-    </Form.Item>
-    <Form.Item
-      name="supplierId"
-      label="Proveedor"
-      rules={[
-        { required: true, message: 'Por favor seleccione un proveedor' }
-      ]}
-    >
-      <Select
-        placeholder="Seleccione un proveedor"
-        dropdownRender={(menu) => (
-          <>
-            {menu}
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                padding: 8
-              }}
-            ></div>
-          </>
-        )}
-      >
-        {Suppliers.map((Supplier) => (
-          <Option key={Supplier.id} value={Supplier.id}>
-            {Supplier.name}
-          </Option>
-        ))}
-      </Select>
-    </Form.Item>
-    <Form.Item name="unitMeasure" label="Unidad de medida">
-      <Select placeholder="Selecciona una unidad">
-        <Select.Option value="CM">Centímetros (Cm)</Select.Option>
-        <Select.Option value="IN">Pulgada (in)</Select.Option>
-        <Select.Option value="M">Metros (M)</Select.Option>
-        <Select.Option value="KG">Kilos (KG)</Select.Option>
-      </Select>
-    </Form.Item>
-    <Form.Item name="dateReceipt" label="Recibido:">
-      <Input type="date" />
-    </Form.Item>
-    <Form.Item name="serial" label="Serial">
-      <Input />
-    </Form.Item>
-    <Form.Item name="color" label="Color">
-      <Input />
-    </Form.Item>
-    <Form.Item name="location" label="Ubicación">
-      <Input />
-    </Form.Item>
-    <Form.Item
+        <Form form={EditForm} layout="vertical">
+          <Form.Item name="name" label="Nombre">
+            <Input />
+          </Form.Item>
+          <Form.Item name="description" label="Descripcion">
+            <Input />
+          </Form.Item>
+          <Form.Item name="stock" label="Cantidad">
+            <Input />
+          </Form.Item>
+          <Form.Item
+            name="categoryId"
+            label="Categoría"
+            rules={[
+              { required: true, message: 'Por favor seleccione una categoría' }
+            ]}
+          >
+            <Select
+              placeholder="Seleccione una categoría"
+              dropdownRender={(menu) => (
+                <>
+                  {menu}
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      padding: 8
+                    }}
+                  ></div>
+                </>
+              )}
+            >
+              {categories.map((category) => (
+                <Option key={category.id} value={category.id}>
+                  {category.name}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+          <Form.Item
+            name="supplierId"
+            label="Proveedor"
+            rules={[
+              { required: true, message: 'Por favor seleccione un proveedor' }
+            ]}
+          >
+            <Select
+              placeholder="Seleccione un proveedor"
+              dropdownRender={(menu) => (
+                <>
+                  {menu}
+                  <div
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      padding: 8
+                    }}
+                  ></div>
+                </>
+              )}
+            >
+              {Suppliers.map((Supplier) => (
+                <Option key={Supplier.id} value={Supplier.id}>
+                  {Supplier.name}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+          <Form.Item name="unitMeasure" label="Unidad de medida">
+            <Select placeholder="Selecciona una unidad">
+              <Select.Option value="M">Metros (M)</Select.Option>
+              <Select.Option value="KG">Kilos (KG)</Select.Option>
+              <Select.Option value="U">Unidades(U)</Select.Option>
+            </Select>
+          </Form.Item>
+          <Form.Item name="dateReceipt" label="Recibido:">
+            <Input type="date" />
+          </Form.Item>
+          <Form.Item name="serial" label="Serial">
+            <Input />
+          </Form.Item>
+          <Form.Item name="color" label="Color">
+            <Input />
+          </Form.Item>
+          <Form.Item name="location" label="Ubicación">
+            <Input />
+          </Form.Item>
+          <Form.Item
             name="image"
             label="Imagen"
             getValueFromEvent={(e) => {
@@ -404,13 +538,15 @@ const MaterialList = () => {
               <Button icon={<UploadOutlined />}>Click para subir</Button>
             </Upload>
           </Form.Item>
-  </Form>
-</Drawer>
+        </Form>
+      </Drawer>
 
       <Drawer
         title="Añadir Nuevo Material"
         open={visibleAdd}
-        onClose={()=>MaterialUtils.handleAddCancel(setVisibleAdd,EditForm,addForm)}
+        onClose={() =>
+          MaterialUtils.handleAddCancel(setVisibleAdd, EditForm, addForm)
+        }
         extra={
           <Space>
             <Button
@@ -519,11 +655,9 @@ const MaterialList = () => {
           </Form.Item>
           <Form.Item name="unitMeasure" label="Unidad de medida">
             <Select placeholder="Selecciona una unidad">
-              <Select.Option value="CM">Centimetros(Cm)</Select.Option>
-              <Select.Option value="IN">Pulgada(in)</Select.Option>
               <Select.Option value="M">Metros(M)</Select.Option>
               <Select.Option value="KG">Kilos(KG)</Select.Option>
-              <Select.Option value="U">Unidades(KG)</Select.Option>
+              <Select.Option value="U">Unidades(U)</Select.Option>
             </Select>
           </Form.Item>
           <Form.Item name="dateReceipt" label="Fecha de recibido">
@@ -531,6 +665,9 @@ const MaterialList = () => {
           </Form.Item>
           <Form.Item name="serial" label="serial">
             <Input />
+            <Form.Item name="color" label="Color">
+            <Input />
+          </Form.Item>
           </Form.Item>
           <Form.Item name="location" label="Ubicacion">
             <Input />
@@ -679,14 +816,14 @@ const MaterialList = () => {
         </Form>
       </Drawer>
 
-      <div className="flex flex-row justify-between mb-4">
-        <div>
+      <div className="flex flex-col md:flex-row md:justify-between mb-4">
+      <div className="flex-1 flex flex-col items-center justify-center md:items-start md:justify-start">
           <h4 className="font-bold text-lg">Personal</h4>
           <h6 className="text-sm">Lista de materiales</h6>
         </div>
         <Button
           className=" h-10 bg-indigo-900 rounded-md text-white text-base font-bold p-2 items-center "
-          onClick={()=>MaterialUtils.handleAdd(setVisibleAdd)}
+          onClick={() => MaterialUtils.handleAdd(setVisibleAdd)}
         >
           <a>
             <PlusOutlined className="text-white font-bold" /> Añadir Nuevo
@@ -711,17 +848,18 @@ const MaterialList = () => {
           </div>
         </Space>
         <div id="PDFtable">
-          <div className="mt-5 flex justify-between mb-5">
-            <img src={Logo} alt="Ink Sports" className="h-10 " />
-            <span className="text-end">
-              {' '}
-              Ciudad victoria, Tamaulipas a<TodayDate></TodayDate>{' '}
+          <div className="mt-5 flex flex-col items-center sm:flex-row justify-between mb-5">
+            <img src={Logo} alt="Ink Sports" className="h-10 mb-3 sm:mb-0" />
+            <span className="text-center sm:text-end">
+              Ciudad victoria, Tamaulipas a <TodayDate />
             </span>
           </div>
+
           <Table
             className="w-full border-collapse border border-gray-200"
             columns={columns}
             dataSource={filteredMaterialsWithKeys}
+            tableLayout="fixed"
           />
         </div>
       </Card>

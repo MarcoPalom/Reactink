@@ -15,6 +15,7 @@ import {
   Material,
   quotationDesigns
 } from 'components/Scripts/Interfaces'
+import { groupBy } from 'lodash'
 
 const { Search } = Input
 
@@ -23,15 +24,15 @@ const CuttingOrderList = () => {
   const [Orders, setOrders] = useState<CuttingOrderData[]>([])
   const [Materials, setMaterials] = useState<Material[]>([])
   const [Designs, setDesigns] = useState<quotationDesigns[]>([])
-  const [quotationProducts, setQuotationProducts] = useState<FormDataShirtView[]>([])
+  const [quotationProducts, setQuotationProducts] = useState<
+    FormDataShirtView[]
+  >([])
   const [cuttingOrder, setCuttingOrder] = useState<Quotation[]>([])
-  const [selectedProduct, setSelectedProduct] = useState<FormDataShirtView | null>(null)
   const [visible, setVisible] = useState<boolean>(false)
   const [searchText] = useState('')
   const filteredOrders = CuttingUtils.filterOrders(Orders, searchText)
   const filteredOrdersWithKeys = CuttingUtils.addKeysToOrders(filteredOrders)
   const [image, setImage] = useState<string | null>(null)
-  const { Option } = Select
 
   useTokenRenewal(navigate)
 
@@ -45,19 +46,62 @@ const CuttingOrderList = () => {
     Materials.map((material) => [material.id, material.name])
   )
 
-  const getMaterialName = (id: string) => {
+  const getMaterialName = (id: number) => {
     return materialMap.get(id) || 'Unknown'
   }
 
-  const onProductSelectChange = (value: number) => {
-    CuttingUtils.handleSelectChange(
-      value,
-      quotationProducts,
-      Designs,
-      setSelectedProduct,
-      setImage
-    )
+  function combineProducts(products: FormDataShirtView[]): FormDataShirtView[] {
+    const combinedProducts: FormDataShirtView[] = []
+
+    products.forEach((product) => {
+      const existingProduct = combinedProducts.find(
+        (p) =>
+          p.quotationId === product.quotationId &&
+          p.clothBackShirtId === product.clothBackShirtId &&
+          p.clothSleeveId === product.clothSleeveId &&
+          p.clothNecklineId === product.clothNecklineId &&
+          p.clothFrontShirtId === product.clothFrontShirtId &&
+          p.clothCuffId === product.clothCuffId &&
+          p.cuff === product.cuff &&
+          p.typeCuff === product.typeCuff &&
+          p.neckline === product.neckline &&
+          p.typeNeckline === product.typeNeckline &&
+          p.sleeveType === product.sleeveType &&
+          p.sleeveShape === product.sleeveShape &&
+          p.discipline === product.discipline
+      )
+
+      if (existingProduct) {
+        existingProduct.size += `, ${product.size}`
+        existingProduct.quantity += `, ${product.quantity}`
+        existingProduct.observation += `, ${product.observation}`
+      } else {
+        combinedProducts.push({ ...product })
+      }
+    })
+
+    return combinedProducts
   }
+
+  const combinedProducts = combineProducts(quotationProducts)
+
+  const columnsData = [
+    {
+      title: 'Talla',
+      dataIndex: 'size',
+      key: 'size'
+    },
+    {
+      title: 'Cantidad',
+      dataIndex: 'quantity',
+      key: 'quantity'
+    },
+    {
+      title: 'Observación',
+      dataIndex: 'observation',
+      key: 'observation'
+    }
+  ]
 
   const columns = [
     {
@@ -102,13 +146,12 @@ const CuttingOrderList = () => {
 
   return (
     <>
-      <div className="flex flex-row justify-between mb-4">
-        <div>
+      <div className="flex flex-col md:flex-row md:justify-between mb-4">
+        <div className="flex-1 flex flex-col items-center justify-center md:items-start md:justify-start">
           <h4 className="font-bold text-lg">Finanzas</h4>
           <h6 className="text-sm">Ordenes de corte</h6>
         </div>
       </div>
-
       <Card>
         <Space
           style={{ marginBottom: 16 }}
@@ -122,20 +165,21 @@ const CuttingOrderList = () => {
           </div>
         </Space>
         <div id="PDFtable">
-          <div className="mt-5 flex justify-between mb-5">
-            <img src={Logo} alt="Ink Sports" className="h-10 " />
-            <span className="text-end">
-              {' '}
-              Ciudad victoria, Tamaulipas a<TodayDate></TodayDate>{' '}
+          <div className="mt-5 flex flex-col items-center sm:flex-row justify-between mb-5">
+            <img src={Logo} alt="Ink Sports" className="h-10 mb-3 sm:mb-0" />
+            <span className="text-center sm:text-end">
+              Ciudad victoria, Tamaulipas a <TodayDate />
             </span>
           </div>
           <Table
             className="w-full border-collapse border border-gray-200"
             columns={columns}
             dataSource={filteredOrdersWithKeys}
+            tableLayout="fixed"
           />
         </div>
       </Card>
+
       <Drawer
         title="Detalles de la orden"
         placement="right"
@@ -143,129 +187,118 @@ const CuttingOrderList = () => {
         open={visible}
         width={600}
       >
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
-            Selecciona una orden
-          </label>
-          <Select
-            className="w-full"
-            placeholder="Selecciona una cotizacion"
-            onChange={onProductSelectChange}
-          >
-            {quotationProducts.map((product) => (
-              <Option key={product.id} value={product.id}>
-                {`Folio Cotizacion Camisas: ${product.id}`}
-              </Option>
-            ))}
-          </Select>
-        </div>
-
-        {selectedProduct && (
+        {quotationProducts && quotationProducts.length > 0 && (
           <Card className="p-4">
-            <div className="">
-              <div>
-                <div className="flex justify-center mb-2">
-                  <img src={Logo} alt="Ink Sports" className="h-8" />
-                </div>
-                <div className="flex justify-between">
-                  <p>
-                    <strong>Cotizacion Folio:</strong>{' '}
-                    {selectedProduct.quotationId}
-                  </p>
-                  <p>
-                    <strong>Cliente:</strong> {}
-                  </p>
-                </div>
-
-                <div></div>
+            <div>
+              <div className="flex justify-center mb-2">
+                <img src={Logo} alt="Ink Sports" className="h-8" />
               </div>
 
-              <div>
-                <h3 className="flex justify-center text-lg leading-6 font-medium text-gray-900 mb-4">
-                  Orden de corte
-                </h3>
-              </div>
+              {combinedProducts.map((product, index) => {
+                const isSingleProduct = product.size && !product.size.includes(', ');
+          
+                const dataSource = isSingleProduct
+                  ? [{
+                      key: 0,
+                      size: product.size,
+                      quantity: product.quantity,
+                      observation: product.observation,
+                    }]
+                  : product.size.split(', ').map((size, idx) => ({
+                      key: idx,
+                      size,
+                      quantity: product.quantity.split(', ')[idx],
+                      observation: product.observation.split(', ')[idx],
+                    }));
+                return (
+                  <div key={index} className="mb-4">
+                    <div className="flex justify-between mb-4">
+                      <p>
+                        <strong>Cotización Folio:</strong> {product.quotationId}
+                      </p>
+                      <p>
+                        <strong>Cliente:</strong>
+                      </p>
+                    </div>
 
-              <div className="flex">
-                <div className="flex justify-center">
-                  {image ? (
-                    <img className="w-64 h-44" src={image} alt="Image" />
-                  ) : (
-                    <img
-                      className="w-64 h-44"
-                      src={Missing}
-                      alt="missing image"
-                    />
-                  )}
-                </div>
-                <div className="w-3/4 pl-4">
-                  <div className="text-center text-sm text-gray-500 space-y-2">
-                    <p>
-                      <strong>Disciplina:</strong> {selectedProduct.discipline}
-                    </p>
-                    <p>
-                      <strong>Tela espalda:</strong>{' '}
-                      {getMaterialName(selectedProduct.clothBackShirtId)}
-                    </p>
-                    <p>
-                      <strong>Tela Manga:</strong>{' '}
-                      {getMaterialName(selectedProduct.clothSleeveId)}
-                    </p>
-                    <p>
-                      <strong>Tela cuello:</strong>{' '}
-                      {getMaterialName(selectedProduct.clothNecklineId)}
-                    </p>
-                    <p>
-                      <strong>Tela frente:</strong>{' '}
-                      {getMaterialName(selectedProduct.clothFrontShirtId)}
-                    </p>
-                    <p>
-                      <strong>Tela Puño:</strong>{' '}
-                      {getMaterialName(selectedProduct.clothCuffId)}
-                    </p>
-                    <p>
-                      <strong>Talla:</strong> {selectedProduct.size}
-                    </p>
+                    <h3 className="flex justify-center text-lg leading-6 font-medium text-gray-900 mb-4">
+                      Orden de corte
+                    </h3>
+
+                    <div className="flex mb-4">
+                      <div className="flex justify-center">
+                        {image ? (
+                          <img className="w-64 h-44" src={image} alt="Image" />
+                        ) : (
+                          <img
+                            className="w-64 h-44"
+                            src={Missing}
+                            alt="missing image"
+                          />
+                        )}
+                      </div>
+                      <div className="w-3/4 pl-4">
+                        <div className="text-center text-sm text-gray-500 space-y-2">
+                          <p>
+                            <strong>Disciplina:</strong> {product.discipline}
+                          </p>
+                          <p>
+                            <strong>Tela espalda:</strong>{' '}
+                            {getMaterialName(product.clothBackShirtId)}
+                          </p>
+                          <p>
+                            <strong>Tela Manga:</strong>{' '}
+                            {getMaterialName(product.clothSleeveId)}
+                          </p>
+                          <p>
+                            <strong>Tela cuello:</strong>{' '}
+                            {getMaterialName(product.clothNecklineId)}
+                          </p>
+                          <p>
+                            <strong>Tela frente:</strong>{' '}
+                            {getMaterialName(product.clothFrontShirtId)}
+                          </p>
+                          <p>
+                            <strong>Tela Puño:</strong>{' '}
+                            {getMaterialName(product.clothCuffId)}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 mt-4">
+                      <p>
+                        <strong>Puños:</strong> {product.cuff}
+                      </p>
+                      <p>
+                        <strong>Tipo de puño:</strong> {product.typeCuff}
+                      </p>
+                      <p>
+                        <strong>Cuello:</strong> {product.neckline}
+                      </p>
+                      <p>
+                        <strong>Tipo de cuello:</strong> {product.typeNeckline}
+                      </p>
+                      <p>
+                        <strong>Tipo de manga:</strong> {product.sleeveType}
+                      </p>
+                      <p>
+                        <strong>Forma de manga:</strong> {product.sleeveShape}
+                      </p>
+                    </div>
+                    <div className="mt-4">
+                      <Table
+                        columns={columnsData}
+                        dataSource={dataSource}
+                        pagination={false} 
+                        bordered
+                      />
+                    </div>
+
+                    <hr className="my-4" />
                   </div>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 mt-4">
-                <p>
-                  <strong>Puños:</strong> {selectedProduct.cuff}
-                </p>
-                <p>
-                  <strong>Tipo de puño:</strong> {selectedProduct.typeCuff}
-                </p>
-                <p>
-                  <strong>Cuello:</strong> {selectedProduct.neckline}
-                </p>
-                <p>
-                  <strong>Tipo de cuello:</strong>{' '}
-                  {selectedProduct.typeNeckline}
-                </p>
-                <p>
-                  <strong>Tipo de manga:</strong> {selectedProduct.sleeveType}
-                </p>
-                <p>
-                  <strong>Forma de manga:</strong> {selectedProduct.sleeveShape}
-                </p>
-              </div>
-              <div className="flex justify-between">
-                <div className="gird grid-cols-1 justify-end mt-4">
-                  <p>
-                    <strong>Cantidad:</strong> {selectedProduct.quantity}
-                  </p>
-                </div>
-                <div className="flex mt-14">
-                  <p>
-                    <strong>DTF: </strong>
-                    {selectedProduct.dtfShirt}&nbsp;
-                  </p>
-                  <p>
-                    <strong>Observacion:</strong> {selectedProduct.observation}
-                  </p>
-                </div>
-              </div>
+                )
+              })}
             </div>
           </Card>
         )}

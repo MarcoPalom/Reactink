@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import {
   Button,
   Space,
@@ -7,14 +7,13 @@ import {
   Input,
   Modal,
   Form,
-  message,
   Select,
   InputNumber,
   Drawer,
   Switch,
-  Upload
+  Upload,
+  Popover
 } from 'antd'
-import { useNavigate } from 'react-router-dom'
 import {
   PlusOutlined,
   FilePdfOutlined,
@@ -28,33 +27,21 @@ import {
   EyeInvisibleOutlined,
   MoreOutlined,
   SaveOutlined,
-  UploadOutlined
+  UploadOutlined,
+  QuestionCircleOutlined
 } from '@ant-design/icons'
-import axios from 'axios'
 import useTokenRenewal from 'components/Scripts/useTokenRenewal'
 import {
   Quotation,
   Client,
   Material,
   FormDataShirt,
-  CuttingOrderData
+  FormDataShort,
+  CuttingOrderData,
+  QuotationProduct,
+  QuotationProductMaquila
 } from 'components/Scripts/Interfaces'
-import html2pdf from 'html2pdf.js'
 import {
-  handleFinish,
-  handleAddRow,
-  handleEmpty,
-  handleFieldChange,
-  calculateSubtotal,
-  calculateTaxAndNetAmount,
-  calculateTaxAndNetAmountEdit,
-  calculateTotal,
-  filterQuotations,
-  addKeysToQuotations,
-  handleFieldChangeMaquila,
-  handleFinishMaquila,
-  handleDeleteProduct,
-  handleAdvanceChange,
   disciplines,
   cloths,
   neckForms,
@@ -64,44 +51,25 @@ import {
   cuffs,
   cuffsTypes,
   sizes,
-  calculateAndUpdateTotal,
-  handleInputNumberChangeShirts,
-  handleInputChangeShirts,
-  handleGenderToggleShirts,
   shortLooks,
   sections,
-  handleAddRowShorts,
-  handleEmptyShorts,
-  handleSelectChangeShirtShorts,
-  handleInputNumberChangeShorts,
-  handleInputChangeShorts,
-  handleGenderToggleShorts,
-  handleFormSubmitShirt,
-  useFormHandler,
-  isSaveButtonDisabled,
-  handleSubmitShirts,
   genderMap
-} from 'components/Scripts/QuotationUtils'
-import {
-  deleteQuotation,
-  deleteQuotationProduct,
-  deleteQuotationProductMaquila,
-  fetchMaterialName
-} from 'components/Scripts/Apicalls'
-import {
-  handleView,
-  handleSave,
-  handleAddSave,
-  handleDelete,
-  handleEdit
-} from 'components/Scripts/QuotationUtils'
-import TodayDate from 'components/Scripts/Utils'
-import Logo from 'assets/img/logo.png'
+} from 'components/Scripts/Utils'
 import { FaTshirt } from 'react-icons/fa'
 import { GiUnderwearShorts, GiGoalKeeper } from 'react-icons/gi'
-import { generatePDF } from 'components/Scripts/Utils'
+import {
+  generatePDF,
+  generatePDFMODAL,
+  contentBlockAceptEdit
+} from 'components/Scripts/Utils'
+import { UploadChangeParam } from 'antd/lib/upload'
+import { fetchMaterialName } from 'components/Scripts/Apicalls'
+import { useNavigate } from 'react-router-dom'
 import FormItem from 'antd/es/form/FormItem'
-import {  UploadChangeParam } from 'antd/lib/upload'
+import TodayDate from 'components/Scripts/Utils'
+import Logo from 'assets/img/logo.png'
+import * as CuttingUtils from 'components/Scripts/CuttingUtils'
+import * as QuotationUtils from 'components/Scripts/QuotationUtils'
 
 const { Search } = Input
 const { confirm } = Modal
@@ -124,19 +92,28 @@ const CotationList = () => {
   const [editingQuotation, setEditingQuotation] = useState<Quotation | null>(
     null
   )
-  const [dataSource, setDataSource] = useState<any[]>([])
+  const [dataSourceProducts, setDataSourceProducts] = useState<
+    QuotationProduct[]
+  >([])
+  const [dataSourceProductsMaquila, setDataSourceProductsMaquila] = useState<
+    QuotationProductMaquila[]
+  >([])
   const [dataSourceShorts, setDataSourceShorts] = useState<any[]>([])
   const [count, setCount] = useState(0)
   const [taxPercentage, setTaxPercentage] = useState(0)
   const [Advance, setAdvance] = useState(0)
   const [taxLocked, setTaxLocked] = useState(false)
-  const [netAmount, setNetAmount] = useState(0)
-  const [total, setTotal] = useState(0)
+  const [saveLocked, setSaveLocked] = useState(false)
+  const [netAmount] = useState(0)
+  const [total] = useState(0)
   const [clients, setClients] = useState<Client[]>([])
   const [materials, setMaterials] = useState<Material[]>([])
-  const [quotationProducts, setQuotationProducts] = useState([])
-  const [quotationProductsMaquila, setQuotationProductsMaquila] = useState([])
-  const modalRef = useRef(null)
+  const [quotationProducts, setQuotationProducts] = useState<
+    QuotationProduct[]
+  >([])
+  const [quotationProductsMaquila, setQuotationProductsMaquila] = useState<
+    QuotationProductMaquila[]
+  >([])
   const navigate = useNavigate()
   const [subtotal] = useState(0)
   const [EditForm] = Form.useForm()
@@ -147,103 +124,43 @@ const CotationList = () => {
   const [GoalkeeperShortForm] = Form.useForm()
   const [addForm] = Form.useForm()
   const [currentTable, setCurrentTable] = useState('cotizacion_producto')
-  const { colors, handleMaterialChange } = useFormHandler(materials)
+  const { colors, handleMaterialChange } =
+    CuttingUtils.useFormHandler(materials)
+  const { colorsShorts, handleMaterialChangeShorts } =
+    CuttingUtils.useFormHandlerShort(materials)
   const [shirts, setShirts] = useState<FormDataShirt[]>([])
+  const [shorts, setShorts] = useState<FormDataShort[]>([])
   const [CuttingOrderDt, setCuttingOrderDt] = useState<CuttingOrderData[]>([])
   const [isModalShirtsTempVisible, SetisModalShirtsTempVisible] =
     useState<boolean>(false)
+  const [isModalShortsTempVisible, SetisModalShortsTempVisible] =
+    useState<boolean>(false)
   const [selectedShirt, setSelectedShirt] = useState<FormDataShirt | null>(null)
-  const [isObservationFilled, setIsObservationFilled] = useState(false)
-  const isSaveDisabled = isSaveButtonDisabled(shirts)
+  const [selectedShort, setSelectedShort] = useState<FormDataShort | null>(null)
+  const isSaveDisabled = CuttingUtils.isSaveButtonDisabled(shirts)
   const [productType, setProductType] = useState<number | null>(null)
+  const [productTypeShort, setProductTypeShort] = useState<number | null>(null)
   const [file, setFile] = useState<File | null>(null)
   const [imageFileName, setImageFileName] = useState<string | null>(null)
-
+  const modalRef = useRef(null)
 
   useTokenRenewal(navigate)
 
   useEffect(() => {
-    const fetchClients = async () => {
-      try {
-        const response = await axios.get('http://localhost:3001/api/client/', {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        })
-        setClients(response.data)
-      } catch (error) {
-        console.error('Error fetching clients:', error)
-      }
-    }
-    const fetchQuotations = async () => {
-      try {
-        const response = await axios.get(
-          'http://localhost:3001/api/quotation/',
-          {
-            headers: {
-              Authorization: `Bearer ${localStorage.getItem('token')}`
-            }
-          }
-        )
-        setQuotations(response.data)
-      } catch (error) {
-        console.error('Error fetching Quotations:', error)
-      }
-    }
-    fetchQuotations()
-    fetchClients()
+    QuotationUtils.fetchAndSetQuotations(setQuotations)
+    QuotationUtils.fetchAndSetClients(setClients)
     fetchMaterialName(setMaterials)
-  }, [visibleAdd])
+  }, [visibleAdd, visibleEdit])
 
   useEffect(() => {
-    const fetchQuotationProducts = async () => {
-      try {
-        if (selectedQuotation) {
-          const response = await axios.get(
-            `http://localhost:3001/api/quotation-product/?quotationid=${selectedQuotation.id}`,
-            {
-              headers: {
-                Authorization: `Bearer ${localStorage.getItem('token')}`
-              }
-            }
-          )
-          const filteredProducts = filterProductsByQuotationId(
-            response.data,
-            selectedQuotation.id
-          )
-          setQuotationProducts(filteredProducts)
-        } else {
-          setQuotationProducts([])
-        }
-      } catch (error) {
-        console.error('Error fetching quotation products:', error)
-      }
-    }
-
-    const fetchQuotationProductsMaquila = async () => {
-      try {
-        if (selectedQuotation) {
-          const response = await axios.get(
-            `http://localhost:3001/api/quotation-product-maquila/?quotationid=${selectedQuotation.id}`,
-            {
-              headers: {
-                Authorization: `Bearer ${localStorage.getItem('token')}`
-              }
-            }
-          )
-          const filteredProducts = filterProductsByQuotationId(
-            response.data,
-            selectedQuotation.id
-          )
-          setQuotationProductsMaquila(filteredProducts)
-        } else {
-          setQuotationProductsMaquila([])
-        }
-      } catch (error) {
-        console.error('Error fetching quotation products:', error)
-      }
-    }
-
-    fetchQuotationProducts()
-    fetchQuotationProductsMaquila()
+    QuotationUtils.fetchAndSetQuotationProducts(
+      selectedQuotation,
+      setQuotationProducts
+    )
+    QuotationUtils.fetchAndSetQuotationProductsMaquila(
+      selectedQuotation,
+      setQuotationProductsMaquila
+    )
   }, [selectedQuotation])
 
   const handleFileChange = (info: UploadChangeParam) => {
@@ -251,184 +168,34 @@ const CotationList = () => {
     setFile(fileList[0]?.originFileObj as File)
   }
 
-  const filterProductsByQuotationId = (products: any, quotationId: any) => {
-    return products.filter(
-      (product: any) => product.quotationId === quotationId
-    )
-  }
-
-  const handleSwitchChange = (checked: any) => {
+  const handleSwitchChange = (checked: boolean) => {
     setIsShirtForm(checked)
   }
-  const handleSwitchChangeShort = (checked: any) => {
+  const handleSwitchChangeShort = (checked: boolean) => {
     setIsShortForm(checked)
   }
 
-  const handleClose = () => {
-    setVisible(false)
-    setTaxLocked(false)
-  }
-  const handleCloseEdit = () => {
-    EditForm.resetFields()
-    setVisibleEdit(false)
-    setTaxLocked(false)
-  }
-  const handleAdd = () => {
-    setVisibleAdd(true)
-  }
-  const handleAddCancel = () => {
-    setVisibleAdd(false)
-    EditForm.resetFields()
-    addForm.resetFields()
-    setTaxLocked(false)
-  }
-  const handleAddCut = () => {
-    setVisibleCut(true)
-  }
-  const handleAddCutCancel = () => {
-    setVisibleCut(false)
-  }
-  const handleFinishClick = () => {
-    const subtotal = calculateSubtotal(dataSource)
-    handleFinish(addForm, dataSource)
-  }
-  const handleFinishClickMaquila = () => {
-    const subtotal = calculateSubtotal(dataSource)
-    handleFinishMaquila(addForm, dataSource)
-  }
-
-  const handleAddRowClick = () => {
-    handleAddRow(count, setCount, setDataSource, dataSource)
-  }
-  const handleEmptyClick = () => {
-    handleEmpty(confirm, setDataSource, setTaxLocked, EditForm)
-  }
   const handleAddRowClickShorts = () => {
-    handleAddRowShorts(count, setCount, setDataSourceShorts, dataSourceShorts)
+    CuttingUtils.handleAddRowShorts(
+      count,
+      setCount,
+      setDataSourceShorts,
+      dataSourceShorts
+    )
   }
   const handleEmptyClickShorts = () => {
-    handleEmptyShorts(confirm, setDataSourceShorts)
-  }
-  const handleSaveClick = async () => {
-    try {
-      if (editingQuotation) {
-        await handleSave(
-          EditForm,
-          editingQuotation,
-          Quotations,
-          setQuotations,
-          setVisibleEdit,
-          setTaxLocked,
-          dataSource
-        )
-      } else {
-        console.error('No hay una cotización en edición')
-        message.error('Error al guardar la Cotización')
-        return
-      }
-    } catch (error) {
-      console.error('Error saving Quotation:', error)
-      message.error('Error al guardar la Cotización')
-    }
+    CuttingUtils.handleEmptyShorts(confirm, setDataSourceShorts)
   }
 
-  const handleAddSaveClick = async () => {
-    await handleAddSave(
-      addForm,
-      dataSource,
-      setVisibleAdd,
-      setDataSource,
-      setQuotations
-    )
-  }
-  const handleViewClick = async (id: string) => {
-    await handleView(id, setSelectedQuotation, setVisible)
-  }
-
-  const handleEditClick = async (record: Quotation) => {
-    try {
-      const response = await axios.get(
-        `http://localhost:3001/api/quotation-product/?quotationid=${record.id}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem('token')}`
-          }
-        }
-      )
-
-      const filteredProducts = filterProductsByQuotationId(
-        response.data,
-        record.id
-      )
-
-      setDataSource(filteredProducts)
-      handleEdit(record, setEditingQuotation, EditForm, setVisibleEdit)
-    } catch (error) {
-      console.error('Error fetching quotation products:', error)
-    }
-  }
-
-  const handleDeleteClick = (record: Quotation) => {
-    handleDelete(record, deleteQuotation, Quotations, setQuotations)
-  }
-
-  const handleDeleteProductsClick = (record: Quotation) => {
-    handleDeleteProduct(
-      record,
-      deleteQuotationProductMaquila,
-      deleteQuotationProduct,
-      quotationProductsMaquila,
-      setQuotationProductsMaquila,
-      quotationProducts,
-      setQuotationProducts
-    )
-  }
-  const toggleShirtForm = () => {
-    setIsShirtFormVisible(!isShirtFormVisible)
-    setProductType(isShirtFormVisible ? null : 1)
-  }
-
-  const toggleShortForm = () => {
-    setIsShortFormVisible(!isShortFormVisible)
-  }
-
-  const filteredQuotations = filterQuotations(Quotations, searchText)
-  const filteredQuotationsWithKeys = addKeysToQuotations(filteredQuotations)
-
-  const generatePDFS = () => {
-    const element = modalRef.current
-    const options = {
-      margin: 0.5,
-      filename: `cotizacion_folio_${selectedQuotation?.id}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2 },
-      jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
-    }
-
-    html2pdf().from(element).set(options).save()
-  }
+  const filteredQuotations = QuotationUtils.filterQuotations(
+    Quotations,
+    searchText
+  )
+  const filteredQuotationsWithKeys =
+    QuotationUtils.addKeysToQuotations(filteredQuotations)
 
   const handleSelectChange = (value: any) => {
     setCurrentTable(value)
-    setDataSource([])
-  }
-
-  const handleViewDetails = (record: any) => {
-    setSelectedShirt(record)
-    SetisModalShirtsTempVisible(true)
-  }
-
-  const handlecutSummitShirts = async () => {
-    if (selectedQuotation) {
-      await handleSubmitShirts(shirts, CuttingOrderDt, selectedQuotation.id, imageFileName)
-    } else {
-      console.error('No quotation selected')
-    }
-  }
-
-  const handleDuplicateOrder = (shirtToDuplicate: any) => {
-    const newShirt = { ...shirtToDuplicate, key: Date.now() } 
-    setShirts((prevShirts) => [...prevShirts, newShirt]) 
   }
 
   const columnsTempShirt = [
@@ -444,7 +211,13 @@ const CotationList = () => {
       render: (text: string, record: any) => (
         <Button
           icon={<MoreOutlined />}
-          onClick={() => handleViewDetails(record)}
+          onClick={() =>
+            CuttingUtils.handleViewDetailsShirts(
+              record,
+              setSelectedShirt,
+              SetisModalShirtsTempVisible
+            )
+          }
         ></Button>
       )
     },
@@ -457,7 +230,7 @@ const CotationList = () => {
           className="w-16"
           defaultValue={text}
           onChange={(value) =>
-            handleInputNumberChangeShirts(
+            CuttingUtils.handleInputNumberChangeShirts(
               shirts,
               setShirts,
               value,
@@ -484,7 +257,12 @@ const CotationList = () => {
           min={0}
           defaultValue={text}
           onChange={(value) =>
-            calculateAndUpdateTotal(shirts, setShirts, record.key, value)
+            CuttingUtils.calculateAndUpdateTotalShirts(
+              shirts,
+              setShirts,
+              record.key,
+              value
+            )
           }
         />
       )
@@ -507,7 +285,11 @@ const CotationList = () => {
           <Button
             className={`w-10 ${buttonClass}`}
             onClick={() =>
-              handleGenderToggleShirts(shirts, setShirts, record.key)
+              CuttingUtils.handleGenderToggleShirts(
+                shirts,
+                setShirts,
+                record.key
+              )
             }
           >
             {genderText}
@@ -523,13 +305,145 @@ const CotationList = () => {
         <Input
           defaultValue={text}
           onChange={(e) =>
-            handleInputChangeShirts(
+            CuttingUtils.handleInputChangeShirts(
               shirts,
               setShirts,
               e,
               record.key,
-              'observation',
-              setIsObservationFilled
+              'observation'
+            )
+          }
+        />
+      )
+    },
+    {
+      title: 'Mas',
+      key: 'actions',
+      render: (_: any, record: FormDataShirt) => (
+        <Space>
+          <Button
+            icon={<PlusOutlined />}
+            onClick={() =>
+              CuttingUtils.handleDuplicateOrderShirts(record, setShirts)
+            }
+          ></Button>
+        </Space>
+      )
+    }
+  ]
+  const columnsTempShort = [
+    {
+      title: 'No.',
+      dataIndex: 'id',
+      key: 'id',
+      render: (text: string, record: any, index: any) => `Orden # ${index + 1}`
+    },
+    {
+      title: 'Datos',
+      key: 'action',
+      render: (text: string, record: any) => (
+        <Button
+          icon={<MoreOutlined />}
+          onClick={() =>
+            CuttingUtils.handleViewDetailsShorts(
+              record,
+              setSelectedShort,
+              SetisModalShortsTempVisible
+            )
+          }
+        ></Button>
+      )
+    },
+    {
+      title: 'Talla',
+      dataIndex: 'size',
+      key: 'size',
+      render: (text: any, record: any) => (
+        <Select
+          className="w-16"
+          defaultValue={text}
+          onChange={(value) =>
+            CuttingUtils.handleInputNumberChangeShorts(
+              shorts,
+              setShorts,
+              value,
+              record.key,
+              'size'
+            )
+          }
+        >
+          {sizes.map((size) => (
+            <Option key={size} value={size}>
+              {size}
+            </Option>
+          ))}
+        </Select>
+      )
+    },
+    {
+      title: 'Cantidad',
+      dataIndex: 'quantity',
+      key: 'quantity',
+      render: (text: any, record: any) => (
+        <InputNumber
+          className="w-12"
+          min={0}
+          defaultValue={text}
+          onChange={(value) =>
+            CuttingUtils.calculateAndUpdateTotalShorts(
+              shorts,
+              setShorts,
+              record.key,
+              value
+            )
+          }
+        />
+      )
+    },
+    {
+      title: 'Género',
+      dataIndex: 'gender',
+      key: 'gender',
+      render: (text: any, record: any) => {
+        const genderText = genderMap[text] || '?'
+
+        const buttonClass =
+          genderText === 'H'
+            ? 'bg-blue-500 text-white'
+            : genderText === 'M'
+              ? 'bg-pink-500 text-white'
+              : 'bg-white text-black border border-gray-300'
+
+        return (
+          <Button
+            className={`w-10 ${buttonClass}`}
+            onClick={() =>
+              CuttingUtils.handleGenderToggleShorts(
+                shorts,
+                setShorts,
+                record.key
+              )
+            }
+          >
+            {genderText}
+          </Button>
+        )
+      }
+    },
+    {
+      title: 'Observación',
+      dataIndex: 'observation',
+      key: 'observation',
+      render: (text: any, record: any) => (
+        <Input
+          defaultValue={text}
+          onChange={(e) =>
+            CuttingUtils.handleInputChangeShorts(
+              shorts,
+              setShorts,
+              e,
+              record.key,
+              'observation'
             )
           }
         />
@@ -542,7 +456,9 @@ const CotationList = () => {
         <Space>
           <Button
             icon={<PlusOutlined />}
-            onClick={() => handleDuplicateOrder(record)}
+            onClick={() =>
+              CuttingUtils.handleDuplicateOrderShorts(record, setShorts)
+            }
           ></Button>
         </Space>
       )
@@ -558,12 +474,13 @@ const CotationList = () => {
         <Input
           value={text}
           onChange={(e) =>
-            handleFieldChange(
+            QuotationUtils.handleFieldChange(
               e.target.value,
               record.key,
               'description',
-              dataSource,
-              setDataSource
+              dataSourceProducts,
+              setDataSourceProducts,
+              setSaveLocked
             )
           }
         />
@@ -578,12 +495,13 @@ const CotationList = () => {
           min={0}
           value={text}
           onChange={(value) =>
-            handleFieldChange(
+            QuotationUtils.handleFieldChange(
               value,
               record.key,
               'amount',
-              dataSource,
-              setDataSource
+              dataSourceProducts,
+              setDataSourceProducts,
+              setSaveLocked
             )
           }
         />
@@ -598,12 +516,13 @@ const CotationList = () => {
           min={0}
           value={text}
           onChange={(value) =>
-            handleFieldChange(
+            QuotationUtils.handleFieldChange(
               value,
               record.key,
               'quantity',
-              dataSource,
-              setDataSource
+              dataSourceProducts,
+              setDataSourceProducts,
+              setSaveLocked
             )
           }
         />
@@ -619,12 +538,13 @@ const CotationList = () => {
           max={100}
           value={record.tax}
           onChange={(value) =>
-            handleFieldChange(
+            QuotationUtils.handleFieldChange(
               value,
               record.key,
               'tax',
-              dataSource,
-              setDataSource
+              dataSourceProducts,
+              setDataSourceProducts,
+              setSaveLocked
             )
           }
         />
@@ -643,7 +563,128 @@ const CotationList = () => {
         <Space size="middle">
           <Button
             icon={<DeleteOutlined className="text-red-700" />}
-            onClick={() => handleDeleteProductsClick(record)}
+            onClick={() =>
+              QuotationUtils.handleDeleteProductsClick(
+                record,
+                quotationProductsMaquila,
+                setQuotationProductsMaquila,
+                quotationProducts,
+                setQuotationProducts
+              )
+            }
+          />
+        </Space>
+      )
+    }
+  ]
+
+  const columnsEditQuotation = [
+    {
+      title: 'Descripcion',
+      dataIndex: 'description',
+      key: 'description',
+      render: (text: string, record: any) => (
+        <Input
+          value={text}
+          onChange={(e) =>
+            QuotationUtils.handleFieldChangeEdit(
+              e.target.value,
+              record.id,
+              'description',
+              dataSourceProducts,
+              setDataSourceProducts,
+              setSaveLocked
+            )
+          }
+        />
+      )
+    },
+    {
+      title: 'Precio Unitario',
+      dataIndex: 'amount',
+      key: 'amount',
+      render: (text: number, record: any) => (
+        <InputNumber
+          min={0}
+          value={text}
+          onChange={(value) =>
+            QuotationUtils.handleFieldChangeEdit(
+              value,
+              record.id,
+              'amount',
+              dataSourceProducts,
+              setDataSourceProducts,
+              setSaveLocked
+            )
+          }
+        />
+      )
+    },
+    {
+      title: 'Cantidad',
+      dataIndex: 'quantity',
+      key: 'quantity',
+      render: (text: number, record: any) => (
+        <InputNumber
+          min={0}
+          value={text}
+          onChange={(value) =>
+            QuotationUtils.handleFieldChangeEdit(
+              value,
+              record.id,
+              'quantity',
+              dataSourceProducts,
+              setDataSourceProducts,
+              setSaveLocked
+            )
+          }
+        />
+      )
+    },
+    {
+      title: 'Impuesto (%)',
+      dataIndex: 'tax',
+      key: 'tax',
+      render: (text: number, record: any) => (
+        <InputNumber
+          min={0}
+          max={100}
+          value={record.tax}
+          onChange={(value) =>
+            QuotationUtils.handleFieldChangeEdit(
+              value,
+              record.id,
+              'tax',
+              dataSourceProducts,
+              setDataSourceProducts,
+              setSaveLocked
+            )
+          }
+        />
+      )
+    },
+    {
+      title: 'Total',
+      dataIndex: 'total',
+      key: 'total',
+      render: (text: any) => `$${parseFloat(text).toFixed(2)}`
+    },
+    {
+      title: 'Accion',
+      key: 'action',
+      render: (record: any) => (
+        <Space size="middle">
+          <Button
+            icon={<DeleteOutlined className="text-red-700" />}
+            onClick={() =>
+              QuotationUtils.handleDeleteProductsClick(
+                record,
+                quotationProductsMaquila,
+                setQuotationProductsMaquila,
+                quotationProducts,
+                setQuotationProducts
+              )
+            }
           />
         </Space>
       )
@@ -659,12 +700,13 @@ const CotationList = () => {
         <Input
           value={text}
           onChange={(e) =>
-            handleFieldChangeMaquila(
+            QuotationUtils.handleFieldChangeMaquila(
               e.target.value,
               record.key,
               'description',
-              dataSource,
-              setDataSource
+              dataSourceProductsMaquila,
+              setDataSourceProductsMaquila,
+              setSaveLocked
             )
           }
         />
@@ -686,12 +728,13 @@ const CotationList = () => {
           min={0}
           value={text}
           onChange={(value) =>
-            handleFieldChangeMaquila(
+            QuotationUtils.handleFieldChangeMaquila(
               value,
               record.key,
               'meters_impression',
-              dataSource,
-              setDataSource
+              dataSourceProductsMaquila,
+              setDataSourceProductsMaquila,
+              setSaveLocked
             )
           }
         />
@@ -701,8 +744,8 @@ const CotationList = () => {
       title: 'Precio Unitario',
       dataIndex: 'price_unit',
       key: 'price_unit',
-      render: (text: number) => (
-        <span>{`$${text ? text.toFixed(2) : '0.00'}`}</span>
+      render: (text: any) => (
+        <span>{`$${!isNaN(parseFloat(text)) ? parseFloat(text).toFixed(2) : '0.00'}`}</span>
       )
     },
     {
@@ -714,12 +757,13 @@ const CotationList = () => {
           min={0}
           value={text}
           onChange={(value) =>
-            handleFieldChangeMaquila(
+            QuotationUtils.handleFieldChangeMaquila(
               value,
               record.key,
               'quantity',
-              dataSource,
-              setDataSource
+              dataSourceProductsMaquila,
+              setDataSourceProductsMaquila,
+              setSaveLocked
             )
           }
         />
@@ -729,8 +773,28 @@ const CotationList = () => {
       title: 'Total',
       dataIndex: 'amount',
       key: 'amount',
-      render: (text: number) => (
-        <span>{`$${text ? text.toFixed(2) : '0.00'}`}</span>
+      render: (text: any) => (
+        <span>{`$${!isNaN(parseFloat(text)) ? parseFloat(text).toFixed(2) : '0.00'}`}</span>
+      )
+    },
+    {
+      title: 'Accion',
+      key: 'action',
+      render: (text: any, record: any) => (
+        <Space size="middle">
+          <Button
+            icon={<DeleteOutlined className="text-red-700" />}
+            onClick={() =>
+              QuotationUtils.handleDeleteProductsClick(
+                record,
+                quotationProductsMaquila,
+                setQuotationProductsMaquila,
+                quotationProducts,
+                setQuotationProducts
+              )
+            }
+          />
+        </Space>
       )
     }
   ]
@@ -804,117 +868,49 @@ const CotationList = () => {
       title: 'Accion',
       key: 'action',
       className: 'action-column',
-      render: (text: any, record: any) => (
-        <Space size="middle">
+      render: (record: Quotation) => (
+        <Space className="md:flex-wrap md:items-center" size="middle">
           <Button
             icon={<DatabaseOutlined className="text-green-700" />}
-            onClick={() => handleViewClick(record.id.toString())}
+            onClick={() =>
+              QuotationUtils.handleViewClick(
+                record.id.toString(),
+                setSelectedQuotation,
+                setVisible
+              )
+            }
           />
           <Button
             icon={<EditOutlined className="text-blue-700" />}
-            onClick={() => handleEditClick(record)}
+            onClick={() =>
+              QuotationUtils.handleEditClick(
+                record,
+                setEditingQuotation,
+                EditForm,
+                setVisibleEdit,
+                setDataSourceProducts,
+                setDataSourceProductsMaquila
+              )
+            }
           />
           <Button
             icon={<DeleteOutlined className="text-red-700" />}
-            onClick={() => handleDeleteClick(record)}
+            onClick={() =>
+              QuotationUtils.handleDeleteClick(
+                record,
+                Quotations,
+                setQuotations
+              )
+            }
           />
           <Button
             icon={<ScissorOutlined className="text-gray-700" />}
             onClick={() => {
               setSelectedQuotation(record)
-              handleAddCut()
+              setVisibleCut(true)
             }}
           />
         </Space>
-      )
-    }
-  ]
-
-  const columnsShort = [
-    {
-      title: 'Talla',
-      dataIndex: 'talla',
-      key: 'talla',
-      render: (text: any, record: any) => (
-        <Select
-          className="w-20"
-          defaultValue={text}
-          onChange={(value) =>
-            handleSelectChangeShirtShorts(
-              dataSourceShorts,
-              setDataSourceShorts,
-              value,
-              record.key,
-              'talla'
-            )
-          }
-        >
-          {sizes.map((size) => (
-            <Option key={size} value={size}>
-              {size}
-            </Option>
-          ))}
-        </Select>
-      )
-    },
-    {
-      title: 'Cantidad',
-      dataIndex: 'cantidad',
-      key: 'cantidad',
-      render: (text: any, record: any) => (
-        <InputNumber
-          min={0}
-          defaultValue={text}
-          onChange={(value) =>
-            handleInputNumberChangeShorts(
-              setDataSourceShorts,
-              setDataSourceShorts,
-              value,
-              record.key,
-              'cantidad'
-            )
-          }
-        />
-      )
-    },
-    {
-      title: 'Genero',
-      dataIndex: 'genero',
-      key: 'genero',
-      render: (text: any, record: any) => (
-        <Button
-          className={`w-10 ${
-            text === 'H' ? 'bg-blue-500 text-white' : 'bg-pink-500 text-white'
-          }`}
-          onClick={() =>
-            handleGenderToggleShorts(
-              dataSourceShorts,
-              setDataSourceShorts,
-              record.key
-            )
-          }
-        >
-          {text}
-        </Button>
-      )
-    },
-    {
-      title: 'Observación',
-      dataIndex: 'observacion',
-      key: 'observacion',
-      render: (text: any, record: any) => (
-        <Input
-          defaultValue={text}
-          onChange={(e) =>
-            handleInputChangeShorts(
-              dataSourceShorts,
-              setDataSourceShorts,
-              e,
-              record.key,
-              'observacion'
-            )
-          }
-        />
       )
     }
   ]
@@ -924,12 +920,12 @@ const CotationList = () => {
       <Modal
         title="Detalles de la Cotizacion"
         open={visible}
-        onCancel={handleClose}
+        onCancel={() => setVisible(false)}
         footer={[
           <Button
             key="pdf"
             icon={<FilePdfOutlined className="text-red-500" />}
-            onClick={generatePDFS}
+            onClick={() => generatePDFMODAL(selectedQuotation, modalRef)}
           ></Button>
         ]}
       >
@@ -937,15 +933,15 @@ const CotationList = () => {
           <div ref={modalRef}>
             <div className="mt-5 flex justify-between">
               <img src={Logo} alt="Ink Sports" className="h-10 " />
-              <h1 className="text-end">
+              <span className="text-end">
                 {' '}
                 Ciudad victoria, Tamaulipas a<TodayDate></TodayDate>{' '}
-              </h1>
+              </span>
             </div>
-            <h1 className="mb-5 mt-5 text-center text-xl">
+            <span className="mb-5 mt-5 text-center text-xl">
               {' '}
               Cotización Folio: {selectedQuotation?.id}
-            </h1>
+            </span>
             <div className="flex flex-row  gap-10 mb-5">
               <div className="text-sm">
                 <p>
@@ -1067,8 +1063,8 @@ const CotationList = () => {
             )}
 
             <div className="mt-5 mb-5 text-end text-xs">
-              <h1> 1 Y 2 Hidalgo, Zona Centro Cd. Victoria, Tamaulipas </h1>
-              <h1>Tel: (834)-312-16-58 Whatsapp: 8341330078</h1>
+              <span> 1 Y 2 Hidalgo, Zona Centro Cd. Victoria, Tamaulipas </span>
+              <span>Tel: (834)-312-16-58 Whatsapp: 8341330078</span>
               <p className="mt-2">
                 Si usted tiene alguna pregunta sobre esta cotización, por favor,
                 póngase en contacto con nosotros INK SUBLIMACIÓN, al 31 2 16 58
@@ -1082,46 +1078,119 @@ const CotationList = () => {
       <Drawer
         title="Editar Cotización"
         open={visibleEdit}
-        onClose={handleCloseEdit}
+        onClose={() =>
+          QuotationUtils.handleCloseEdit(
+            EditForm,
+            setDataSourceProducts,
+            setDataSourceProductsMaquila,
+            setVisibleEdit,
+            setTaxLocked,
+            setSaveLocked
+          )
+        }
         size="large"
         className="modal"
         extra={
           <Space>
-            <Button onClick={handleSaveClick} type="primary">
+            <Popover
+              content={contentBlockAceptEdit}
+              title="¿Por que hay elementos bloqueados?"
+            >
+              <QuestionCircleOutlined />
+            </Popover>
+
+            <Button
+              onClick={() =>
+                QuotationUtils.handleSaveClick(
+                  EditForm,
+                  editingQuotation,
+                  Quotations,
+                  setQuotations,
+                  setVisibleEdit,
+                  setTaxLocked,
+                  dataSourceProducts,
+                  dataSourceProductsMaquila,
+                  setDataSourceProductsMaquila,
+                  setDataSourceProducts
+                )
+              }
+              type="primary"
+              disabled={saveLocked}
+            >
               Aceptar
             </Button>
           </Space>
         }
       >
         <div className="overflow-auto">
-          <Table
-            columns={columnsAddQuotation}
-            dataSource={dataSource}
-            pagination={false}
-            footer={() => (
-              <Space className="flex justify-end">
-                <Button
-                  onClick={handleAddRowClick}
-                  icon={<PlusOutlined className="text-cyan-500" />}
-                />
-                <Button
-                  onClick={handleFinishClick}
-                  icon={<SendOutlined className="text-green-500" />}
-                />
-                <Button
-                  onClick={handleEmptyClick}
-                  icon={<ClearOutlined className="text-red-500" />}
-                />
-              </Space>
-            )}
-          />
+          {dataSourceProducts.length > 0 && (
+            <Table
+              columns={columnsEditQuotation}
+              dataSource={dataSourceProducts}
+              pagination={false}
+              footer={() => (
+                <Space className="flex justify-end">
+                  <Button
+                    onClick={() =>
+                      QuotationUtils.handleFinishEdit(
+                        EditForm,
+                        dataSourceProducts,
+                        setSaveLocked
+                      )
+                    }
+                    icon={<SendOutlined className="text-green-500" />}
+                  />
+                </Space>
+              )}
+            />
+          )}
+          {dataSourceProductsMaquila.length > 0 && (
+            <Table
+              columns={columnsAddQuotationMaquila}
+              dataSource={dataSourceProductsMaquila}
+              pagination={false}
+              footer={() => (
+                <Space className="flex justify-end">
+                  <Button
+                    onClick={() =>
+                      QuotationUtils.handleFinishMaquilaEdit(
+                        EditForm,
+                        dataSourceProductsMaquila,
+                        setSaveLocked
+                      )
+                    }
+                    icon={<SendOutlined className="text-green-500" />}
+                  />
+                </Space>
+              )}
+            />
+          )}
+
           <Form form={EditForm} layout="vertical" className="p-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Form.Item name="dateReceipt" label="Fecha de recibido">
+                <Form.Item
+                  rules={[
+                    {
+                      required: true,
+                      message: 'Por favor, seleccione una fecha de recibido.'
+                    }
+                  ]}
+                  name="dateReceipt"
+                  label="Fecha de recibido"
+                >
                   <Input type="date" className="w-full" />
                 </Form.Item>
-                <Form.Item name="expirationDate" label="Fecha de expiración">
+                <Form.Item
+                  rules={[
+                    {
+                      required: true,
+                      message: 'Por favor, seleccione una fecha de entrega.'
+                    }
+                  ]}
+                  name="expirationDate"
+                  label="Fecha de expiración"
+                >
                   <Input type="date" className="w-full" />
                 </Form.Item>
               </div>
@@ -1133,7 +1202,7 @@ const CotationList = () => {
                       if (value !== null) {
                         setTaxPercentage(value)
                         const newNetAmount =
-                          calculateTaxAndNetAmountEdit(EditForm)
+                          QuotationUtils.calculateTaxAndNetAmountEdit(EditForm)
                         EditForm.setFieldsValue({ netAmount: newNetAmount })
                         if (EditForm.getFieldValue('advance') !== null) {
                           const Advance = EditForm.getFieldValue('advance')
@@ -1174,15 +1243,15 @@ const CotationList = () => {
                     min={0}
                     onChange={(value) => {
                       if (value !== null) {
-                        handleAdvanceChange(
+                        QuotationUtils.handleAdvanceChange(
                           value,
                           setAdvance,
                           EditForm,
                           setTaxLocked,
-                          calculateTotal
+                          QuotationUtils.calculateTotal
                         )
                         setAdvance(value)
-                        const newTotal = calculateTotal(EditForm)
+                        const newTotal = QuotationUtils.calculateTotal(EditForm)
                         EditForm.setFieldsValue({ total: newTotal })
                       }
                     }}
@@ -1197,7 +1266,16 @@ const CotationList = () => {
                   <InputNumber readOnly className="w-full" />
                 </Form.Item>
 
-                <Form.Item name="clientId" label="Cliente">
+                <Form.Item
+                  rules={[
+                    {
+                      required: true,
+                      message: 'Por favor, seleccione un cliente.'
+                    }
+                  ]}
+                  name="clientId"
+                  label="Cliente"
+                >
                   <Select placeholder="Selecciona un cliente">
                     {clients.map((client: any) => (
                       <Option key={client.id} value={client.id}>
@@ -1215,12 +1293,33 @@ const CotationList = () => {
       <Drawer
         title="Añadir Nueva Cotización"
         open={visibleAdd}
-        onClose={handleAddCancel}
+        onClose={() =>
+          QuotationUtils.handleAddCancel(
+            setDataSourceProducts,
+            setDataSourceProductsMaquila,
+            setVisibleAdd,
+            addForm,
+            setTaxLocked
+          )
+        }
         size="large"
         className="modal"
         extra={
           <Space>
-            <Button onClick={handleAddSaveClick} type="primary">
+            <Button
+              onClick={() =>
+                QuotationUtils.handleAddSaveClick(
+                  addForm,
+                  setVisibleAdd,
+                  setQuotations,
+                  dataSourceProducts,
+                  dataSourceProductsMaquila,
+                  setDataSourceProductsMaquila,
+                  setDataSourceProducts
+                )
+              }
+              type="primary"
+            >
               Aceptar
             </Button>
           </Space>
@@ -1241,20 +1340,37 @@ const CotationList = () => {
           {currentTable === 'cotizacion_producto' && (
             <Table
               columns={columnsAddQuotation}
-              dataSource={dataSource}
+              dataSource={dataSourceProducts}
               pagination={false}
               footer={() => (
                 <Space className="flex justify-end">
                   <Button
-                    onClick={handleAddRowClick}
+                    onClick={() =>
+                      QuotationUtils.handleAddRowProducts(
+                        count,
+                        setCount,
+                        setDataSourceProducts,
+                        dataSourceProducts
+                      )
+                    }
                     icon={<PlusOutlined className="text-cyan-500" />}
                   />
                   <Button
-                    onClick={handleFinishClick}
+                    onClick={() =>
+                      QuotationUtils.handleFinish(addForm, dataSourceProducts)
+                    }
                     icon={<SendOutlined className="text-green-500" />}
                   />
                   <Button
-                    onClick={handleEmptyClick}
+                    onClick={() =>
+                      QuotationUtils.handleEmpty(
+                        setDataSourceProductsMaquila,
+                        setDataSourceProducts,
+                        setTaxLocked,
+                        setSaveLocked,
+                        EditForm
+                      )
+                    }
                     icon={<ClearOutlined className="text-red-500" />}
                   />
                 </Space>
@@ -1265,20 +1381,40 @@ const CotationList = () => {
           {currentTable === 'cotizacion_maquila' && (
             <Table
               columns={columnsAddQuotationMaquila}
-              dataSource={dataSource}
+              dataSource={dataSourceProductsMaquila}
               pagination={false}
               footer={() => (
                 <Space className="flex justify-end">
                   <Button
-                    onClick={handleAddRowClick}
+                    onClick={() =>
+                      QuotationUtils.handleAddRowMaquila(
+                        count,
+                        setCount,
+                        setDataSourceProductsMaquila,
+                        dataSourceProductsMaquila
+                      )
+                    }
                     icon={<PlusOutlined className="text-cyan-500" />}
                   />
                   <Button
-                    onClick={handleFinishClickMaquila}
+                    onClick={() =>
+                      QuotationUtils.handleFinishMaquila(
+                        addForm,
+                        dataSourceProductsMaquila
+                      )
+                    }
                     icon={<SendOutlined className="text-green-500" />}
                   />
                   <Button
-                    onClick={handleEmptyClick}
+                    onClick={() =>
+                      QuotationUtils.handleEmpty(
+                        setDataSourceProductsMaquila,
+                        setDataSourceProducts,
+                        setTaxLocked,
+                        setSaveLocked,
+                        EditForm
+                      )
+                    }
                     icon={<ClearOutlined className="text-red-500" />}
                   />
                 </Space>
@@ -1288,10 +1424,28 @@ const CotationList = () => {
           <Form form={addForm} layout="vertical" className="p-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Form.Item name="dateReceipt" label="Fecha de recibido">
+                <Form.Item
+                  rules={[
+                    {
+                      required: true,
+                      message: 'Por favor, seleccione una fecha de recibido.'
+                    }
+                  ]}
+                  name="dateReceipt"
+                  label="Fecha de recibido"
+                >
                   <Input type="date" className="w-full" />
                 </Form.Item>
-                <Form.Item name="expirationDate" label="Fecha de expiración">
+                <Form.Item
+                  rules={[
+                    {
+                      required: true,
+                      message: 'Por favor, seleccione una fecha de recibido.'
+                    }
+                  ]}
+                  name="expirationDate"
+                  label="Fecha de expiración"
+                >
                   <Input type="date" className="w-full" />
                 </Form.Item>
               </div>
@@ -1306,7 +1460,8 @@ const CotationList = () => {
                     onChange={(value) => {
                       if (value !== null) {
                         setTaxPercentage(value)
-                        const newNetAmount = calculateTaxAndNetAmount(addForm)
+                        const newNetAmount =
+                          QuotationUtils.calculateTaxAndNetAmount(addForm)
                         addForm.setFieldsValue({ netAmount: newNetAmount })
                         addForm.setFieldsValue({ total: newNetAmount })
                       } else {
@@ -1337,15 +1492,15 @@ const CotationList = () => {
                     min={0}
                     onChange={(value) => {
                       if (value !== null) {
-                        handleAdvanceChange(
+                        QuotationUtils.handleAdvanceChange(
                           value,
                           setAdvance,
                           addForm,
                           setTaxLocked,
-                          calculateTotal
+                          QuotationUtils.calculateTotal
                         )
                         setAdvance(value)
-                        const newTotal = calculateTotal(addForm)
+                        const newTotal = QuotationUtils.calculateTotal(addForm)
                         addForm.setFieldsValue({ total: newTotal })
                       }
                     }}
@@ -1360,7 +1515,16 @@ const CotationList = () => {
                   <InputNumber value={total} readOnly className="w-full" />
                 </Form.Item>
 
-                <Form.Item name="clientId" label="Cliente">
+                <Form.Item
+                  rules={[
+                    {
+                      required: true,
+                      message: 'Por favor, seleccione un cliente.'
+                    }
+                  ]}
+                  name="clientId"
+                  label="Cliente"
+                >
                   <Select placeholder="Selecciona un cliente">
                     {clients.map((client: any) => (
                       <Option key={client.id} value={client.id}>
@@ -1377,14 +1541,29 @@ const CotationList = () => {
 
       <Drawer
         open={visibleCut}
-        onClose={handleAddCutCancel}
+        onClose={() => {
+          setVisibleCut(false)
+          setShirts([])
+          setShorts([])
+          ShirtForm.resetFields()
+          ShortForm.resetFields()
+          CuttingForm.resetFields()
+          setIsShirtFormVisible(false)
+          setIsShortFormVisible(false)
+        }}
         size="large"
         title={
           <div className="flex items-center justify-between">
             <span className="text-lg font-semibold">Orden de corte</span>
             <div className="flex space-x-4">
               <Button
-                onClick={toggleShirtForm}
+                onClick={() =>
+                  QuotationUtils.toggleShirtForm(
+                    isShirtFormVisible,
+                    setIsShirtFormVisible,
+                    setProductType
+                  )
+                }
                 className="flex items-center justify-center space-x-2 transition-transform duration-300 hover:scale-110"
               >
                 <FaTshirt
@@ -1397,7 +1576,13 @@ const CotationList = () => {
                 )}
               </Button>
               <Button
-                onClick={toggleShortForm}
+                onClick={() =>
+                  QuotationUtils.toggleShortForm(
+                    isShortFormVisible,
+                    setIsShortFormVisible,
+                    setProductTypeShort
+                  )
+                }
                 className="flex items-center justify-center space-x-2 transition-transform duration-300 hover:scale-110"
               >
                 <GiUnderwearShorts
@@ -1413,6 +1598,34 @@ const CotationList = () => {
           </div>
         }
       >
+        <Form form={CuttingForm} layout="vertical">
+          <div className="grid grid-cols-2 gap-2">
+            <FormItem
+              name="dateReceipt"
+              label="Fecha de recibido"
+              rules={[
+                {
+                  required: true,
+                  message: 'Por favor, seleccione una fecha'
+                }
+              ]}
+            >
+              <Input type="date" className="w-full" />
+            </FormItem>
+            <FormItem
+              name="dueDate"
+              label="Fecha de entrega"
+              rules={[
+                {
+                  required: true,
+                  message: 'Por favor, seleccione una fecha'
+                }
+              ]}
+            >
+              <Input type="date" className="w-full" />
+            </FormItem>
+          </div>
+        </Form>
         {isShirtFormVisible && (
           <div>
             <div className="flex justify-center mb-4">
@@ -1432,22 +1645,20 @@ const CotationList = () => {
                 />
               </div>
             </div>
-            <Form form={CuttingForm} layout="vertical">
-              <div className="grid grid-cols-2 gap-2">
-                <FormItem name="dateReceipt" label="Fecha de recibido">
-                  <Input type="date" className="w-full" />
-                </FormItem>
-                <FormItem name="dueDate" label="Fecha de entrega">
-                  <Input type="date" className="w-full" />
-                </FormItem>
-              </div>
-            </Form>
-
             {isShirtForm ? (
               <div className="overflow-auto">
                 <Form form={ShirtForm} layout="vertical" className="p-4">
                   <div className="grid grid-cols-2 gap-2 bg-gray-100 p-4 rounded-md ">
-                    <Form.Item name="discipline" label="Disciplina">
+                    <Form.Item
+                      name="discipline"
+                      label="Disciplina"
+                      rules={[
+                        {
+                          required: true,
+                          message: 'Por favor, seleccione una disciplina'
+                        }
+                      ]}
+                    >
                       <Select>
                         {disciplines.map((discipline) => (
                           <Option key={discipline} value={discipline}>
@@ -1477,7 +1688,6 @@ const CotationList = () => {
                         ))}
                       </Select>
                     </Form.Item>
-
                     <Form.Item
                       name="clothBackShirtId"
                       label="Tela playera espalda"
@@ -1614,16 +1824,7 @@ const CotationList = () => {
                     <Form.Item name="dtfShirt" label="DTF playera">
                       <Input />
                     </Form.Item>
-                    <Form.Item
-                      name="tShirtSection"
-                      label="Tramos playera"
-                      rules={[
-                        {
-                          required: true,
-                          message: 'Por favor, seleccione una opción.'
-                        }
-                      ]}
-                    >
+                    <Form.Item name="tShirtSection" label="Tramos playera">
                       <Select placeholder="Seleccionar">
                         <Option value={true}>Sí</Option>
                         <Option value={false}>No</Option>
@@ -1632,6 +1833,12 @@ const CotationList = () => {
                     <Form.Item
                       name="image"
                       label="Imagen"
+                      rules={[
+                        {
+                          required: true,
+                          message: 'Por favor, seleccione una imagen'
+                        }
+                      ]}
                       getValueFromEvent={(e) => {
                         if (Array.isArray(e)) {
                           return e
@@ -1653,11 +1860,11 @@ const CotationList = () => {
                         </Button>
                       </Upload>
                     </Form.Item>
-                    <div className="flex justify-end">
+                    <div className="flex justify-end mt-20">
                       <Button
                         icon={<SaveOutlined className="text-blue-500" />}
                         onClick={() =>
-                          handleFormSubmitShirt(
+                          CuttingUtils.handleFormSubmitShirt(
                             ShirtForm,
                             setShirts,
                             CuttingForm,
@@ -1674,17 +1881,26 @@ const CotationList = () => {
                     </div>
                   </div>
                   <Space>
-                    <Table
-                      columns={columnsTempShirt}
-                      dataSource={shirts.map((shirt, index) => ({
-                        ...shirt,
-                        key: index
-                      }))}
-                    />
+                    {shirts.length > 0 && (
+                      <Table
+                        columns={columnsTempShirt}
+                        dataSource={shirts.map((shirt, index) => ({
+                          ...shirt,
+                          key: index
+                        }))}
+                      />
+                    )}
                   </Space>
                   <Button
                     type="primary"
-                    onClick={() => handlecutSummitShirts()}
+                    onClick={() =>
+                      CuttingUtils.handleCutSubmitShirts(
+                        selectedQuotation,
+                        shirts,
+                        CuttingOrderDt,
+                        imageFileName
+                      )
+                    }
                   >
                     Mostrar contenido de Shirts
                   </Button>
@@ -1774,7 +1990,6 @@ const CotationList = () => {
                   <Table
                     className="mt-2"
                     dataSource={dataSourceShorts}
-                    columns={columnsShort}
                     pagination={false}
                     footer={() => (
                       <Space className="flex justify-end">
@@ -1818,7 +2033,16 @@ const CotationList = () => {
               <div className="overflow-auto">
                 <Form form={ShortForm} layout="vertical" className="p-4">
                   <div className="grid grid-cols-2 gap-2 bg-gray-100 p-4 rounded-md ">
-                    <Form.Item label="Tela short">
+                    <Form.Item
+                      name="discipline"
+                      label="Disciplina"
+                      rules={[
+                        {
+                          required: true,
+                          message: 'Por favor, seleccione una disciplina'
+                        }
+                      ]}
+                    >
                       <Select>
                         {disciplines.map((discipline) => (
                           <Option key={discipline} value={discipline}>
@@ -1827,8 +2051,26 @@ const CotationList = () => {
                         ))}
                       </Select>
                     </Form.Item>
-                    <Form.Item label="Color de tela">
-                      <Input />
+                    <Form.Item name="clothShortId" label="Tela Short">
+                      <Select
+                        placeholder="Tela Short"
+                        onChange={(value) =>
+                          handleMaterialChangeShorts(
+                            'clothShortColor',
+                            value,
+                            ShortForm
+                          )
+                        }
+                      >
+                        {materials.map((material: any) => (
+                          <Option key={material.id} value={material.id}>
+                            {material.name}
+                          </Option>
+                        ))}
+                      </Select>
+                    </Form.Item>
+                    <Form.Item name="clothShortColor" label="Color de tela">
+                      <Input value={colorsShorts.clothShortColor} readOnly />
                     </Form.Item>
                     <Form.Item label="Vista de short">
                       <Select>
@@ -1839,17 +2081,26 @@ const CotationList = () => {
                         ))}
                       </Select>
                     </Form.Item>
-                    <Form.Item label="Tela de vista">
-                      <Select>
-                        {cloths.map((cloths) => (
-                          <Option key={cloths} value={cloths}>
-                            {cloths}
+                    <Form.Item name="clothViewId" label="Tela de vista short">
+                      <Select
+                        placeholder="Tela Short"
+                        onChange={(value) =>
+                          handleMaterialChangeShorts(
+                            'clothViewColor',
+                            value,
+                            ShortForm
+                          )
+                        }
+                      >
+                        {materials.map((material: any) => (
+                          <Option key={material.id} value={material.id}>
+                            {material.name}
                           </Option>
                         ))}
                       </Select>
                     </Form.Item>
-                    <Form.Item label="Color de tela">
-                      <Input />
+                    <Form.Item name="clothViewColor" label="Color de tela">
+                      <Input value={colorsShorts.clothViewColor} readOnly />
                     </Form.Item>
                     <Form.Item label="DTF short">
                       <Input />
@@ -1863,26 +2114,97 @@ const CotationList = () => {
                         ))}
                       </Select>
                     </Form.Item>
+                    <Form.Item
+                      name="image"
+                      label="Imagen"
+                      rules={[
+                        {
+                          required: true,
+                          message: 'Por favor, seleccione una imagen'
+                        }
+                      ]}
+                      getValueFromEvent={(e) => {
+                        if (Array.isArray(e)) {
+                          return e
+                        }
+                        if (e && e.fileList) {
+                          return e.fileList
+                        }
+                        return []
+                      }}
+                    >
+                      <Upload
+                        name="image"
+                        listType="picture"
+                        beforeUpload={() => false}
+                        onChange={handleFileChange}
+                      >
+                        <Button icon={<UploadOutlined />}>
+                          Click para subir
+                        </Button>
+                      </Upload>
+                    </Form.Item>
+                    <div className="flex justify-end mt-20">
+                      <Button
+                        icon={<SaveOutlined className="text-blue-500" />}
+                        onClick={() =>
+                          CuttingUtils.handleFormSubmitShort(
+                            ShortForm,
+                            setShorts,
+                            CuttingForm,
+                            setCuttingOrderDt,
+                            shorts,
+                            CuttingOrderDt,
+                            productType,
+                            file,
+                            setImageFileName
+                          )
+                        }
+                        disabled={isSaveDisabled}
+                      />
+                    </div>
                   </div>
-
-                  <Table
-                    className="mt-2"
-                    dataSource={dataSourceShorts}
-                    columns={columnsShort}
-                    pagination={false}
-                    footer={() => (
-                      <Space className="flex justify-end">
-                        <Button
-                          onClick={handleAddRowClickShorts}
-                          icon={<PlusOutlined className="text-cyan-500" />}
-                        />
-                        <Button
-                          onClick={handleEmptyClickShorts}
-                          icon={<ClearOutlined className="text-red-500" />}
-                        />
-                      </Space>
+                  <Space>
+                    {shorts.length > 0 && (
+                      <Table
+                        columns={columnsTempShort}
+                        dataSource={shorts.map((short, index) => ({
+                          ...short,
+                          key: index
+                        }))}
+                      />
                     )}
-                  />
+                  </Space>
+                  <Button
+                    type="primary"
+                    onClick={() =>
+                      CuttingUtils.handleCutSubmitShorts(
+                        selectedQuotation,
+                        shorts,
+                        CuttingOrderDt,
+                        imageFileName
+                      )
+                    }
+                  >
+                    Mostrar contenido de Shirts
+                  </Button>
+                  <Modal
+                    title={`Orden`}
+                    open={isModalShortsTempVisible}
+                    onCancel={() => SetisModalShortsTempVisible(false)}
+                    footer={null}
+                  >
+                    {selectedShort && (
+                      <div>
+                        <p>Disciplina: {selectedShort.discipline}</p>
+                        <p>Disciplina: {selectedShort.clothShortId}</p>
+                        <p>Disciplina: {selectedShort.clothViewId}</p>
+                        <p>Disciplina: {selectedShort.viewShort}</p>
+                        <p>Disciplina: {selectedShort.dtfShort}</p>
+                        <p>Disciplina: {selectedShort.shortSection}</p>
+                      </div>
+                    )}
+                  </Modal>
                 </Form>
               </div>
             ) : (
@@ -1918,7 +2240,6 @@ const CotationList = () => {
                   <Table
                     className="mt-2"
                     dataSource={dataSourceShorts}
-                    columns={columnsShort}
                     pagination={false}
                     footer={() => (
                       <Space className="flex justify-end">
@@ -1940,27 +2261,24 @@ const CotationList = () => {
         )}
       </Drawer>
 
-      <div className="flex flex-row justify-between mb-4">
-        <div>
+      <div className="flex flex-col md:flex-row md:justify-between mb-4">
+        <div className="flex-1 flex flex-col items-center justify-center md:items-start md:justify-start">
           <h4 className="font-bold text-lg">Finanzas</h4>
           <h6 className="text-sm">Lista de Cotizaciones</h6>
         </div>
         <Button
           className=" h-10 bg-indigo-900 rounded-md text-white text-base font-bold p-2 items-center "
-          onClick={handleAdd}
+          onClick={() => setVisibleAdd(true)}
         >
-          <a>
+          <div>
             <PlusOutlined className="text-white font-bold" /> Añadir Nueva
             Cotizacion{' '}
-          </a>
+          </div>
         </Button>
       </div>
 
       <Card>
-        <Space
-          style={{ marginBottom: 16 }}
-          className="flex flex-row justify-between"
-        >
+        <Space className="flex flex-row justify-between">
           <div className="flex flex-row gap-1">
             <Search
               placeholder="Busqueda..."
@@ -1973,17 +2291,17 @@ const CotationList = () => {
           </div>
         </Space>
         <div id="PDFtable">
-          <div className="mt-5 flex justify-between mb-5">
-            <img src={Logo} alt="Ink Sports" className="h-10 " />
-            <span className="text-end">
-              {' '}
-              Ciudad victoria, Tamaulipas a<TodayDate></TodayDate>{' '}
+          <div className="mt-5 flex flex-col items-center sm:flex-row justify-between mb-5">
+            <img src={Logo} alt="Ink Sports" className="h-10 mb-3 sm:mb-0" />
+            <span className="text-center sm:text-end">
+              Ciudad victoria, Tamaulipas a <TodayDate />
             </span>
           </div>
           <Table
             className="w-full border-collapse border border-gray-200"
             columns={columns}
             dataSource={filteredQuotationsWithKeys}
+            tableLayout="fixed"
           />
         </div>
       </Card>

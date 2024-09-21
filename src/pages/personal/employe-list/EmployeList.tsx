@@ -1,4 +1,4 @@
-import  { useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
 import {
   Button,
   Space,
@@ -10,6 +10,7 @@ import {
   message,
   Select,
   Upload,
+  Drawer
 } from 'antd'
 import { useNavigate } from 'react-router-dom'
 import {
@@ -23,7 +24,7 @@ import {
 import useTokenRenewal from 'components/Scripts/useTokenRenewal'
 import { Employee } from 'components/Scripts/Interfaces'
 import * as EmployeeUtils from 'components/Scripts/EmployeeUtils'
-import {  UploadChangeParam } from 'antd/lib/upload'
+import { UploadChangeParam } from 'antd/lib/upload'
 import { generatePDF } from 'components/Scripts/Utils'
 import Logo from 'assets/img/logo.png'
 import Missing from 'assets/img/noUserPhoto.jpg'
@@ -33,20 +34,20 @@ const { Search } = Input
 
 const EmployeList = () => {
   const [employees, setEmployees] = useState<Employee[]>([])
-  const [searchText, setSearchText] = useState('')
-  const [visible, setVisible] = useState<boolean>(false)
-  const [visibleEdit, setVisibleEdit] = useState<boolean>(false)
-  const [visibleAdd, setVisibleAdd] = useState<boolean>(false)
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
-  const navigate = useNavigate()
-  const [EditForm] = Form.useForm()
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
+  const [visible, setVisible] = useState<boolean>(false)
+  const [visibleAdd, setVisibleAdd] = useState<boolean>(false)
+  const [visibleEdit, setVisibleEdit] = useState<boolean>(false)
+  const [searchText, setSearchText] = useState('')
   const [addForm] = Form.useForm()
+  const [editForm] = Form.useForm()
   const filteredEmployees = EmployeeUtils.filterEmployees(employees, searchText)
   const filteredEmployeesWithKeys = EmployeeUtils.addKeysToEmployees(filteredEmployees)
   const [file, setFile] = useState<File | null>(null)
-  const [image, setImage] = useState<any>(null)
+  const [image, setImage] = useState<string | null>('')
 
+  const navigate = useNavigate()
   useTokenRenewal(navigate)
 
   useEffect(() => {
@@ -122,7 +123,7 @@ const EmployeList = () => {
       title: 'Accion',
       key: 'action',
       className: 'action-column ',
-      render: (text: any, record: any) => (
+      render: (record: Employee) => (
         <Space className="md:flex-wrap md:items-center" size="middle">
           <Button
             icon={<DatabaseOutlined className="text-green-700" />}
@@ -137,11 +138,11 @@ const EmployeList = () => {
           />
           <Button
             icon={<EditOutlined className="text-blue-700" />}
-            onClick={() =>{
+            onClick={() => {
               EmployeeUtils.handleEdit(
                 record,
                 setEditingEmployee,
-                EditForm,
+                editForm,
                 setVisibleEdit
               )
             }}
@@ -183,7 +184,8 @@ const EmployeList = () => {
             </p>
             <p>
               <strong>Rol:</strong>{' '}
-              {EmployeeUtils.roleMapping[selectedEmployee.role] || 'Desconocido'}
+              {EmployeeUtils.roleMapping[selectedEmployee.role] ||
+                'Desconocido'}
             </p>
             <p>
               <strong>Teléfono:</strong> {selectedEmployee.phone}
@@ -206,30 +208,41 @@ const EmployeList = () => {
         )}
       </Modal>
 
-      <Modal
+      <Drawer
         title="Editar Empleado"
         open={visibleEdit}
-        onCancel={() => EmployeeUtils.handleCloseEdit(EditForm, setVisibleEdit)}
-        onOk={() => {
-          EditForm.validateFields()
-            .then((values) => {
-              EmployeeUtils.handleSave(
-                EditForm,
-                editingEmployee,
-                employees,
-                setEmployees,
-                setVisibleEdit,
-                file,
-                setFile
-              )
-            })
-            .catch((errorInfo) => {
-              console.error('Error validating form:', errorInfo)
-              message.error('Por favor completa todos los campos requeridos.')
-            })
-        }}
+        onClose={() => EmployeeUtils.handleCloseEdit(editForm, setVisibleEdit)}
+        footer={
+          <div style={{ textAlign: 'right' }}>
+            <Button
+              onClick={() => {
+                editForm
+                  .validateFields()
+                  .then((values) => {
+                    EmployeeUtils.handleSave(
+                      editForm,
+                      editingEmployee,
+                      employees,
+                      setEmployees,
+                      setVisibleEdit,
+                      file,
+                      setFile
+                    )
+                  })
+                  .catch((errorInfo) => {
+                    console.error('Error validating form:', errorInfo)
+                    message.error('Por favor completa todos los campos requeridos.')
+                  })
+              }}
+              type="primary"
+            >
+              Guardar
+            </Button>
+          </div>
+        }
+        
       >
-        <Form form={EditForm} layout="vertical">
+        <Form form={editForm} layout="vertical">
           <Form.Item name="name" label="Nombre">
             <Input />
           </Form.Item>
@@ -256,6 +269,7 @@ const EmployeList = () => {
               <Select.Option value={1}>Administrador</Select.Option>
               <Select.Option value={2}>Financiero</Select.Option>
               <Select.Option value={3}>Auxiliar</Select.Option>
+              <Select.Option value={4}>Diseño</Select.Option>
             </Select>
           </Form.Item>
           <Form.Item
@@ -281,16 +295,29 @@ const EmployeList = () => {
             </Upload>
           </Form.Item>
         </Form>
-      </Modal>
+      </Drawer>
 
-      <Modal
+      <Drawer
         title="Añadir Nuevo Empleado"
         open={visibleAdd}
-        onCancel={() =>
-          EmployeeUtils.handleAddCancel(setVisibleAdd, addForm)
-        }
-        onOk={() =>
-          EmployeeUtils.handleAddSave(addForm, setEmployees, setVisibleAdd,file,setFile)
+        onClose={() => EmployeeUtils.handleAddCancel(setVisibleAdd, addForm)}
+        footer={
+          <div style={{ textAlign: 'right' }}>
+            <Button
+              onClick={() =>
+                EmployeeUtils.handleAddSave(
+                  addForm,
+                  setEmployees,
+                  setVisibleAdd,
+                  file,
+                  setFile
+                )
+              }
+              type="primary"
+            >
+              Guardar
+            </Button>
+          </div>
         }
       >
         <Form form={addForm} layout="vertical">
@@ -324,9 +351,7 @@ const EmployeList = () => {
               }
             ]}
           >
-            <Input 
-             autoComplete="username"
-            />
+            <Input autoComplete="username" />
           </Form.Item>
           <Form.Item
             name="password"
@@ -335,9 +360,7 @@ const EmployeList = () => {
               { required: true, message: 'Por favor ingrese la contraseña' }
             ]}
           >
-            <Input.Password 
-            autoComplete="new-password"
-            />
+            <Input.Password autoComplete="new-password" />
           </Form.Item>
           <Form.Item
             name="confirmPassword"
@@ -346,57 +369,59 @@ const EmployeList = () => {
               { required: true, message: 'Por favor confirme la contraseña' }
             ]}
           >
-            <Input.Password 
-            autoComplete="new-password"
-            />
+            <Input.Password autoComplete="new-password" />
           </Form.Item>
           <Form.Item
-           name="phone" 
-           label="Teléfono"
-           rules={[
-            { required: true, message: 'Por favor ingrese el telefono' }
-          ]}
-           >
+            name="phone"
+            label="Teléfono"
+            rules={[
+              { required: true, message: 'Por favor ingrese el telefono' }
+            ]}
+          >
             <Input />
           </Form.Item>
           <Form.Item
-           name="address" 
-           label="Dirección"
-           rules={[
-            { required: true, message: 'Por favor confirme la dirección' }
-          ]}
-           >
+            name="address"
+            label="Dirección"
+            rules={[
+              { required: true, message: 'Por favor confirme la dirección' }
+            ]}
+          >
             <Input />
           </Form.Item>
-          <Form.Item 
-          name="salary" 
-          label="Salario"
-          rules={[
-            { required: true, message: 'Por favor confirme el salario' }
-          ]}
+          <Form.Item
+            name="salary"
+            label="Salario"
+            rules={[
+              { required: true, message: 'Por favor confirme el salario' }
+            ]}
           >
             <Input type="number" />
           </Form.Item>
-          <Form.Item 
-          name="startDate" 
-          label="Fecha de Inicio"
-          rules={[
-            { required: true, message: 'Por favor confirme la fecha de inicio' }
-          ]}
+          <Form.Item
+            name="startDate"
+            label="Fecha de Inicio"
+            rules={[
+              {
+                required: true,
+                message: 'Por favor confirme la fecha de inicio'
+              }
+            ]}
           >
             <Input type="date" />
           </Form.Item>
-          <Form.Item 
-          name="role" 
-          label="Puesto"
-          rules={[
-            { required: true, message: 'Por favor confirme el puesto' }
-          ]}
+          <Form.Item
+            name="role"
+            label="Puesto"
+            rules={[
+              { required: true, message: 'Por favor confirme el puesto' }
+            ]}
           >
             <Select placeholder="Selecciona un puesto">
               <Select.Option value={1}>Administrador</Select.Option>
               <Select.Option value={2}>Financiero</Select.Option>
               <Select.Option value={3}>Auxiliar</Select.Option>
+              <Select.Option value={4}>Diseño</Select.Option>
             </Select>
           </Form.Item>
           <Form.Item
@@ -422,26 +447,24 @@ const EmployeList = () => {
             </Upload>
           </Form.Item>
         </Form>
-      </Modal>
+      </Drawer>
 
-      <div className="flex flex-row justify-between mb-4">
-        <div>
+      <div className="flex flex-col md:flex-row md:justify-between mb-4">
+        <div className="flex-1 flex flex-col items-center justify-center md:items-start md:justify-start">
           <h4 className="font-bold text-lg">Personal</h4>
           <h6 className="text-sm">Lista de Empleados</h6>
         </div>
         <Button
-          className=" h-10 bg-indigo-900 rounded-md text-white text-base font-bold p-2 items-center "
+          className="h-10 bg-indigo-900 rounded-md text-white text-base font-bold p-2 mt-4 md:mt-0 md:self-end"
           onClick={() => EmployeeUtils.handleAdd(setVisibleAdd)}
+          icon={<PlusOutlined className="text-white font-bold" />}
         >
-          <a>
-            <PlusOutlined className="text-white font-bold" /> Añadir nuevo empleado{' '}
-          </a>
+          Añadir nuevo empleado
         </Button>
       </div>
-      <Card >
-        <Space
-          className="mb-4 flex flex-row justify-between"
-        >
+
+      <Card>
+        <Space className="mb-4 flex flex-row justify-between">
           <div className="flex flex-row gap-1">
             <Search
               placeholder="Busqueda..."
@@ -454,17 +477,18 @@ const EmployeList = () => {
           </div>
         </Space>
         <div id="PDFtable">
-          <div className="mt-5 flex justify-between mb-5">
-            <img src={Logo} alt="Ink Sports" className="h-10 " />
-            <span className="text-end">
-              {' '}
-              Ciudad victoria, Tamaulipas a<TodayDate></TodayDate>{' '}
+          <div className="mt-5 flex flex-col items-center sm:flex-row justify-between mb-5">
+            <img src={Logo} alt="Ink Sports" className="h-10 mb-3 sm:mb-0" />
+            <span className="text-center sm:text-end">
+              Ciudad victoria, Tamaulipas a <TodayDate />
             </span>
           </div>
+
           <Table
             className="w-full border-collapse border border-gray-200"
             columns={columns}
             dataSource={filteredEmployeesWithKeys}
+            tableLayout="fixed"
           />
         </div>
       </Card>

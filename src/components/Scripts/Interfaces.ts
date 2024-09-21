@@ -42,7 +42,7 @@ export interface Employee {
   }
 
   export interface Material {
-    id: string
+    id: number
     name: string
     description: string
     stock: number
@@ -50,7 +50,7 @@ export interface Employee {
     categoryId: string
     userId: string
     unitMeasure: string
-    dateReceipt: string
+    dateReceipt: string | null; 
     serial: string
     location: string
     image: string
@@ -101,29 +101,24 @@ export interface Employee {
     phone: string
   }
 
-  
   export interface Quotation {
-    id: number
-    dateReceipt: string
-    expirationDate: string
-    clientId: string
-    subtotal:number
-    tax:number
-    netAmount:number
-    advance:number
-    total:number
-
-  }
-
-  export interface QuotationAdd  {
-    dateReceipt: string
-    expirationDate: string
-    clientId: string
-    subtotal:number
-    tax:number
-    netAmount:number
-    advance:number
-    total:number
+    id: number;
+    dateReceipt: string;
+    expirationDate: string;
+    clientId: number; 
+    client: Client; 
+    subtotal: number;
+    tax: number;
+    netAmount: number;
+    advance: number;
+    total: number;
+    inProduction: boolean; 
+    key: string; 
+    quotationDesigns: quotationDesigns[]; 
+    quotationProduct: QuotationProduct[]; 
+    quotationProductMaquila: QuotationProductMaquila[]; 
+    quotationProductShirts: FormDataShirt[]; 
+    quotationProductShorts: any[]; 
   }
 
  export interface QuotationItem {
@@ -136,19 +131,24 @@ export interface Employee {
   }
 
   export interface QuotationProduct {
+    id?:number
+    key?:number
+    quotationId : number
     description: string;
     quantity: number;
     amount: number;
     tax?: number;
     total: number;
   }
-  
+
   export interface QuotationProductMaquila {
+    id?:number
+    quotationId : number
     description: string;
     quantity: number;
-    price_meter: number;
-    meters_impression: number;
-    price_unit: number;
+    price_meter?: number;
+    meters_impression?: number;
+    price_unit?: number;
     amount: number;
   }
 
@@ -176,25 +176,38 @@ export interface Employee {
     observation:string;
   }
 
+  export interface FormDataShort {
+    discipline: string;
+    clothShortId: number;
+    clothViewId : number;
+    viewShort: string;
+    dtfShort: string;
+    shortSection: string;
+    gender: number;
+    quantity: number;
+    size: string;
+    observation:string;
+  }
+
   export interface FormDataShirtView {
     id:number
     productType: boolean;
     discipline: string;
-    clothFrontShirtId: string;
-    clothBackShirtId: string;
+    clothFrontShirtId: number;
+    clothBackShirtId: number;
     neckline: string;
     typeNeckline: string;
-    clothNecklineId: string;
+    clothNecklineId: number;
     sleeveShape: string;
     sleeveType: string;
-    clothSleeveId: string;
+    clothSleeveId: number;
     cuff: string;
     typeCuff: string;
-    clothCuffId: string;
+    clothCuffId: number;
     dtfShirt: string;
     tShirtSection: boolean;
     gender:number;
-    quantity:number;
+    quantity:string;
     size:string;
     priceUnit:number;
     tax:number;
@@ -218,6 +231,14 @@ export interface Employee {
     id:number
     quotationId:number
     typeProduct:boolean
+  }
+
+  export interface MaterialRends{
+    id: number
+    material: Material[]
+    materialId: number
+    performance: number
+    size: number
   }
 
 
