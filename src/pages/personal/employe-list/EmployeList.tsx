@@ -35,7 +35,9 @@ const { Search } = Input
 const EmployeList = () => {
   const [employees, setEmployees] = useState<Employee[]>([])
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null)
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(
+    null
+  )
   const [visible, setVisible] = useState<boolean>(false)
   const [visibleAdd, setVisibleAdd] = useState<boolean>(false)
   const [visibleEdit, setVisibleEdit] = useState<boolean>(false)
@@ -43,7 +45,8 @@ const EmployeList = () => {
   const [addForm] = Form.useForm()
   const [editForm] = Form.useForm()
   const filteredEmployees = EmployeeUtils.filterEmployees(employees, searchText)
-  const filteredEmployeesWithKeys = EmployeeUtils.addKeysToEmployees(filteredEmployees)
+  const filteredEmployeesWithKeys =
+    EmployeeUtils.addKeysToEmployees(filteredEmployees)
   const [file, setFile] = useState<File | null>(null)
   const [image, setImage] = useState<string | null>('')
 
@@ -231,7 +234,9 @@ const EmployeList = () => {
                   })
                   .catch((errorInfo) => {
                     console.error('Error validating form:', errorInfo)
-                    message.error('Por favor completa todos los campos requeridos.')
+                    message.error(
+                      'Por favor completa todos los campos requeridos.'
+                    )
                   })
               }}
               type="primary"
@@ -240,7 +245,6 @@ const EmployeList = () => {
             </Button>
           </div>
         }
-        
       >
         <Form form={editForm} layout="vertical">
           <Form.Item name="name" label="Nombre">
@@ -268,8 +272,13 @@ const EmployeList = () => {
             <Select placeholder="Selecciona un puesto">
               <Select.Option value={1}>Administrador</Select.Option>
               <Select.Option value={2}>Financiero</Select.Option>
-              <Select.Option value={3}>Auxiliar</Select.Option>
+              <Select.Option value={3}>Administrativo</Select.Option>
               <Select.Option value={4}>Diseño</Select.Option>
+              <Select.Option value={5}>Corte</Select.Option>
+              <Select.Option value={6}>Impresion</Select.Option>
+              <Select.Option value={7}>Sublimado</Select.Option>
+              <Select.Option value={8}>Costura</Select.Option>
+              <Select.Option value={9}>Empaquetado</Select.Option>
             </Select>
           </Form.Item>
           <Form.Item
@@ -420,8 +429,13 @@ const EmployeList = () => {
             <Select placeholder="Selecciona un puesto">
               <Select.Option value={1}>Administrador</Select.Option>
               <Select.Option value={2}>Financiero</Select.Option>
-              <Select.Option value={3}>Auxiliar</Select.Option>
+              <Select.Option value={3}>Administrativo</Select.Option>
               <Select.Option value={4}>Diseño</Select.Option>
+              <Select.Option value={5}>Corte</Select.Option>
+              <Select.Option value={6}>Impresion</Select.Option>
+              <Select.Option value={7}>Sublimado</Select.Option>
+              <Select.Option value={8}>Costura</Select.Option>
+              <Select.Option value={9}>Empaquetado</Select.Option>
             </Select>
           </Form.Item>
           <Form.Item

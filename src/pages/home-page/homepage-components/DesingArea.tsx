@@ -55,7 +55,6 @@ const DesignArea = () => {
     </Card>
   </div>
 
-  {/* Tercera Card (Acciones) */}
   <div className="lg:col-span-1 flex justify-center items-center lg:h-auto">
     <Card
       className="shadow-md lg:h-80 w-full" 

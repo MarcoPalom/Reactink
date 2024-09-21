@@ -34,7 +34,7 @@ const SideNav = () => {
 
   const userole = localStorage.getItem('userRole');
   
-  if (userole && Number(userole) === 4) {
+  if (userole && Number(userole) != 1) {
     return null;
   }
 

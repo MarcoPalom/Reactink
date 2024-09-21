@@ -217,7 +217,10 @@ export interface Employee {
   }
 
   export interface CuttingOrderData{
+    id:number
+    quotationId:number;
     dateReceipt:string;
+    quotation: Quotation
     dueDate:string;
   }
 

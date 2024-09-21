@@ -465,8 +465,7 @@ export const handleSubmitShirts = async (
   const Type: boolean = true
   const DesignData = {
     quotationId,
-    ...(imageFileName ? { design: imageFileName } : {}),
-    typeProduct: Type
+    ...(imageFileName ? { designFront: imageFileName } : {}),
   }
 
   try {
@@ -520,7 +519,6 @@ export const handleSubmitShorts = async (
   const DesignData = {
     quotationId,
     ...(imageFileName ? { design: imageFileName } : {}),
-    typeProduct: Type
   }
 
   try {

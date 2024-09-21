@@ -13,7 +13,9 @@ import { FormInstance } from 'antd'
 
 const { confirm } = Modal
 
-export const fetchAndSetEmployees = async (setEmployees: React.Dispatch<React.SetStateAction<Employee[]>>) => {
+export const fetchAndSetEmployees = async (
+  setEmployees: React.Dispatch<React.SetStateAction<Employee[]>>
+) => {
   try {
     const response = await fetchEmployees()
     setEmployees(response)
@@ -25,25 +27,31 @@ export const fetchAndSetEmployees = async (setEmployees: React.Dispatch<React.Se
 export const roleMapping: Record<number, string> = {
   1: 'Administrador',
   2: 'Financiero',
-  3: 'Auxiliar'
+  3: 'Auxiliar',
+  4: 'Diseño',
+  5: 'Corte',
+  6: 'Impresion',
+  7: 'Sublimado',
+  8: 'Costura',
+  9: 'Empaquetado'
 }
 
 export const handleView = async (
   id: string,
-  setSelectedEmployee: (employee: Employee | null)=>void,
+  setSelectedEmployee: (employee: Employee | null) => void,
   setVisible: (visible: boolean) => void,
-  setImage: (imageUrl: string) => void 
+  setImage: (imageUrl: string) => void
 ) => {
   try {
     const employeeDetails = await fetchEmployeeDetails(id)
     const imageExtension = 'user'
     const imageName = employeeDetails.image
-    if(imageName!=null){
+    if (imageName != null) {
       const img = await fetchImage(imageName, imageExtension)
       const imgURL = URL.createObjectURL(img)
       setImage(imgURL)
     }
-   
+
     setSelectedEmployee({ ...employeeDetails })
     setVisible(true)
   } catch (error) {
@@ -58,7 +66,7 @@ export const handleSave = async (
   setEmployees: (employees: Employee[]) => void,
   setVisibleEdit: (visible: boolean) => void,
   file: File | null,
-  setFile: (file: File | null) => void 
+  setFile: (file: File | null) => void
 ) => {
   try {
     let imageFileName: string | null = null
@@ -74,7 +82,7 @@ export const handleSave = async (
     const values = await editForm.validateFields()
     const updatedEmployeeData: Partial<Employee> = {
       ...values,
-      ...(imageFileName ? { image: imageFileName } : {}) 
+      ...(imageFileName ? { image: imageFileName } : {})
     }
     if (editingEmployee) {
       await updateEmployee(editingEmployee.id, updatedEmployeeData)
@@ -93,8 +101,7 @@ export const handleSave = async (
   } catch (error) {
     console.error('Error al actualizar el empleado:', error)
     message.error('Error al actualizar el empleado')
-  }
-  finally {
+  } finally {
     setVisibleEdit(false)
     editForm.resetFields()
     setFile(null)
@@ -105,43 +112,43 @@ export const handleAddSave = async (
   addForm: FormInstance,
   setEmployees: (employees: (prevEmployees: Employee[]) => Employee[]) => void,
   setVisibleAdd: (visible: boolean) => void,
-  file: File | null, 
-  setFile: (file: File | null) => void  
+  file: File | null,
+  setFile: (file: File | null) => void
 ) => {
   try {
-    const values = await addForm.validateFields();
-    const { confirmPassword, ...employeeData } = values;
+    const values = await addForm.validateFields()
+    const { confirmPassword, ...employeeData } = values
     if (values.password !== confirmPassword) {
-      throw new Error('Las contraseñas no coinciden');
+      throw new Error('Las contraseñas no coinciden')
     }
-    let imageFileName: string | null = null;
+    let imageFileName: string | null = null
     if (file) {
       try {
-        imageFileName = await uploadImage(file);
-        message.success('Imagen subida exitosamente');
+        imageFileName = await uploadImage(file)
+        message.success('Imagen subida exitosamente')
       } catch (uploadError) {
-        console.error('Error al subir la imagen:', uploadError);
-        message.error('Error al subir la imagen');
+        console.error('Error al subir la imagen:', uploadError)
+        message.error('Error al subir la imagen')
       }
     }
     const employeeDataWithImage = {
       ...employeeData,
       ...(imageFileName ? { image: imageFileName } : {})
-    };
-    const response = await addEmployee(employeeDataWithImage);
-    setEmployees((prevEmployees: Employee[]) => [...prevEmployees, response]);
-    message.success('Empleado agregado exitosamente');
+    }
+    const response = await addEmployee(employeeDataWithImage)
+    setEmployees((prevEmployees: Employee[]) => [...prevEmployees, response])
+    message.success('Empleado agregado exitosamente')
   } catch (error: any) {
-    console.error('Error adding employee:', error);
+    console.error('Error adding employee:', error)
     message.error(
       error.response?.data.message || 'Error al agregar el empleado'
-    );
+    )
   } finally {
-    setVisibleAdd(false);
-    addForm.resetFields();
-    setFile(null);
+    setVisibleAdd(false)
+    addForm.resetFields()
+    setFile(null)
   }
-};
+}
 
 export const deleteUser = async (
   id: string,
@@ -176,7 +183,10 @@ export const handleDelete = (
   })
 }
 
-export const handleClose = (setVisible: (visible: boolean) => void, setImage: (image:string|null) => void) => {
+export const handleClose = (
+  setVisible: (visible: boolean) => void,
+  setImage: (image: string | null) => void
+) => {
   setVisible(false)
   setImage(null)
 }
@@ -195,7 +205,7 @@ export const handleAdd = (setVisibleAdd: (visibleAdd: boolean) => void) => {
 
 export const handleAddCancel = (
   setVisibleAdd: (visibleAdd: boolean) => void,
-  addForm:  FormInstance
+  addForm: FormInstance
 ) => {
   setVisibleAdd(false)
   addForm.resetFields()
@@ -231,7 +241,9 @@ export const filterEmployees = (
     : employees
 }
 
-export const addKeysToEmployees = (employees: Employee[]): (Employee & { key: string })[] => {
+export const addKeysToEmployees = (
+  employees: Employee[]
+): (Employee & { key: string })[] => {
   return employees.map((employee, index) => ({
     ...employee,
     key: index.toString()
@@ -252,7 +264,7 @@ const uploadImage = async (file: File): Promise<string> => {
         }
       }
     )
-    return response.data.fileName 
+    return response.data.fileName
   } catch (error) {
     console.error('Error al subir la imagen:', error)
     throw error
