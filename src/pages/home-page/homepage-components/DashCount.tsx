@@ -5,8 +5,9 @@ import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import useTokenRenewal from 'components/Scripts/useTokenRenewal'
 
-const DashCount = () => {
-  const [dashCountData, setDashCountData] = useState([4])
+export default function DashCount() {
+  const [dashCountData, setDashCountData] = useState<number[]>([0, 0, 0, 0])
+  const [loading, setLoading] = useState(true)
   const navigate = useNavigate()
 
   useTokenRenewal(navigate)
@@ -30,48 +31,45 @@ const DashCount = () => {
         });
         const totalClients = clientResponse.data.length;
 
+        // Simulating a delay for the last two data points
+        await new Promise(resolve => setTimeout(resolve, 1000));
+
         setDashCountData([totalEmployees, totalClients, 10, 10]);
+        setLoading(false);
       } catch (error) {
         console.error('Error fetching data:', error);
+        setLoading(false);
       }
     };
   
     fetchData();
   }, []);
+
+  const renderCard = (index: number, title: string, icon: JSX.Element, bgColor: string) => (
+    <div 
+      key={index}
+      className={`${bgColor} rounded-md flex justify-between p-5 w-full md:max-w-xs lg:w-1/4 h-24
+                  transition-all duration-500 ease-in-out
+                  hover:scale-105
+                  ${loading ? 'animate-pulse' : 'animate-fadeInUp'}`}
+      style={{ animationDelay: `${index * 100}ms` }}
+    >
+      <div>
+        <h4 className="text-2xl">{loading ? '-' : dashCountData[index]}</h4>
+        <h5 className="text-sm">{title}</h5>
+      </div>
+      <div className="text-6xl transform transition-all hover:scale-110 duration-500">
+        {icon}
+      </div>
+    </div>
+  );
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:flex lg:flex-row gap-4 text-white w-full mb-5 justify-between">
-      <div className="bg-indigo-900 rounded-md flex justify-between p-5 w-full md:max-w-xs lg:w-1/4 h-24">
-        <div>
-          <h4 className="text-2xl">{dashCountData[0]}</h4>
-          <h5 className="text-sm">Empleados</h5>
-        </div>
-        <UserOutlined className="text-6xl transform transition-all hover:scale-110 duration-500" />
-      </div>
-
-      <div className="bg-sky-400 rounded-md flex justify-between p-5 md:max-w-xs lg:w-1/4 h-24 ">
-        <div>
-          <h4 className="text-2xl">{dashCountData[1]}</h4>
-          <h5 className="text-sm">Clientes</h5>
-        </div>
-        <UsergroupAddOutlined className="text-6xl transform transition-all hover:scale-110 duration-500" />
-      </div>
-
-      <div className="bg-rose-600 rounded-md flex justify-between p-5 md:max-w-xs lg:w-1/4 h-24 ">
-        <div>
-          <h4 className="text-2xl">{dashCountData[2]}</h4>
-          <h5 className="text-sm">Pedidos recibidos</h5>
-        </div>
-        <FaClipboardList className="text-6xl transform transition-all hover:scale-110 duration-500" />
-      </div>
-
-      <div className="bg-green-500 rounded-md flex justify-between p-5 md:max-w-xs lg:w-1/4 h-24">
-        <div>
-          <h4 className="text-2xl">{dashCountData[3]}</h4>
-          <h5 className="text-sm">Pedidos completados</h5>
-        </div>
-        <FaClipboardCheck className="text-6xl transform transition-all hover:scale-110 duration-500" />
-      </div>
+      {renderCard(0, "Empleados", <UserOutlined />, "bg-indigo-900")}
+      {renderCard(1, "Clientes", <UsergroupAddOutlined />, "bg-sky-400")}
+      {renderCard(2, "Pedidos recibidos", <FaClipboardList />, "bg-rose-600")}
+      {renderCard(3, "Pedidos completados", <FaClipboardCheck />, "bg-green-500")}
     </div>
   )
 }
-export default DashCount

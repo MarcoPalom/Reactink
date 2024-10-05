@@ -4,12 +4,11 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { Button } from 'antd/es/radio'
 import logo from 'assets/img/logo.png'
 
-
-const TopNav = () => {
+export default function TopNav() {
   const location = useLocation()
   const navigate = useNavigate()
 
-  const userole = localStorage.getItem('userRole');
+  const userRole = localStorage.getItem('userRole')
 
   const allowedRoutes = [
     '/homepage',
@@ -27,21 +26,20 @@ const TopNav = () => {
     return null
   }
 
-
   const logout = () => {
     navigate('/')
   }
 
   return (
     <div className="h-16 px-5 flex flex-row items-center justify-between shadow-lg">
-    {userole !== '1' && (  // Cambia la comparación según el tipo de dato en localStorage
-      <div className="flex-1 flex justify-center">
-        <img src={logo} alt="Logo" className="h-10" /> {/* Ajusta la altura según necesites */}
+      <div className="flex-1">
+        {userRole !== '1' && (
+          <div className="flex justify-center">
+            <img src={logo} alt="Logo" className="h-10" />
+          </div>
+        )}
       </div>
-    )}
-    
-    <div className="flex items-center gap-5">
-      <div>
+      <div className="flex items-center gap-5">
         <Popover
           placement="bottomRight"
           trigger="click"
@@ -53,30 +51,27 @@ const TopNav = () => {
             </div>
           }
         >
-          <BellOutlined className="text-xl text-slate-500" />
+          <BellOutlined className="text-xl text-slate-500 cursor-pointer" />
+        </Popover>
+        <Popover
+          placement="bottomRight"
+          trigger="click"
+          content={
+            <div className="flex flex-col gap-2">
+              <div>Mi perfil</div>
+              <div>Configuraciones</div>
+              <Button
+                className="text-red-500"
+                onClick={logout}
+              >
+                Cerrar sesión
+              </Button>
+            </div>
+          }
+        >
+          <Avatar icon={<UserOutlined />} className="cursor-pointer" />
         </Popover>
       </div>
-      <Popover
-        placement="bottomRight"
-        trigger="click"
-        content={
-          <div>
-            <div>Mi perfil</div>
-            <div>Configuraciones</div>
-            <Button
-              className="text-red-500"
-              onClick={logout}
-            >
-              Cerrar sesión
-            </Button>
-          </div>
-        }
-      >
-        <Avatar icon={<UserOutlined />} />
-      </Popover>
     </div>
-  </div>
   )
 }
-
-export default TopNav

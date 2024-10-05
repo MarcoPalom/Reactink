@@ -1,14 +1,15 @@
 import DashCount from "./homepage-components/DashCount";
 import ChartNTable from "./homepage-components/ChartNTable";
-import ActivitiesList from "./homepage-components/ActivitiesList";
-import DesignArea from "./homepage-components/DesingArea";
-import CuttingArea from "./homepage-components/CuttingArea";
+import DesignArea from "./DesingArea";
+import CuttingArea from "./CuttingArea";
+import PrintingArea from "./PrintingArea"
+import SublimateArea from "./SublimateArea";
+import SewingArea from "./SewingArea"
+import FinishingArea from "./FinishingArea"
 import {useNavigate} from 'react-router-dom'
 import useTokenRenewal from 'components/Scripts/useTokenRenewal'
 
-
 const HomePage = () => {
-
     const navigate = useNavigate()
     useTokenRenewal(navigate)
     
@@ -16,23 +17,28 @@ const HomePage = () => {
     const roleNumber = Number(userole);
     
     return (
-
         <div>
-      {roleNumber === 1 ? (
-        <div>
-          <DashCount />
-          <ChartNTable />
-          <ActivitiesList />
+            {roleNumber === 1 ? (
+                <div>
+                    <DashCount />
+                    <ChartNTable />
+                </div>
+            ) : roleNumber === 4 ? (
+                <DesignArea/>
+            ) : roleNumber === 5 ? (
+                <CuttingArea/>
+            ) : roleNumber === 6 ? (
+                <PrintingArea/>
+            ) : roleNumber === 7 ? (
+                <SublimateArea/>
+            ) : roleNumber === 8 ? (
+                <SewingArea/>
+            ) : roleNumber === 9 ? (
+                <FinishingArea/>
+            ) : (
+                null
+            )}
         </div>
-      ) : roleNumber === 4 ? (
-        <DesignArea/>
-      ) : roleNumber === 5?(
-        <CuttingArea/>
-      ):(
-        null
-      )}
-    </div>
-
     )
 }
 

@@ -213,7 +213,21 @@ export interface Employee {
     tax:number;
     observation:string;
     total:number;
-    quotationId:number
+    quotationId:number;
+    cuttingArea?:number;
+    printingArea?:number;
+    sublimationArea?:number;
+    finishingArea?:number;
+  }
+
+  export interface Expense {
+    id: number;
+    concept: string;
+    total: number;
+    bank: string | null;
+    dateExpense: string;
+    userId: number | null;
+    materialId: number | null;
   }
 
   export interface CuttingOrderData{

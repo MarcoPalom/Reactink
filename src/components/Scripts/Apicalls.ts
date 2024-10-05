@@ -50,8 +50,54 @@ export const addEmployee = async (employeeData: any) => {
   return response.data
 }
 
+
 export const deleteEmployee = async (id: string) => {
   await axios.delete(`${API_BASE_URL}/user/delete/${id}`, getAuthHeaders())
+}
+
+//funciones expenses
+
+export const fetchExpenses = async () => {
+  try {
+    const response = await axios.get(
+      `${API_BASE_URL}/expense/`,
+      getAuthHeaders()
+    )
+    return response.data
+  } catch (error) {
+    console.error('Error fetching employees:', error)
+    throw error
+  }
+}
+
+export const fetchExpenseDetails = async (id: number) => {
+  const response = await axios.get(
+    `${API_BASE_URL}/expense/${id}`,
+    getAuthHeaders()
+  )
+  return response.data
+}
+
+export const updateExpense = async (id: number, values: any) => {
+  const response = await axios.put(
+    `${API_BASE_URL}/expense/update/${id}`,
+    values,
+    getAuthHeaders()
+  )
+  return response.data
+}
+
+export const addExpense = async (employeeData: any) => {
+  const response = await axios.post(
+    `${API_BASE_URL}/expense/`,
+    employeeData,
+    getAuthHeaders()
+  )
+  return response.data
+}
+
+export const deleteExpense = async (id: number) => {
+  await axios.delete(`${API_BASE_URL}/expense/delete/${id}`, getAuthHeaders())
 }
 
 // Funciones relacionadas con cotizaciones
@@ -289,6 +335,7 @@ export const updateMaterial = async (id: number, materialData: any) => {
   )
   return response.data
 }
+
 export const addMaterial = async (materialData: any) => {
   const response = await axios.post(
     `${API_BASE_URL}/material/`,
@@ -297,6 +344,7 @@ export const addMaterial = async (materialData: any) => {
   )
   return response.data
 }
+
 export const deleteMaterial = async (id: number) => {
   const response = await axios.delete(
     `${API_BASE_URL}/material/delete/${id}`,

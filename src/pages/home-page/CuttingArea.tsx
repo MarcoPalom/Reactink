@@ -1,0 +1,348 @@
+import React, { useState, useEffect } from 'react'
+import { Card, Input, Table, Drawer, Checkbox, Button, Modal, message } from 'antd'
+import { RightOutlined, LeftOutlined, ScissorOutlined } from '@ant-design/icons'
+import useTokenRenewal from 'components/Scripts/useTokenRenewal'
+import { useNavigate } from 'react-router-dom'
+import * as CuttingUtils from 'components/Scripts/CuttingUtils'
+import Logo from 'assets/img/logo.png'
+import Missing from 'assets/img/noUserPhoto.jpg'
+import axios from 'axios'
+import {
+  CuttingOrderData,
+  Quotation,
+  FormDataShirtView,
+  Material,
+  quotationDesigns
+} from 'components/Scripts/Interfaces'
+
+const CuttingOrderList: React.FC = () => {
+  const navigate = useNavigate()
+  const [orders, setOrders] = useState<CuttingOrderData[]>([])
+  const [materials, setMaterials] = useState<Material[]>([])
+  const [designs, setDesigns] = useState<quotationDesigns[]>([])
+  const [quotationProducts, setQuotationProducts] = useState<FormDataShirtView[]>([])
+  const [cuttingOrder, setCuttingOrder] = useState<Quotation[]>([])
+  const [visible, setVisible] = useState<boolean>(false)
+  const [searchText, setSearchText] = useState('')
+  const [image, setImage] = useState<string | null>(null)
+  const [currentSlide, setCurrentSlide] = useState(0)
+  const [isModalVisible, setIsModalVisible] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<FormDataShirtView | null>(null)
+
+  useTokenRenewal(navigate)
+
+  useEffect(() => {
+    CuttingUtils.fetchAndSetOrders(setOrders)
+    CuttingUtils.fetchAndSetMaterials(setMaterials)
+    CuttingUtils.fetchAndSetQuotations(setDesigns)
+  }, [])
+
+  const filteredOrders = CuttingUtils.filterOrders(orders, searchText)
+  const filteredOrdersWithKeys = CuttingUtils.addKeysToOrders(filteredOrders)
+
+  const materialMap = new Map(materials.map((material) => [material.id, material.name]))
+
+  const getMaterialName = (id: number) => {
+    return materialMap.get(id) || 'Unknown'
+  }
+
+  const handleValidate = (record: FormDataShirtView) => {
+    setSelectedProduct(record)
+    setIsModalVisible(true)
+  }
+
+  const handleConfirm = async () => {
+    if (!selectedProduct) return
+
+    try {
+      const endpoint = '/checkArea/'
+
+      const response = await axios.put(`${endpoint}${selectedProduct.id}`, {
+        cuttingArea: 1,
+      }, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+      })
+
+      if (response.status === 200) {
+        message.success('Item validated successfully')
+        
+        const updatedProducts = quotationProducts.filter(p => p.id !== selectedProduct.id)
+        setQuotationProducts(updatedProducts)
+        
+        setIsModalVisible(false)
+        setSelectedProduct(null)
+      } else {
+        throw new Error('Unexpected response status')
+      }
+    } catch (error) {
+      console.error('Error validating item:', error)
+      message.error('Failed to validate item. Please try again.')
+    }
+  }
+
+  const handleViewOrderDetails = (id: number) => {
+    CuttingUtils.handleView(id, setQuotationProducts, setVisible, setCuttingOrder)
+  }
+
+  const nextSlide = () => {
+    setCurrentSlide((prevSlide) => (prevSlide + 1) % filteredOrdersWithKeys.length)
+  }
+
+  const prevSlide = () => {
+    setCurrentSlide((prevSlide) => (prevSlide - 1 + filteredOrdersWithKeys.length) % filteredOrdersWithKeys.length)
+  }
+
+  const ResponsiveTable: React.FC<{ dataSource: FormDataShirtView[] }> = ({ dataSource }) => {
+    return (
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Talla</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Observación</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Validar</th>
+            </tr>
+          </thead>
+          <tbody className="bg-white divide-y divide-gray-200">
+            {dataSource.map((item) => (
+              <tr key={item.id}>
+                <td className="px-6 py-4 whitespace-nowrap">{item.size}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{item.quantity}</td>
+                <td className="px-6 py-4 whitespace-nowrap">{item.observation}</td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <Button onClick={() => handleValidate(item)}>Validate</Button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    )
+  }
+
+  const ResponsiveCardList: React.FC<{ dataSource: FormDataShirtView[] }> = ({ dataSource }) => {
+    return (
+      <div className="space-y-4">
+        {dataSource.map((item) => (
+          <Card key={item.id} className="shadow-sm">
+            <div className="space-y-2">
+              <p><strong>Talla:</strong> {item.size}</p>
+              <p><strong>Cantidad:</strong> {item.quantity}</p>
+              <p><strong>Observación:</strong> {item.observation}</p>
+              <div>
+                <Button onClick={() => handleValidate(item)}>Validate</Button>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+    )
+  }
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-6 text-center">Área de Corte</h1>
+      
+      <div className="mt-10 relative">
+        <div className="overflow-hidden">
+          <div
+            className="flex transition-transform duration-300 ease-in-out animate-fadeIn"
+            style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+          >
+            {filteredOrdersWithKeys.map((order) => (
+              <div key={order.key} className="w-full flex-shrink-0 relative px-4">
+                <Card 
+                  className="w-full max-w-md mx-auto p-6 cursor-pointer shadow-lg transition-all duration-300 hover:shadow-xl"
+                  onClick={() => handleViewOrderDetails(order.id)}
+                >
+                  <div className="flex justify-between items-center mb-4">
+                    <div className="relative">
+                      <div className="absolute inset-0 rounded-full bg-red-400 opacity-50 animate-pulse" />
+                      <div className="flex items-center justify-center bg-red-500 rounded-full p-4">
+                        <ScissorOutlined className="text-white text-2xl" />
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <h3 className="text-lg font-semibold">
+                        Folio Cotización: {order.quotationId}
+                      </h3>
+                      <p className="text-sm">
+                        <strong>Fecha de recibido:</strong>{' '}
+                        {new Date(order.dateReceipt).toLocaleDateString()}
+                      </p>
+                      <p className="text-sm">
+                        <strong>Fecha de entrega:</strong>{' '}
+                        {new Date(order.dueDate).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="text-sm mb-2">
+                    <strong>Estado:</strong>{' '}
+                    <span className="text-green-500">En proceso de corte</span>
+                  </p>
+                  <p className="text-sm">
+                    <strong>Prioridad:</strong>{' '}
+                    <span className="text-yellow-500">Alta</span>
+                  </p>
+                </Card>
+                <button
+                  className="absolute top-1/2 left-2 transform -translate-y-1/2 bg-white rounded-full p-2 shadow-md z-10 transition-all duration-300 hover:scale-110"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    prevSlide();
+                  }}
+                >
+                  <LeftOutlined className="text-xl" />
+                </button>
+                <button
+                  className="absolute top-1/2 right-2 transform -translate-y-1/2 bg-white rounded-full p-2 shadow-md z-10 transition-all duration-300 hover:scale-110"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    nextSlide();
+                  }}
+                >
+                  <RightOutlined className="text-xl" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        <div className="flex justify-center mt-4">
+          {filteredOrdersWithKeys.map((_, index) => (
+            <div
+              key={index}
+              className={`h-2 w-2 rounded-full mx-1 ${
+                currentSlide === index ? 'bg-red-500' : 'bg-red-300'
+              }`}
+            />
+          ))}
+        </div>
+      </div>
+
+      <Drawer
+        title="Detalles de la orden"
+        placement="right"
+        onClose={() => setVisible(false)}
+        open={visible}
+        width={600}
+      >
+        {quotationProducts && quotationProducts.length > 0 && (
+          <Card className="p-4">
+            <div>
+              <div className="flex justify-center mb-2">
+                <img src={Logo} alt="Ink Sports" className="h-8" />
+              </div>
+
+              {quotationProducts.map((product, index) => (
+                <div key={index} className="mb-4">
+                  <div className="flex justify-between mb-4">
+                    <p>
+                      <strong>Cotización Folio:</strong> {product.quotationId}
+                    </p>
+                    <p>
+                      <strong>Cliente:</strong>
+                    </p>
+                  </div>
+
+                  <h3 className="flex justify-center text-lg leading-6 font-medium text-gray-900 mb-4">
+                    Orden de corte
+                  </h3>
+
+                  <div className="flex flex-col md:flex-row mb-4">
+                    <div className="flex justify-center md:w-1/3">
+                      {image ? (
+                        <img className="w-64 h-44 object-cover" src={image} alt="Product" />
+                      ) : (
+                        <img
+                          className="w-64 h-44 object-cover"
+                          src={Missing}
+                          alt="missing image"
+                        />
+                      )}
+                    </div>
+                    <div className="md:w-2/3 mt-4 md:mt-0 md:pl-4">
+                      <div className="text-sm text-gray-500 space-y-2">
+                        <p>
+                          <strong>Disciplina:</strong> {product.discipline}
+                        </p>
+                        <p>
+                          <strong>Tela espalda:</strong>{' '}
+                          {getMaterialName(product.clothBackShirtId)}
+                        </p>
+                        <p>
+                          <strong>Tela Manga:</strong>{' '}
+                          {getMaterialName(product.clothSleeveId)}
+                        </p>
+                        <p>
+                          <strong>Tela cuello:</strong>{' '}
+                          {getMaterialName(product.clothNecklineId)}
+                        </p>
+                        <p>
+                          <strong>Tela frente:</strong>{' '}
+                          {getMaterialName(product.clothFrontShirtId)}
+                        </p>
+                        <p>
+                          <strong>Cuff:</strong> {product.cuff}
+                        </p>
+                        <p>
+                          <strong>Tipo Cuff:</strong> {product.typeCuff}
+                        </p>
+                        <p>
+                          <strong>Cuello:</strong> {product.neckline}
+                        </p>
+                        <p>
+                          <strong>Tipo Cuello:</strong> {product.typeNeckline}
+                        </p>
+                        <p>
+                          <strong>Tipo de Manga:</strong> {product.sleeveType}
+                        </p>
+                        <p>
+                          <strong>Forma de Manga:</strong>{' '}
+                          {product.sleeveShape}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="hidden md:block">
+                    <ResponsiveTable
+                      dataSource={[product]}
+                    />
+                  </div>
+                  <div className="md:hidden">
+                    <ResponsiveCardList
+                      dataSource={[product]}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        )}
+      </Drawer>
+
+      <Modal
+        title="Confirm Validation"
+        visible={isModalVisible}
+        onOk={handleConfirm}
+        onCancel={() => setIsModalVisible(false)}
+      >
+        <p>Are you sure you want to confirm the completion of this item?</p>
+        {selectedProduct && (
+          <div>
+            <p><strong>Size:</strong> {selectedProduct.size}</p>
+            <p><strong>Quantity:</strong> {selectedProduct.quantity}</p>
+            <p><strong>Observation:</strong> {selectedProduct.observation}</p>
+          </div>
+        )}
+      </Modal>
+    </div>
+  )
+}
+
+export default CuttingOrderList
