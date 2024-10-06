@@ -30,14 +30,19 @@ const CuttingOrderList: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<FormDataShirtView | null>(null)
 
   useTokenRenewal(navigate)
+  const CURRENT_AREA = 1;
 
-  useEffect(() => {
+  const fetchData = () => {
     CuttingUtils.fetchAndSetOrders(setOrders)
     CuttingUtils.fetchAndSetMaterials(setMaterials)
     CuttingUtils.fetchAndSetQuotations(setDesigns)
+  }
+
+  useEffect(() => {
+    fetchData()
   }, [])
 
-  const filteredOrders = CuttingUtils.filterOrders(orders, searchText)
+  const filteredOrders = CuttingUtils.filterOrders(orders, searchText)//.filter(order => order.checkArea === 0)
   const filteredOrdersWithKeys = CuttingUtils.addKeysToOrders(filteredOrders)
 
   const materialMap = new Map(materials.map((material) => [material.id, material.name]))
@@ -52,36 +57,41 @@ const CuttingOrderList: React.FC = () => {
   }
 
   const handleConfirm = async () => {
-    if (!selectedProduct) return
-
+    if (!selectedProduct) return;
+  
     try {
-      const endpoint = '/checkArea/'
-
-      const response = await axios.put(`${endpoint}${selectedProduct.id}`, {
-        cuttingArea: 1,
-      }, {
+      const productType = 'neckline' in selectedProduct ? 'shirt' : 'shortSection' in selectedProduct ? 'short' : null;
+      if (!productType) {
+        throw new Error('Unable to determine product type');
+      }
+      const productId = selectedProduct.id;
+                  
+      const endpoint = `http://localhost:3001/api/quotation-product-${productType}/checkArea/${productId}/${CURRENT_AREA}`;
+  
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No authentication token found');
+      }
+  
+      const response = await axios.put(endpoint, {}, {
         headers: {
-          Authorization: `Bearer ${localStorage.getItem('token')}`,
-          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
         },
-      })
-
+      });
+  
       if (response.status === 200) {
-        message.success('Item validated successfully')
-        
-        const updatedProducts = quotationProducts.filter(p => p.id !== selectedProduct.id)
-        setQuotationProducts(updatedProducts)
-        
-        setIsModalVisible(false)
-        setSelectedProduct(null)
+        message.success("Artículo validado exitosamente");
+        fetchData();
+        setIsModalVisible(false);
+        setSelectedProduct(null);
       } else {
-        throw new Error('Unexpected response status')
+        throw new Error('Unexpected response status');
       }
     } catch (error) {
-      console.error('Error validating item:', error)
-      message.error('Failed to validate item. Please try again.')
+      console.error('Error validating item:', error);
+      message.error("No se pudo validar el artículo. Por favor, intente de nuevo.");
     }
-  }
+  };
 
   const handleViewOrderDetails = (id: number) => {
     CuttingUtils.handleView(id, setQuotationProducts, setVisible, setCuttingOrder)
@@ -328,7 +338,7 @@ const CuttingOrderList: React.FC = () => {
 
       <Modal
         title="Confirm Validation"
-        visible={isModalVisible}
+        open={isModalVisible}
         onOk={handleConfirm}
         onCancel={() => setIsModalVisible(false)}
       >
