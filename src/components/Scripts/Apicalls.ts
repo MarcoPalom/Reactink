@@ -9,6 +9,29 @@ const getAuthHeaders = () => ({
   }
 })
 
+
+export const fetchAllProducts = async (): Promise<FormDataShirtView[]> => {
+  const [shirtResponse, shortResponse] = await Promise.all([
+    axios.get(`${API_BASE_URL}/quotation-product-shirt`, getAuthHeaders()),
+    axios.get(`${API_BASE_URL}/quotation-product-short`, getAuthHeaders())
+  ])
+  return [...shirtResponse.data, ...shortResponse.data]
+}
+
+export const fetchProductStatus = async (productId: number) => {
+  const response = await axios.get(`${API_BASE_URL}/quotation-product-shirt/statusAreas/${productId}`, getAuthHeaders())
+  return response.data
+}
+
+export const updateProductArea = async (productId: number, areaId: number) => {
+  const response = await axios.put(
+    `${API_BASE_URL}/quotation-product-shirt/checkArea/${productId}/${areaId}`,
+    {},
+    getAuthHeaders()
+  )
+  return response
+}
+
 // Funciones relacionadas con empleados
 
 export const fetchEmployees = async () => {
@@ -99,7 +122,42 @@ export const addExpense = async (employeeData: any) => {
 export const deleteExpense = async (id: number) => {
   await axios.delete(`${API_BASE_URL}/expense/delete/${id}`, getAuthHeaders())
 }
+//funciones relacionadas con diseños
 
+export const fetchQuotationDesigns = async () => {
+  try {
+    const response = await axios.get(
+      `${API_BASE_URL}/quotation-design/`,
+      getAuthHeaders()
+    )
+    return response.data
+  } catch (error) {
+    console.error('Error fetching quotation-design:', error)
+    throw error
+  }
+}
+
+export const updateQuotationDesign = async (id: number, values: any) => {
+  const response = await axios.put(
+    `${API_BASE_URL}/quotation-design/update/${id}`,
+    values,
+    getAuthHeaders()
+  )
+  return response.data
+}
+
+export const addQuotationDesign = async (employeeData: any) => {
+  const response = await axios.post(
+    `${API_BASE_URL}/quotation-design/`,
+    employeeData,
+    getAuthHeaders()
+  )
+  return response.data
+}
+
+export const deleteQuotationDesign = async (id: number) => {
+  await axios.delete(`${API_BASE_URL}/quotation-design/delete/${id}`, getAuthHeaders())
+}
 // Funciones relacionadas con cotizaciones
 
 export const fetchQuotation = async (id: string) => {

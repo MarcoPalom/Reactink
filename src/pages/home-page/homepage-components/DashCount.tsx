@@ -31,7 +31,6 @@ export default function DashCount() {
         });
         const totalClients = clientResponse.data.length;
 
-        // Simulating a delay for the last two data points
         await new Promise(resolve => setTimeout(resolve, 1000));
 
         setDashCountData([totalEmployees, totalClients, 10, 10]);

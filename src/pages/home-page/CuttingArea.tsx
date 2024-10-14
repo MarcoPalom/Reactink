@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react'
-import { Card, Input, Table, Drawer, Checkbox, Button, Modal, message } from 'antd'
+import { Card, Drawer, Button, Modal, message, Spin } from 'antd'
 import { RightOutlined, LeftOutlined, ScissorOutlined } from '@ant-design/icons'
 import useTokenRenewal from 'components/Scripts/useTokenRenewal'
 import { useNavigate } from 'react-router-dom'
 import * as CuttingUtils from 'components/Scripts/CuttingUtils'
 import Logo from 'assets/img/logo.png'
 import Missing from 'assets/img/noUserPhoto.jpg'
-import axios from 'axios'
 import {
   CuttingOrderData,
   Quotation,
@@ -14,6 +13,14 @@ import {
   Material,
   quotationDesigns
 } from 'components/Scripts/Interfaces'
+import {
+  fetchOrders,
+  fetchMaterials,
+  fetchQuotations,
+  fetchAllProducts,
+  fetchProductStatus,
+  updateProductArea
+} from 'components/Scripts/Apicalls'
 
 const CuttingOrderList: React.FC = () => {
   const navigate = useNavigate()
@@ -21,6 +28,7 @@ const CuttingOrderList: React.FC = () => {
   const [materials, setMaterials] = useState<Material[]>([])
   const [designs, setDesigns] = useState<quotationDesigns[]>([])
   const [quotationProducts, setQuotationProducts] = useState<FormDataShirtView[]>([])
+  const [filteredQuotationProducts, setFilteredQuotationProducts] = useState<FormDataShirtView[]>([])
   const [cuttingOrder, setCuttingOrder] = useState<Quotation[]>([])
   const [visible, setVisible] = useState<boolean>(false)
   const [searchText, setSearchText] = useState('')
@@ -28,21 +36,87 @@ const CuttingOrderList: React.FC = () => {
   const [currentSlide, setCurrentSlide] = useState(0)
   const [isModalVisible, setIsModalVisible] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<FormDataShirtView | null>(null)
+  const [isLoading, setIsLoading] = useState(false)
+  const [allProducts, setAllProducts] = useState<FormDataShirtView[]>([])
+  const [completedQuotationIds, setCompletedQuotationIds] = useState<number[]>([])
 
   useTokenRenewal(navigate)
-  const CURRENT_AREA = 1;
+  const CURRENT_AREA = 1
 
-  const fetchData = () => {
-    CuttingUtils.fetchAndSetOrders(setOrders)
-    CuttingUtils.fetchAndSetMaterials(setMaterials)
-    CuttingUtils.fetchAndSetQuotations(setDesigns)
+  const fetchData = async () => {
+    try {
+      const [ordersData, materialsData, quotationsData] = await Promise.all([
+        fetchOrders(),
+        fetchMaterials(),
+        fetchQuotations()
+      ])
+      setOrders(ordersData)
+      setMaterials(materialsData)
+      setDesigns(quotationsData)
+    } catch (error) {
+      console.error('Error fetching data:', error)
+      message.error('Error al cargar los datos. Por favor, intente de nuevo.')
+    }
+  }
+
+  const fetchAllProductsData = async () => {
+    try {
+      setIsLoading(true)
+      const products = await fetchAllProducts()
+      setAllProducts(products)
+    } catch (error) {
+      console.error('Error fetching all products:', error)
+      message.error('Error al cargar los productos. Por favor, intente de nuevo.')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const checkCuttingAreaStatus = async () => {
+    try {
+      const productsByQuotation = allProducts.reduce((acc, product) => {
+        if (!acc[product.quotationId]) {
+          acc[product.quotationId] = []
+        }
+        acc[product.quotationId].push(product)
+        return acc
+      }, {} as Record<number, FormDataShirtView[]>)
+
+      const completedQuotations: number[] = []
+
+      for (const [quotationId, products] of Object.entries(productsByQuotation)) {
+        const allProductsComplete = await Promise.all(
+          products.map(async (product) => {
+            const status = await fetchProductStatus(product.id)
+            return status.cuttingArea
+          })
+        )
+
+        if (allProductsComplete.every(status => status === true)) {
+          completedQuotations.push(Number(quotationId))
+        }
+      }
+
+      setCompletedQuotationIds(completedQuotations)
+    } catch (error) {
+      console.error('Error checking cutting area status:', error)
+      message.error('Error al verificar el estado de las áreas de corte. Por favor, intente de nuevo.')
+    }
   }
 
   useEffect(() => {
     fetchData()
+    fetchAllProductsData()
   }, [])
 
-  const filteredOrders = CuttingUtils.filterOrders(orders, searchText)//.filter(order => order.checkArea === 0)
+  useEffect(() => {
+    if (allProducts.length > 0 && orders.length > 0) {
+      checkCuttingAreaStatus()
+    }
+  }, [allProducts, orders])
+
+  const filteredOrders = CuttingUtils.filterOrders(orders, searchText)
+    .filter(order => !completedQuotationIds.includes(order.quotationId))
   const filteredOrdersWithKeys = CuttingUtils.addKeysToOrders(filteredOrders)
 
   const materialMap = new Map(materials.map((material) => [material.id, material.name]))
@@ -57,44 +131,51 @@ const CuttingOrderList: React.FC = () => {
   }
 
   const handleConfirm = async () => {
-    if (!selectedProduct) return;
-  
+    if (!selectedProduct) return
+
     try {
-      const productType = 'neckline' in selectedProduct ? 'shirt' : 'shortSection' in selectedProduct ? 'short' : null;
-      if (!productType) {
-        throw new Error('Unable to determine product type');
-      }
-      const productId = selectedProduct.id;
-                  
-      const endpoint = `http://localhost:3001/api/quotation-product-${productType}/checkArea/${productId}/${CURRENT_AREA}`;
-  
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-  
-      const response = await axios.put(endpoint, {}, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        },
-      });
-  
+      const response = await updateProductArea(selectedProduct.id, CURRENT_AREA)
+
       if (response.status === 200) {
-        message.success("Artículo validado exitosamente");
-        fetchData();
-        setIsModalVisible(false);
-        setSelectedProduct(null);
+        message.success("Artículo validado exitosamente")
+        fetchData()
+        setIsModalVisible(false)
+        setSelectedProduct(null)
+        const updatedFilteredProducts = await Promise.all(
+          filteredQuotationProducts.map(async (product) => {
+            const status = await fetchProductStatus(product.id)
+            return { ...product, isCuttingAreaComplete: status.cuttingArea }
+          })
+        )
+        setFilteredQuotationProducts(updatedFilteredProducts.filter(product => !product.isCuttingAreaComplete))
+        checkCuttingAreaStatus()
       } else {
-        throw new Error('Unexpected response status');
+        throw new Error('Unexpected response status')
       }
     } catch (error) {
-      console.error('Error validating item:', error);
-      message.error("No se pudo validar el artículo. Por favor, intente de nuevo.");
+      console.error('Error validating item:', error)
+      message.error("No se pudo validar el artículo. Por favor, intente de nuevo.")
     }
-  };
+  }
 
-  const handleViewOrderDetails = (id: number) => {
-    CuttingUtils.handleView(id, setQuotationProducts, setVisible, setCuttingOrder)
+  const handleViewOrderDetails = async (id: number) => {
+    try {
+      setIsLoading(true)
+      await CuttingUtils.handleView(id, setQuotationProducts, setVisible, setCuttingOrder)
+      const productsWithStatus = await Promise.all(
+        quotationProducts.map(async (product) => {
+          const status = await fetchProductStatus(product.id)
+          return { ...product, isCuttingAreaComplete: status.cuttingArea }
+        })
+      )
+      setFilteredQuotationProducts(productsWithStatus.filter(product => !product.isCuttingAreaComplete))
+      setVisible(true)
+    } catch (error) {
+      console.error('Error viewing order details:', error)
+      message.error("No se pudieron cargar los detalles de la orden. Por favor, intente de nuevo.")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   const nextSlide = () => {
@@ -202,8 +283,8 @@ const CuttingOrderList: React.FC = () => {
                 <button
                   className="absolute top-1/2 left-2 transform -translate-y-1/2 bg-white rounded-full p-2 shadow-md z-10 transition-all duration-300 hover:scale-110"
                   onClick={(e) => {
-                    e.stopPropagation();
-                    prevSlide();
+                    e.stopPropagation()
+                    prevSlide()
                   }}
                 >
                   <LeftOutlined className="text-xl" />
@@ -211,8 +292,8 @@ const CuttingOrderList: React.FC = () => {
                 <button
                   className="absolute top-1/2 right-2 transform -translate-y-1/2 bg-white rounded-full p-2 shadow-md z-10 transition-all duration-300 hover:scale-110"
                   onClick={(e) => {
-                    e.stopPropagation();
-                    nextSlide();
+                    e.stopPropagation()
+                    nextSlide()
                   }}
                 >
                   <RightOutlined className="text-xl" />
@@ -241,17 +322,22 @@ const CuttingOrderList: React.FC = () => {
         open={visible}
         width={600}
       >
-        {quotationProducts && quotationProducts.length > 0 && (
+        {isLoading ? (
+          <div className="flex justify-center items-center h-full">
+            <Spin size="large" />
+          </div>
+        ) : filteredQuotationProducts && filteredQuotationProducts.length > 0 ? (
           <Card className="p-4">
             <div>
               <div className="flex justify-center mb-2">
                 <img src={Logo} alt="Ink Sports" className="h-8" />
               </div>
 
-              {quotationProducts.map((product, index) => (
+              {filteredQuotationProducts.map((product, index) => (
                 <div key={index} className="mb-4">
                   <div className="flex justify-between mb-4">
                     <p>
+                      
                       <strong>Cotización Folio:</strong> {product.quotationId}
                     </p>
                     <p>
@@ -333,6 +419,10 @@ const CuttingOrderList: React.FC = () => {
               ))}
             </div>
           </Card>
+        ) : (
+          <div className="flex justify-center items-center h-full">
+            <p>No hay productos para mostrar.</p>
+          </div>
         )}
       </Drawer>
 

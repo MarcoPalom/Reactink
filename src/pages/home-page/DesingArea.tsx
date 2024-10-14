@@ -1,195 +1,288 @@
-import React, { useState } from 'react'
-import { Button, Drawer, Form, Input, Card } from 'antd'
-import { UploadOutlined, EditOutlined } from '@ant-design/icons'
-import Missing from 'assets/img/noUserPhoto.jpg'
-import Shirt from 'assets/img/deportiva.jpg'
-import Logoshirt from 'assets/img/america.png'
+import React, { useState, useEffect } from 'react'
+import { Table, Button, Space, Card, Input, Form, Switch, Drawer, message, Upload, Select } from 'antd'
+import { PlusOutlined, EditOutlined, UploadOutlined } from '@ant-design/icons'
+import { FaTshirt } from 'react-icons/fa'
+import { GiGoalKeeper } from 'react-icons/gi'
+import { Quotation, QuotationDesign } from 'components/Scripts/Interfaces'
+import { fetchQuotations, fetchQuotationDesigns, addQuotationDesign, updateQuotationDesign } from 'components/Scripts/Apicalls'
 
-const DesignArea = () => {
-  const [drawerVisible, setDrawerVisible] = useState(false)
+const { Search } = Input
+const { Option } = Select
 
-  const showDrawer = () => {
-    setDrawerVisible(true)
+export default function QuotationDesigns() {
+  const [quotations, setQuotations] = useState<Quotation[]>([])
+  const [designs, setDesigns] = useState<QuotationDesign[]>([])
+  const [searchText, setSearchText] = useState('')
+  const [visible, setVisible] = useState(false)
+  const [isEditing, setIsEditing] = useState(false)
+  const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null)
+  const [selectedDesign, setSelectedDesign] = useState<QuotationDesign | null>(null)
+  const [isShirtForm, setIsShirtForm] = useState(true)
+  const [form] = Form.useForm()
+
+  useEffect(() => {
+    loadQuotations()
+    loadDesigns()
+  }, [])
+
+  const loadQuotations = async () => {
+    try {
+      const data = await fetchQuotations()
+      setQuotations(data)
+    } catch (error) {
+      console.error('Error al cargar las cotizaciones', error)
+      message.error('Error al cargar las cotizaciones')
+    }
   }
 
-  const closeDrawer = () => {
-    setDrawerVisible(false)
+  const loadDesigns = async () => {
+    try {
+      const data = await fetchQuotationDesigns()
+      setDesigns(data)
+    } catch (error) {
+      console.error('Error al cargar los diseños', error)
+      message.error('Error al cargar los diseños')
+    }
   }
 
-  const handleSubmit = (values: any) => {
-    console.log('Formulario enviado:', values)
-    closeDrawer()
+  const handleSubmit = async (values: QuotationDesign) => {
+    try {
+      if (isEditing && selectedDesign) {
+        await updateQuotationDesign(selectedDesign.id, values)
+        message.success('Diseño actualizado exitosamente')
+      } else {
+        await addQuotationDesign(values)
+        message.success('Diseño añadido exitosamente')
+      }
+      setVisible(false)
+      loadDesigns()
+      form.resetFields()
+    } catch (error) {
+      console.error('Error al guardar el diseño', error)
+      message.error('Error al guardar el diseño')
+    }
   }
+
+  const columns = [
+    { title: 'Folio', dataIndex: 'id', key: 'id' },
+    { title: 'Cliente', dataIndex: 'clientId', key: 'clientId' },
+    { title: 'Fecha de Recibido', dataIndex: 'dateReceipt', key: 'dateReceipt', render: (date: string) => new Date(date).toLocaleDateString() },
+    { title: 'Total', dataIndex: 'total', key: 'total', render: (total: number) => `$${total}` },
+    {
+      title: 'Acción',
+      key: 'action',
+      render: (text: any, record: Quotation) => (
+        <Space size="middle">
+          <Button icon={<PlusOutlined />} onClick={() => showDrawer(record, false)}>Añadir Diseño</Button>
+          <Button 
+            icon={<EditOutlined />} 
+            onClick={() => showDrawer(record, true)} 
+            disabled={!designs.some(design => design.quotationId === record.id)}
+          >
+            Editar Diseño
+          </Button>
+        </Space>
+      ),
+    },
+  ]
+
+  const showDrawer = (quotation: Quotation, editing: boolean) => {
+    setSelectedQuotation(quotation)
+    const existingDesign = designs.find(design => design.quotationId === quotation.id)
+    if (editing && existingDesign) {
+      setSelectedDesign(existingDesign)
+      form.setFieldsValue(existingDesign)
+      setIsShirtForm(!isGoalkeeperShirt(existingDesign))
+    } else {
+      setSelectedDesign(null)
+      form.resetFields()
+      form.setFieldsValue({ quotationId: quotation.id })
+      setIsShirtForm(true)
+    }
+    setIsEditing(editing)
+    setVisible(true)
+  }
+
+  const isGoalkeeperShirt = (values: any) => {
+    return values.neckGoalie || values.sleeveGoalie || values.typeShortGoalie
+  }
+
+  const toggleFormType = () => {
+    setIsShirtForm(!isShirtForm)
+    form.resetFields(['neckline', 'sleeveShape', 'typeCuff', 'neckGoalie', 'sleeveGoalie', 'typeShort', 'typeShortGoalie'])
+  }
+
+  const renderCommonFields = () => (
+    <>
+      <Form.Item name="quotationId" label="ID de Cotización" rules={[{ required: true }]}>
+        <Input disabled />
+      </Form.Item>
+      <Form.Item name="observation" label="Observación" rules={[{ required: true }]}>
+        <Input.TextArea />
+      </Form.Item>
+      <Form.Item name="logo" label="Logo" rules={[{ required: true }]}>
+        <Input />
+      </Form.Item>
+      <Form.Item name="imageReference" label="Referencia de Imagen">
+        <Input />
+      </Form.Item>
+      <Form.Item name="observationDesigner" label="Observación del Diseñador">
+        <Input.TextArea />
+      </Form.Item>
+      <Form.Item name="designFront" label="Diseño Frontal">
+        <Input />
+      </Form.Item>
+      <Form.Item name="designBack" label="Diseño Trasero">
+        <Input />
+      </Form.Item>
+      <Form.Item name="designShort" label="Diseño Short">
+        <Input />
+      </Form.Item>
+      <Form.Item name="designCouch" label="Diseño Couch">
+        <Input />
+      </Form.Item>
+      <Form.Item name="designHubby" label="Diseño Hubby">
+        <Input />
+      </Form.Item>
+    </>
+  )
+
+  const renderShirtFields = () => (
+    <>
+      <Form.Item name="neckline" label="Forma del Cuello">
+        <Select>
+          <Option value="v">Cuello V</Option>
+          <Option value="round">Cuello Redondo</Option>
+          <Option value="polo">Cuello Polo</Option>
+        </Select>
+      </Form.Item>
+      <Form.Item name="sleeveShape" label="Forma de la Manga">
+        <Select>
+          <Option value="short">Manga Corta</Option>
+          <Option value="long">Manga Larga</Option>
+          <Option value="sleeveless">Sin Mangas</Option>
+        </Select>
+      </Form.Item>
+      <Form.Item name="typeCuff" label="Tipo de Puño">
+        <Select>
+          <Option value="elastic">Elástico</Option>
+          <Option value="ribbed">Acanalado</Option>
+          <Option value="none">Sin Puño</Option>
+        </Select>
+      </Form.Item>
+    </>
+  )
+
+  const renderGoalkeeperShirtFields = () => (
+    <>
+      <Form.Item name="neckGoalie" label="Cuello del Portero">
+        <Select>
+          <Option value="high">Cuello Alto</Option>
+          <Option value="v">Cuello V</Option>
+          <Option value="round">Cuello Redondo</Option>
+        </Select>
+      </Form.Item>
+      <Form.Item name="sleeveGoalie" label="Manga del Portero">
+        <Select>
+          <Option value="long">Manga Larga</Option>
+          <Option value="threequarter">Manga 3/4</Option>
+          <Option value="short">Manga Corta</Option>
+        </Select>
+      </Form.Item>
+    </>
+  )
+
+  const renderShortFields = () => (
+    <>
+      <Form.Item name="typeShort" label="Tipo de Short">
+        <Select>
+          <Option value="regular">Regular</Option>
+          <Option value="slim">Ajustado</Option>
+          <Option value="loose">Holgado</Option>
+        </Select>
+      </Form.Item>
+      <Form.Item name="typeShortGoalie" label="Tipo de Short del Portero">
+        <Select>
+          <Option value="padded">Acolchado</Option>
+          <Option value="regular">Regular</Option>
+          <Option value="long">Largo</Option>
+        </Select>
+      </Form.Item>
+    </>
+  )
 
   return (
-    <div>
-      <h1 className="mt-2 mb-4 font-semibold leading-6 text-gray-900 text-lg">
-        Área de Diseño
-      </h1>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-  <div className="lg:col-span-1 flex flex-col justify-between">
-    <Card
-      className="mb-6 shadow-md h-80 lg:h-80"
-      title={
-        <span className="leading-6 font-medium text-sm">
-          Último diseño / Referencia
-        </span>
-      }
-    >
-      <div className="flex justify-center items-center">
-        <img src={Shirt} alt={Missing} className="w-72 h-48 mb-5" />
+    <>
+      <div className="flex justify-between mb-4">
+        <h4 className="text-lg font-bold">Área de Diseño</h4>
       </div>
-    </Card>
 
-    <Card
-      className="shadow-md h-80 lg:h-80" 
-      title={
-        <span className="leading-6 font-medium text-sm">
-          Último logo / Referencia
-        </span>
-      }
-    >
-      <div className="flex justify-center items-center">
-        <img src={Logoshirt} alt={Missing} className="w-72 h-48 mb-5" />
-      </div>
-    </Card>
-  </div>
+      <Card>
+        <Space className="w-full justify-between mb-4">
+          <Search
+            placeholder="Buscar cotización..."
+            onChange={(e) => setSearchText(e.target.value)}
+            style={{ width: 200 }}
+          />
+        </Space>
 
-  <div className="lg:col-span-1 flex justify-center items-center lg:h-auto">
-    <Card
-      className="shadow-md lg:h-80 w-full" 
-      title={<span className="leading-6 font-medium text-sm">Acciones</span>}
-    >
-      <Button
-        onClick={showDrawer}
-        className="mb-4 w-full h-24 border-2 border-purple-300 rounded-md shadow-md flex flex-col justify-center items-center"
-      >
-        <div className="flex flex-col justify-center items-center">
-          <div className="flex space-x-4">
-            <div className="bg-red-500 rounded-full p-4 mb-2 flex items-center justify-center">
-              <UploadOutlined className="text-white text-2xl" />
-            </div>
-            <div className="text-center">
-              <div className="text-xl font-semibold">Subir un diseño</div>
-              <div className="text-sm text-violet-400">primer paso</div>
-            </div>
-          </div>
-        </div>
-      </Button>
-
-      <Button
-        onClick={showDrawer}
-        className="mb-4 w-full h-24 border-2 border-purple-300 rounded-md shadow-md flex flex-col justify-center items-center"
-      >
-        <div className="flex flex-col justify-center items-center">
-          <div className="flex space-x-9">
-            <div className="bg-red-500 rounded-full p-4 mb-2 flex items-center justify-center">
-              <EditOutlined className="text-white text-2xl" />
-            </div>
-
-            <div className="text-center">
-              <div className="text-xl font-semibold">Editar diseño</div>
-              <div className="text-sm text-violet-400">Remplazar el actual</div>
-            </div>
-          </div>
-        </div>
-      </Button>
-    </Card>
-  </div>
-</div>
-
+        <Table 
+          columns={columns} 
+          dataSource={quotations.filter(quotation => 
+            quotation.id.toString().includes(searchText) ||
+            quotation.clientId.toString().includes(searchText)
+          )} 
+          rowKey="id" 
+        />
+      </Card>
 
       <Drawer
-        title="Formulario de Diseño"
+        title={isEditing ? "Editar Diseño" : "Añadir Nuevo Diseño"}
         placement="right"
-        onClose={closeDrawer}
-        open={drawerVisible}
-        width={500}
-      >
-        <Form layout="vertical" onFinish={handleSubmit}>
-          <Form.Item label="Observación" name="observation">
-            <Input.TextArea rows={4} placeholder="Escribe una observación" />
-          </Form.Item>
-
-          <Form.Item label="Logo" name="logo">
-            <Input placeholder="Nombre del logo" />
-          </Form.Item>
-
-          <Form.Item label="Referencia de Imagen" name="imageReference">
-            <Input placeholder="Nombre de la imagen de referencia" />
-          </Form.Item>
-
-          <Form.Item
-            label="Observación del Diseñador"
-            name="observationDesigner"
-          >
-            <Input.TextArea
-              rows={4}
-              placeholder="Escribe observaciones del diseñador"
-            />
-          </Form.Item>
-
-          <Form.Item label="Diseño Frontal" name="designFront">
-            <Input placeholder="Diseño frontal" />
-          </Form.Item>
-
-          <Form.Item label="Diseño Trasero" name="designBack">
-            <Input placeholder="Diseño trasero" />
-          </Form.Item>
-
-          <Form.Item label="Diseño Shorts" name="designShort">
-            <Input placeholder="Diseño de shorts" />
-          </Form.Item>
-
-          <Form.Item label="Diseño Couch" name="designCouch">
-            <Input placeholder="Diseño couch" />
-          </Form.Item>
-
-          <Form.Item label="Diseño Hubby" name="designHubby">
-            <Input placeholder="Diseño hubby" />
-          </Form.Item>
-
-          <Form.Item label="Forma del Cuello" name="neckline">
-            <Input placeholder="Forma del cuello" />
-          </Form.Item>
-
-          <Form.Item label="Forma de la Manga" name="sleeveShape">
-            <Input placeholder="Forma de la manga" />
-          </Form.Item>
-
-          <Form.Item label="Tipo de Puño" name="typeCuff">
-            <Input placeholder="Tipo de puño" />
-          </Form.Item>
-
-          <Form.Item label="Cuello del Portero" name="neckGoalie">
-            <Input placeholder="Cuello del portero" />
-          </Form.Item>
-
-          <Form.Item label="Manga del Portero" name="sleeveGoalie">
-            <Input placeholder="Manga del portero" />
-          </Form.Item>
-
-          <Form.Item label="Tipo de Shorts" name="typeShort">
-            <Input placeholder="Tipo de shorts" />
-          </Form.Item>
-
-          <Form.Item label="Tipo de Shorts del Portero" name="typeShortGoalie">
-            <Input placeholder="Tipo de shorts del portero" />
-          </Form.Item>
-
-          <Form.Item label="Aprobado" name="approved" valuePropName="checked">
-            <Input type="checkbox" />
-          </Form.Item>
-
-          <Form.Item>
-            <Button type="primary" htmlType="submit">
+        onClose={() => setVisible(false)}
+        open={visible}
+        width={720}
+        extra={
+          <Space>
+            <Button onClick={() => setVisible(false)}>Cancelar</Button>
+            <Button onClick={() => form.submit()} type="primary">
               Guardar
             </Button>
+          </Space>
+        }
+      >
+        <div className="flex justify-center mb-4">
+          <div className="flex items-center space-x-2">
+            <FaTshirt className={`w-10 h-10 text-green-500 ${isShirtForm ? 'block' : 'hidden'}`} />
+            <GiGoalKeeper className={`w-10 h-10 text-green-500 ${!isShirtForm ? 'block' : 'hidden'}`} />
+            <Switch
+              checked={isShirtForm}
+              onChange={toggleFormType}
+              checkedChildren="Normal"
+              unCheckedChildren="Portero"
+            />
+            <span>{isShirtForm ? 'Camisa Normal' : 'Camisa de Portero'}</span>
+          </div>
+        </div>
+
+        <Form 
+          form={form} 
+          layout="vertical" 
+          onFinish={handleSubmit}
+        >
+          {renderCommonFields()}
+          {isShirtForm ? renderShirtFields() : renderGoalkeeperShirtFields()}
+          {renderShortFields()}
+          <Form.Item name="approved" label="Aprobado" valuePropName="checked">
+            <Switch />
+          </Form.Item>
+          <Form.Item name="image" label="Imagen">
+            <Upload>
+              <Button icon={<UploadOutlined />}>Subir Imagen</Button>
+            </Upload>
           </Form.Item>
         </Form>
       </Drawer>
-    </div>
+    </>
   )
 }
-
-export default DesignArea

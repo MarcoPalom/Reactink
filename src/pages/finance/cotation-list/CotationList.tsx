@@ -175,18 +175,6 @@ const CotationList = () => {
     setIsShortForm(checked)
   }
 
-  const handleAddRowClickShorts = () => {
-    CuttingUtils.handleAddRowShorts(
-      count,
-      setCount,
-      setDataSourceShorts,
-      dataSourceShorts
-    )
-  }
-  const handleEmptyClickShorts = () => {
-    CuttingUtils.handleEmptyShorts(confirm, setDataSourceShorts)
-  }
-
   const filteredQuotations = QuotationUtils.filterQuotations(
     Quotations,
     searchText
@@ -1636,13 +1624,6 @@ const CotationList = () => {
                 <GiGoalKeeper
                   className={`w-10 h-10 text-green-500 ${!isShirtForm ? 'block' : 'hidden'}`}
                 />
-                <Switch
-                  onChange={handleSwitchChange}
-                  checked={isShirtForm}
-                  className="w-14 h-7"
-                  checkedChildren={<span className="invisible" />}
-                  unCheckedChildren={<span className="invisible" />}
-                />
               </div>
             </div>
             {isShirtForm ? (
@@ -1892,6 +1873,7 @@ const CotationList = () => {
                     )}
                   </Space>
                   <Button
+                    className="mt-2"
                     type="primary"
                     onClick={() =>
                       CuttingUtils.handleCutSubmitShirts(
@@ -1902,7 +1884,7 @@ const CotationList = () => {
                       )
                     }
                   >
-                    Mostrar contenido de Shirts
+                    Enviar Formulario
                   </Button>
                   <Modal
                     title={`Orden`}
@@ -1935,78 +1917,7 @@ const CotationList = () => {
                   </Modal>
                 </Form>
               </div>
-            ) : (
-              <div className="overflow-auto">
-                <Form
-                  form={GoalkeeperShirtForm}
-                  layout="vertical"
-                  className="p-4"
-                >
-                  <div className="grid grid-cols-2 gap-2 bg-gray-100 p-4 rounded-md">
-                    <Form.Item label="Tipo de tela">
-                      <Select>
-                        {cloths.map((cloths) => (
-                          <Option key={cloths} value={cloths}>
-                            {cloths}
-                          </Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
-                    <Form.Item label="Color de tela">
-                      <Input></Input>
-                    </Form.Item>
-                    <Form.Item label="Forma cuello">
-                      <Select>
-                        {neckForms.map((neckForm) => (
-                          <Option key={neckForm} value={neckForm}>
-                            {neckForm}
-                          </Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
-                    <Form.Item label="Forma de manga">
-                      <Select>
-                        {sleeveForms.map((sleeveForm) => (
-                          <Option key={sleeveForm} value={sleeveForm}>
-                            {sleeveForm}
-                          </Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
-                    <Form.Item label="Tipo de puño">
-                      <Select>
-                        {cuffsTypes.map((cuffsType) => (
-                          <Option key={cuffsType} value={cuffsType}>
-                            {cuffsType}
-                          </Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
-                    <Form.Item label="DTF playera">
-                      <Input />
-                    </Form.Item>
-                  </div>
-
-                  <Table
-                    className="mt-2"
-                    dataSource={dataSourceShorts}
-                    pagination={false}
-                    footer={() => (
-                      <Space className="flex justify-end">
-                        <Button
-                          onClick={handleAddRowClickShorts}
-                          icon={<PlusOutlined className="text-cyan-500" />}
-                        />
-                        <Button
-                          onClick={handleEmptyClickShorts}
-                          icon={<ClearOutlined className="text-red-500" />}
-                        />
-                      </Space>
-                    )}
-                  />
-                </Form>
-              </div>
-            )}
+            ) : null}
           </div>
         )}
         {isShortFormVisible && (
@@ -2018,13 +1929,6 @@ const CotationList = () => {
                 />
                 <GiGoalKeeper
                   className={`w-10 h-10 text-green-500 ${!isShortForm ? 'block' : 'hidden'}`}
-                />
-                <Switch
-                  onChange={handleSwitchChangeShort}
-                  checked={isShortForm}
-                  className="w-14 h-7"
-                  checkedChildren={<span className="invisible" />}
-                  unCheckedChildren={<span className="invisible" />}
                 />
               </div>
             </div>
@@ -2176,6 +2080,7 @@ const CotationList = () => {
                     )}
                   </Space>
                   <Button
+                    className="mt-2"
                     type="primary"
                     onClick={() =>
                       CuttingUtils.handleCutSubmitShorts(
@@ -2186,7 +2091,7 @@ const CotationList = () => {
                       )
                     }
                   >
-                    Mostrar contenido de Shirts
+                    Enviar Formulario
                   </Button>
                   <Modal
                     title={`Orden`}
@@ -2207,56 +2112,7 @@ const CotationList = () => {
                   </Modal>
                 </Form>
               </div>
-            ) : (
-              <div className="overflow-auto">
-                <Form
-                  form={GoalkeeperShortForm}
-                  layout="vertical"
-                  className="p-4"
-                >
-                  <div className="grid grid-cols-2 gap-2 bg-gray-100 p-4 rounded-md">
-                    {/* Formulario de Portero */}
-                    <Form.Item label="Tela short">
-                      <Select>
-                        {disciplines.map((discipline) => (
-                          <Option key={discipline} value={discipline}>
-                            {discipline}
-                          </Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
-                    {/* ... otros elementos del formulario ... */}
-                    <Form.Item label="Tramos short">
-                      <Select>
-                        {sections.map((section) => (
-                          <Option key={section} value={section}>
-                            {section}
-                          </Option>
-                        ))}
-                      </Select>
-                    </Form.Item>
-                  </div>
-
-                  <Table
-                    className="mt-2"
-                    dataSource={dataSourceShorts}
-                    pagination={false}
-                    footer={() => (
-                      <Space className="flex justify-end">
-                        <Button
-                          onClick={handleAddRowClickShorts}
-                          icon={<PlusOutlined className="text-cyan-500" />}
-                        />
-                        <Button
-                          onClick={handleEmptyClickShorts}
-                          icon={<ClearOutlined className="text-red-500" />}
-                        />
-                      </Space>
-                    )}
-                  />
-                </Form>
-              </div>
-            )}
+            ) : null}
           </div>
         )}
       </Drawer>

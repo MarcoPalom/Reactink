@@ -258,5 +258,27 @@ export interface Employee {
     size: number
   }
 
+  export interface QuotationDesign {
+    id: number;
+    quotationId: number;
+    observation: string;
+    logo: string;
+    imageReference: string;
+    observationDesigner: string;
+    designFront: string;
+    designBack: string;
+    designShort: string;
+    designCouch: string;
+    designHubby: string;
+    neckline: string;
+    sleeveShape: string;
+    typeCuff: string;
+    neckGoalie: string;
+    sleeveGoalie: string;
+    typeShort: string;
+    typeShortGoalie: string;
+    approved: boolean;
+  }
+
 
   export {}
