@@ -407,7 +407,7 @@ const uploadImage = async (file: File): Promise<string> => {
 
   try {
     const response = await axios.post(
-      'http://localhost:3001/api/upload/single/material',
+      'http://62.72.51.60/api/upload/single/material',
       formData,
       {
         headers: {

@@ -1,7 +1,7 @@
 
 import axios from 'axios'
 import { Material,Quotation,FormDataShirtView } from 'components/Scripts/Interfaces'
-const API_BASE_URL = 'http://localhost:3001/api'
+const API_BASE_URL = 'http://62.72.51.60/api'
 
 const getAuthHeaders = () => ({
   headers: {

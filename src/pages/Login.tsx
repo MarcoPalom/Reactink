@@ -13,7 +13,7 @@ export default function Login() {
   const handleSubmit = async (values: { email: string; password: string }) => {
     try {
       const response = await axios.post(
-        'http://localhost:3001/api/user/login',
+        'http://62.72.51.60/api/user/login',
         values
       )
 

@@ -12,7 +12,7 @@ const useTokenRenewal = (navigate:any) => {
         }
 
         const response = await axios.get(
-          'http://localhost:3001/api/user/renew-token',
+          'http://62.72.51.60/api/user/renew-token',
           {
             headers: {
               Authorization: `Bearer ${token}`,

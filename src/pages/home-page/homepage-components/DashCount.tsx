@@ -17,14 +17,14 @@ export default function DashCount() {
       try {
         const token = localStorage.getItem('token');
   
-        const employeeResponse = await axios.get('http://localhost:3001/api/user', {
+        const employeeResponse = await axios.get('http://62.72.51.60/api/user', {
           headers: {
             Authorization: `Bearer ${token}`
           }
         });
         const totalEmployees = employeeResponse.data.length;
   
-        const clientResponse = await axios.get('http://localhost:3001/api/client', {
+        const clientResponse = await axios.get('http://62.72.51.60/api/client', {
           headers: {
             Authorization: `Bearer ${token}`
           }
