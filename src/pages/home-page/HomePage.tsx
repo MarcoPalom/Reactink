@@ -5,7 +5,6 @@ import CuttingArea from "./CuttingArea";
 import PrintingArea from "./PrintingArea"
 import SublimateArea from "./SublimateArea";
 import SewingArea from "./SewingArea"
-import FinishingArea from "./FinishingArea"
 import {useNavigate} from 'react-router-dom'
 import useTokenRenewal from 'components/Scripts/useTokenRenewal'
 
@@ -33,9 +32,7 @@ const HomePage = () => {
                 <SublimateArea/>
             ) : roleNumber === 8 ? (
                 <SewingArea/>
-            ) : roleNumber === 9 ? (
-                <FinishingArea/>
-            ) : (
+            )  : (
                 null
             )}
         </div>

@@ -1,6 +1,6 @@
 
 import axios from 'axios'
-import { Material,Quotation,FormDataShirtView } from 'components/Scripts/Interfaces'
+import { Material,Quotation,FormDataShirtView,FormDataShortView } from 'components/Scripts/Interfaces'
 const API_BASE_URL = 'http://localhost:3001/api'
 
 const getAuthHeaders = () => ({
@@ -18,20 +18,19 @@ export const fetchAllProducts = async (): Promise<FormDataShirtView[]> => {
   return [...shirtResponse.data, ...shortResponse.data]
 }
 
-export const fetchProductStatus = async (productId: number) => {
-  const response = await axios.get(`${API_BASE_URL}/quotation-product-shirt/statusAreas/${productId}`, getAuthHeaders())
+export const fetchProductStatus = async (productId: number, productType: 'shirt' | 'short') => {
+  const response = await axios.get(`${API_BASE_URL}/quotation-product-${productType}/statusAreas/${productId}`, getAuthHeaders())
   return response.data
 }
 
-export const updateProductArea = async (productId: number, areaId: number) => {
+export const updateProductArea = async (productId: number, areaId: number, productType: 'shirt' | 'short') => {
   const response = await axios.put(
-    `${API_BASE_URL}/quotation-product-shirt/checkArea/${productId}/${areaId}`,
+    `${API_BASE_URL}/quotation-product-${productType}/checkArea/${productId}/${areaId}`,
     {},
     getAuthHeaders()
   )
   return response
 }
-
 // Funciones relacionadas con empleados
 
 export const fetchEmployees = async () => {
@@ -527,13 +526,26 @@ export const fetchSizes = async (materialId: number) => {
   return response.data;
 };
 
-export const fetchOrder = async (id: number): Promise<FormDataShirtView[]>  =>  {
+//cambioo
+export const fetchOrder = async (id: number): Promise<(FormDataShirtView | FormDataShortView)[]> => {
   try {
+    console.log(`Fetching order with id: ${id}`);
     const response = await axios.get(
       `${API_BASE_URL}/cutting-order/${id}`,
       getAuthHeaders()
     );
-    return response.data.quotation.quotationProductShirts;
+    console.log('Raw API response:', response.data);
+    console.log('Quotation data:', response.data.quotation);
+    console.log('Shirt products:', response.data.quotation.quotationProductShirts);
+    console.log('Short products:', response.data.quotation.quotationProductShorts);
+    
+    const products = [
+      ...response.data.quotation.quotationProductShirts, 
+      ...response.data.quotation.quotationProductShorts
+    ];
+    console.log('Combined products:', products);
+    
+    return products;
   } catch (error) {
     console.error('Error fetching cutting order:', error);
     throw error;

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Space, Table, Card, Input, Button, Drawer } from 'antd'
 import { FilePdfOutlined, DatabaseOutlined } from '@ant-design/icons'
 import useTokenRenewal from 'components/Scripts/useTokenRenewal'
@@ -12,23 +12,22 @@ import {
   CuttingOrderData,
   Quotation,
   FormDataShirtView,
+  FormDataShortView,
   Material,
   quotationDesigns
 } from 'components/Scripts/Interfaces'
 
 const { Search } = Input
 
-const CuttingOrderList = () => {
+const CuttingOrderList: React.FC = () => {
   const navigate = useNavigate()
-  const [Orders, setOrders] = useState<CuttingOrderData[]>([])
-  const [Materials, setMaterials] = useState<Material[]>([])
-  const [Designs, setDesigns] = useState<quotationDesigns[]>([])
-  const [quotationProducts, setQuotationProducts] = useState<FormDataShirtView[]>([])
+  const [orders, setOrders] = useState<CuttingOrderData[]>([])
+  const [materials, setMaterials] = useState<Material[]>([])
+  const [designs, setDesigns] = useState<quotationDesigns[]>([])
+  const [quotationProducts, setQuotationProducts] = useState<(FormDataShirtView | FormDataShortView)[]>([])
   const [cuttingOrder, setCuttingOrder] = useState<Quotation[]>([])
-  const [visible, setVisible] = useState<boolean>(false)
+  const [visible, setVisible] = useState(false)
   const [searchText] = useState('')
-  const filteredOrders = CuttingUtils.filterOrders(Orders, searchText)
-  const filteredOrdersWithKeys = CuttingUtils.addKeysToOrders(filteredOrders)
   const [image, setImage] = useState<string | null>(null)
 
   useTokenRenewal(navigate)
@@ -39,32 +38,46 @@ const CuttingOrderList = () => {
     CuttingUtils.fetchAndSetQuotations(setDesigns)
   }, [])
 
+  const filteredOrders = CuttingUtils.filterOrders(orders, searchText)
+  const filteredOrdersWithKeys = CuttingUtils.addKeysToOrders(filteredOrders)
+
   const materialMap = new Map(
-    Materials.map((material) => [material.id, material.name])
+    materials.map((material) => [material.id, material.name])
   )
 
   const getMaterialName = (id: number) => {
     return materialMap.get(id) || 'Unknown'
   }
 
-  function combineProducts(products: FormDataShirtView[]): FormDataShirtView[] {
-    const combinedProducts: FormDataShirtView[] = []
+  const isShirtProduct = (product: FormDataShirtView | FormDataShortView): product is FormDataShirtView => {
+    return 'clothFrontShirtId' in product
+  }
+
+  function combineProducts(products: (FormDataShirtView | FormDataShortView)[]): (FormDataShirtView | FormDataShortView)[] {
+    const combinedProducts: (FormDataShirtView | FormDataShortView)[] = []
 
     products.forEach((product) => {
       const existingProduct = combinedProducts.find(
         (p) =>
           p.quotationId === product.quotationId &&
-          p.clothBackShirtId === product.clothBackShirtId &&
-          p.clothSleeveId === product.clothSleeveId &&
-          p.clothNecklineId === product.clothNecklineId &&
-          p.clothFrontShirtId === product.clothFrontShirtId &&
-          p.clothCuffId === product.clothCuffId &&
-          p.cuff === product.cuff &&
-          p.typeCuff === product.typeCuff &&
-          p.neckline === product.neckline &&
-          p.typeNeckline === product.typeNeckline &&
-          p.sleeveType === product.sleeveType &&
-          p.sleeveShape === product.sleeveShape &&
+          (isShirtProduct(p) === isShirtProduct(product)) &&
+          (isShirtProduct(p) ? (
+            p.clothBackShirtId === (product as FormDataShirtView).clothBackShirtId &&
+            p.clothSleeveId === (product as FormDataShirtView).clothSleeveId &&
+            p.clothNecklineId === (product as FormDataShirtView).clothNecklineId &&
+            p.clothFrontShirtId === (product as FormDataShirtView).clothFrontShirtId &&
+            p.clothCuffId === (product as FormDataShirtView).clothCuffId &&
+            p.cuff === (product as FormDataShirtView).cuff &&
+            p.typeCuff === (product as FormDataShirtView).typeCuff &&
+            p.neckline === (product as FormDataShirtView).neckline &&
+            p.typeNeckline === (product as FormDataShirtView).typeNeckline &&
+            p.sleeveType === (product as FormDataShirtView).sleeveType &&
+            p.sleeveShape === (product as FormDataShirtView).sleeveShape
+          ) : (
+            p.clothShortId === (product as FormDataShortView).clothShortId &&
+            p.viewShort === (product as FormDataShortView).viewShort &&
+            p.shortSection === (product as FormDataShortView).shortSection
+          )) &&
           p.discipline === product.discipline
       )
 
@@ -123,7 +136,7 @@ const CuttingOrderList = () => {
       title: 'Accion',
       dataIndex: 'Accion',
       key: 'Accion',
-      render: (text: any, record: any) => (
+      render: (_: any, record: CuttingOrderData) => (
         <Space size="middle">
           <Button
             icon={<DatabaseOutlined className="text-green-700" />}
@@ -184,7 +197,7 @@ const CuttingOrderList = () => {
         open={visible}
         width={600}
       >
-        {quotationProducts && quotationProducts.length > 0 && (
+        {quotationProducts.length > 0 && (
           <Card className="p-4">
             <div>
               <div className="flex justify-center mb-2">
@@ -192,8 +205,8 @@ const CuttingOrderList = () => {
               </div>
 
               {combinedProducts.map((product, index) => {
-                const isSingleProduct = product.size && !product.size.includes(', ');
-          
+                const isSingleProduct = typeof product.size === 'string' && !product.size.includes(', ');
+
                 const dataSource = isSingleProduct
                   ? [{
                       key: 0,
@@ -201,11 +214,11 @@ const CuttingOrderList = () => {
                       quantity: product.quantity,
                       observation: product.observation,
                     }]
-                  : product.size.split(', ').map((size, idx) => ({
+                  : (typeof product.size === 'string' ? product.size.split(', ') : [product.size]).map((size, idx) => ({
                       key: idx,
                       size,
-                      quantity: product.quantity.split(', ')[idx],
-                      observation: product.observation.split(', ')[idx],
+                      quantity: typeof product.quantity === 'string' ? product.quantity.split(', ')[idx] : product.quantity,
+                      observation: typeof product.observation === 'string' ? product.observation.split(', ')[idx] : product.observation,
                     }));
                 return (
                   <div key={index} className="mb-4">
@@ -225,12 +238,12 @@ const CuttingOrderList = () => {
                     <div className="flex mb-4">
                       <div className="flex justify-center">
                         {image ? (
-                          <img className="w-64 h-44" src={image} alt="Image" />
+                          <img className="w-64 h-44" src={image} alt="Product" />
                         ) : (
                           <img
                             className="w-64 h-44"
                             src={Missing}
-                            alt="missing image"
+                            alt="Missing product image"
                           />
                         )}
                       </div>
@@ -239,50 +252,69 @@ const CuttingOrderList = () => {
                           <p>
                             <strong>Disciplina:</strong> {product.discipline}
                           </p>
-                          <p>
-                            <strong>Tela espalda:</strong>{' '}
-                            {getMaterialName(product.clothBackShirtId)}
-                          </p>
-                          <p>
-                            <strong>Tela Manga:</strong>{' '}
-                            {getMaterialName(product.clothSleeveId)}
-                          </p>
-                          <p>
-                            <strong>Tela cuello:</strong>{' '}
-                            {getMaterialName(product.clothNecklineId)}
-                          </p>
-                          <p>
-                            <strong>Tela frente:</strong>{' '}
-                            {getMaterialName(product.clothFrontShirtId)}
-                          </p>
-                          <p>
-                            <strong>Tela Puño:</strong>{' '}
-                            {getMaterialName(product.clothCuffId)}
-                          </p>
+                          {isShirtProduct(product) ? (
+                            <>
+                              <p>
+                                <strong>Tela espalda:</strong>{' '}
+                                {getMaterialName(product.clothBackShirtId)}
+                              </p>
+                              <p>
+                                <strong>Tela Manga:</strong>{' '}
+                                {getMaterialName(product.clothSleeveId)}
+                              </p>
+                              <p>
+                                <strong>Tela cuello:</strong>{' '}
+                                {getMaterialName(product.clothNecklineId)}
+                              </p>
+                              <p>
+                                <strong>Tela frente:</strong>{' '}
+                                {getMaterialName(product.clothFrontShirtId)}
+                              </p>
+                              <p>
+                                <strong>Tela Puño:</strong>{' '}
+                                {getMaterialName(product.clothCuffId)}
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <p>
+                                <strong>Tela Short:</strong>{' '}
+                                {getMaterialName(product.clothShortId)}
+                              </p>
+                              <p>
+                                <strong>Vista Short:</strong> {product.viewShort}
+                              </p>
+                              <p>
+                                <strong>Sección Short:</strong> {product.shortSection}
+                              </p>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 mt-4">
-                      <p>
-                        <strong>Puños:</strong> {product.cuff}
-                      </p>
-                      <p>
-                        <strong>Tipo de puño:</strong> {product.typeCuff}
-                      </p>
-                      <p>
-                        <strong>Cuello:</strong> {product.neckline}
-                      </p>
-                      <p>
-                        <strong>Tipo de cuello:</strong> {product.typeNeckline}
-                      </p>
-                      <p>
-                        <strong>Tipo de manga:</strong> {product.sleeveType}
-                      </p>
-                      <p>
-                        <strong>Forma de manga:</strong> {product.sleeveShape}
-                      </p>
-                    </div>
+                    {isShirtProduct(product) && (
+                      <div className="grid grid-cols-2 mt-4">
+                        <p>
+                          <strong>Puños:</strong> {product.cuff}
+                        </p>
+                        <p>
+                          <strong>Tipo de puño:</strong> {product.typeCuff}
+                        </p>
+                        <p>
+                          <strong>Cuello:</strong> {product.neckline}
+                        </p>
+                        <p>
+                          <strong>Tipo de cuello:</strong> {product.typeNeckline}
+                        </p>
+                        <p>
+                          <strong>Tipo de manga:</strong> {product.sleeveType}
+                        </p>
+                        <p>
+                          <strong>Forma de manga:</strong> {product.sleeveShape}
+                        </p>
+                      </div>
+                    )}
                     <div className="mt-4">
                       <Table
                         columns={columnsData}
@@ -303,4 +335,5 @@ const CuttingOrderList = () => {
     </>
   )
 }
+
 export default CuttingOrderList

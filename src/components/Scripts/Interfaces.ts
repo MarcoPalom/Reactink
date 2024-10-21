@@ -220,6 +220,26 @@ export interface Employee {
     finishingArea?:number;
   }
 
+
+  export interface FormDataShortView {
+    id:number
+    productType: boolean;
+    discipline: string;
+    viewShort: string;
+    dtfShort: string;
+    shortSection: string;
+    size: string;
+    gender: string;
+    observation: string;
+    clothShortId: number;
+    quantity:number;
+    quotationId:number;
+    cuttingArea?:number;
+    printingArea?:number;
+    sublimationArea?:number;
+    finishingArea?:number;
+  }
+
   export interface Expense {
     id: number;
     concept: string;
