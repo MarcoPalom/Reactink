@@ -22,7 +22,8 @@ import {
   fetchAllProducts,
   fetchProductStatus,
   updateProductArea,
-  fetchQuotationDesigns
+  fetchQuotationDesigns,
+  fetchImage
 } from 'components/Scripts/Apicalls'
 import axios from 'axios'
 
@@ -31,14 +32,13 @@ const PrintingAreaList: React.FC = () => {
   const [orders, setOrders] = useState<CuttingOrderData[]>([])
   const [materials, setMaterials] = useState<Material[]>([])
   const [designs, setDesigns] = useState<QuotationDesign[]>([])
-  const [currentDesign, setCurrentDesign] = useState<string | undefined>(undefined)
+  const [image, setImage] = useState<string | null>(null)
   const [quotationProducts, setQuotationProducts] = useState<(FormDataShirtView | FormDataShortView)[]>([])
   const [filteredQuotationProducts, setFilteredQuotationProducts] = useState<(FormDataShirtView | FormDataShortView)[]>([])
   const [CuttingOrder, setCuttingOrder] = useState<Quotation[]>([])
   const [quotation, setQuotation] = useState<Number>(0)
   const [visible, setVisible] = useState<boolean>(false)
   const [searchText, setSearchText] = useState('')
-  const [image, setImage] = useState<string | undefined>()
   const [currentSlide, setCurrentSlide] = useState(0)
   const [isModalVisible, setIsModalVisible] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<FormDataShirtView | FormDataShortView | null>(null)
@@ -53,11 +53,22 @@ const PrintingAreaList: React.FC = () => {
     return 'shortSection' in product
   }
 
-  const getAuthHeaders = () => ({
-    headers: {
-      Authorization: `Bearer ${localStorage.getItem('token')}`
+
+  const fetchImg = async (
+    imageName: string,
+    setImage: (imageUrl: string) => void
+  ) => {
+    try {
+      const imageExtension = 'quotation_shirt'
+      if (imageName != null) {
+        const img = await fetchImage(imageName, imageExtension)
+        const imgURL = URL.createObjectURL(img)
+        setImage(imgURL)
+      }
+    } catch (error) {
+      console.error('Error fetching Material details:', error)
     }
-  })
+  }
 
   const fetchData = async () => {
     try {
@@ -153,11 +164,12 @@ const PrintingAreaList: React.FC = () => {
       console.log('Diseño Actual:', currentDesignD);
 
       if (currentDesignD?.designFront) {
-        setCurrentDesign(currentDesignD.designFront)
+        console.log('Setting currentDesign to:', currentDesignD.designFront)
+        fetchImg(currentDesignD.designFront, setImage)
 
-        console.log( currentDesign );
       } else {
-        setCurrentDesign(undefined)
+        console.log('Setting currentDesign to undefined')
+        setImage(null)
       }
 
       console.log('Fetching order details for id:', id)
@@ -358,8 +370,8 @@ const PrintingAreaList: React.FC = () => {
 
                     <div className="flex flex-col md:flex-row mb-4">
                       <div className="flex justify-center md:w-1/3">
-                        {currentDesign ? (
-                          <img className="w-64 h-44 object-cover" src={currentDesign} alt="Product" />
+                        {image ? (
+                          <img className="w-64 h-44 " src={ image } alt="Product" />
                         ) : (
                           <img
                             className="w-64 h-44 object-cover"

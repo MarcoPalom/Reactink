@@ -12,7 +12,8 @@ import {
   FormDataShirtView,
   FormDataShortView,
   Material,
-  quotationDesigns
+  quotationDesigns,
+  QuotationDesign
 } from 'components/Scripts/Interfaces'
 import {
   fetchOrders,
@@ -20,19 +21,21 @@ import {
   fetchQuotations,
   fetchAllProducts,
   fetchProductStatus,
-  updateProductArea
+  updateProductArea,
+  fetchImage,
+  fetchQuotationDesigns
 } from 'components/Scripts/Apicalls'
 
 const SewingAreaList: React.FC = () => {
   const navigate = useNavigate()
   const [orders, setOrders] = useState<CuttingOrderData[]>([])
-  const [designs, setDesigns] = useState<quotationDesigns[]>([])
+  const [designs, setDesigns] = useState<QuotationDesign[]>([])
+  const [image, setImage] = useState<string | null>(null)
   const [quotationProducts, setQuotationProducts] = useState<(FormDataShirtView | FormDataShortView)[]>([])
   const [filteredQuotationProducts, setFilteredQuotationProducts] = useState<(FormDataShirtView | FormDataShortView)[]>([])
   const [CuttingOrder, setCuttingOrder] = useState<Quotation[]>([])
   const [visible, setVisible] = useState<boolean>(false)
   const [searchText, setSearchText] = useState('')
-  const [image, setImage] = useState<string | null>(null)
   const [currentSlide, setCurrentSlide] = useState(0)
   const [isModalVisible, setIsModalVisible] = useState(false)
   const [selectedProduct, setSelectedProduct] = useState<FormDataShirtView | FormDataShortView | null>(null)
@@ -47,16 +50,33 @@ const SewingAreaList: React.FC = () => {
     return 'shortSection' in product
   }
 
+  const fetchImg = async (
+    imageName: string,
+    setImage: (imageUrl: string) => void
+  ) => {
+    try {
+      const imageExtension = 'quotation_shirt'
+      if (imageName != null) {
+        const img = await fetchImage(imageName, imageExtension)
+        const imgURL = URL.createObjectURL(img)
+        setImage(imgURL)
+      }
+    } catch (error) {
+      console.error('Error fetching Material details:', error)
+    }
+  }
+
   const fetchData = async () => {
     try {
-      const [ordersData, materialsData, quotationsData] = await Promise.all([
+      const [ordersData, materialsData, quotationsData, quotationsDesignData] = await Promise.all([
         fetchOrders(),
         fetchMaterials(),
-        fetchQuotations()
+        fetchQuotations(),
+        fetchQuotationDesigns(),
       ])
       setOrders(ordersData)
-      setDesigns(quotationsData)
-      console.log('Fetched data:', { orders: ordersData, materials: materialsData, quotations: quotationsData })
+      setDesigns(quotationsDesignData)
+      console.log('Fetched data:', { orders: ordersData, materials: materialsData, quotations: quotationsData, quotationsDesign: quotationsDesignData })
     } catch (error) {
       console.error('Error fetching data:', error)
       message.error('Error al cargar los datos. Por favor, intente de nuevo.')
@@ -82,7 +102,7 @@ const SewingAreaList: React.FC = () => {
     const validatedProductsData = await Promise.all(
       products.map(async (product) => {
         const status = await fetchProductStatus(product.id, isShortProduct(product) ? 'short' : 'shirt')
-        if (status.sewingArea === false) {
+        if ( status.cuttingArea && status.printingArea && status.sublimationArea && !status.sewingArea ) {
           return product
         }
         return null
@@ -127,9 +147,21 @@ const SewingAreaList: React.FC = () => {
     }
   }
 
-  const handleViewOrderDetails = async (id: number) => {
+  const handleViewOrderDetails = async (id: number, quotationId: number) => {
     try {
       setIsLoading(true)
+
+      const currentDesignD = designs.find(d => d.quotationId === quotationId);
+
+      if (currentDesignD?.designFront) {
+        console.log('Setting currentDesign to:', currentDesignD.designFront)
+        fetchImg(currentDesignD.designFront, setImage)
+
+      } else {
+        console.log('Setting currentDesign to undefined')
+        setImage(null)
+      }
+
       console.log('Fetching order details for id:', id)
       await CuttingUtils.handleView(id, setQuotationProducts, setVisible, setCuttingOrder)
       console.log('Quotation products after handleView:', quotationProducts)
@@ -222,7 +254,7 @@ const SewingAreaList: React.FC = () => {
                 <div key={order.key} className="w-full flex-shrink-0 relative px-4">
                   <Card 
                     className="w-full max-w-md mx-auto p-6 cursor-pointer shadow-lg transition-all duration-300 hover:shadow-xl"
-                    onClick={() => handleViewOrderDetails(order.id)}
+                    onClick={() => handleViewOrderDetails(order.id, order.quotationId)}
                   >
                     <div className="flex justify-between items-center mb-4">
                       <div className="relative">
@@ -329,7 +361,7 @@ const SewingAreaList: React.FC = () => {
                     <div className="flex flex-col md:flex-row mb-4">
                       <div className="flex justify-center md:w-1/3">
                         {image ? (
-                          <img className="w-64 h-44 object-cover" src={image} alt="Product" />
+                          <img className="w-64 h-44" src={image} alt="Product" />
                         ) : (
                           <img
                             className="w-64 h-44 object-cover"
