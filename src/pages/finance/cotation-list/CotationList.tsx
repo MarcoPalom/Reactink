@@ -168,13 +168,6 @@ const CotationList = () => {
     setFile(fileList[0]?.originFileObj as File)
   }
 
-  const handleSwitchChange = (checked: boolean) => {
-    setIsShirtForm(checked)
-  }
-  const handleSwitchChangeShort = (checked: boolean) => {
-    setIsShortForm(checked)
-  }
-
   const filteredQuotations = QuotationUtils.filterQuotations(
     Quotations,
     searchText
@@ -2059,7 +2052,6 @@ const CotationList = () => {
                             setCuttingOrderDt,
                             shorts,
                             CuttingOrderDt,
-                            productType,
                             file,
                             setImageFileName
                           )

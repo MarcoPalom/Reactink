@@ -17,7 +17,8 @@ import {
   Material,
   quotationDesigns,
   FormDataShirt,
-  FormDataShort
+  FormDataShort,
+  FormDataShortView
 } from 'components/Scripts/Interfaces'
 import { message } from 'antd'
 import { useState } from 'react'
@@ -64,20 +65,21 @@ export const fetchAndSetMaterials = async (
 
 export const handleView = async (
   id: number,
-  setQuotationProducts: (products: FormDataShirtView[]) => void,
+  setQuotationProducts: (products: (FormDataShirtView | FormDataShortView)[]) => void,
   setVisible: (visible: boolean) => void,
   setCuttingOrder: (order: Quotation[]) => void
 ) => {
   try {
-    const products = await fetchOrder(id)
-    const cuttingOrder = await fetchQuotationOrder(id.toString())
-    setQuotationProducts(products)
-    setCuttingOrder(cuttingOrder)
-    setVisible(true)
+    const products = await fetchOrder(id);
+    console.log("breakpoint cutt procuctos", products)
+    const cuttingOrder = await fetchQuotationOrder(id.toString());
+    setQuotationProducts(products);
+    setCuttingOrder(cuttingOrder);
+    setVisible(true);
   } catch (error) {
-    console.error('Error handling view:', error)
+    console.error('Error handling view:', error);
   }
-}
+};
 
 export const filterOrders = (
   Orders: CuttingOrderData[],
@@ -351,7 +353,6 @@ export const handleFormSubmitShort = async (
   setCuttingOrderDt: any,
   shorts: FormDataShort[],
   CuttingOrderDt: any,
-  productTypeShort: number | null,
   file: File | null,
   setImageFileName: (fileName: string | null) => void
 ) => {

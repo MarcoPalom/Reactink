@@ -58,8 +58,6 @@ export default function TopNav() {
           trigger="click"
           content={
             <div className="flex flex-col gap-2">
-              <div>Mi perfil</div>
-              <div>Configuraciones</div>
               <Button
                 className="text-red-500"
                 onClick={logout}

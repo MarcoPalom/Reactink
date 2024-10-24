@@ -10,6 +10,7 @@ import {
   CuttingOrderData,
   Quotation,
   FormDataShirtView,
+  FormDataShortView,
   Material,
   quotationDesigns
 } from 'components/Scripts/Interfaces'
@@ -22,26 +23,30 @@ import {
   updateProductArea
 } from 'components/Scripts/Apicalls'
 
-const CuttingOrderList: React.FC = () => {
+const CuttingArea: React.FC = () => {
   const navigate = useNavigate()
   const [orders, setOrders] = useState<CuttingOrderData[]>([])
   const [materials, setMaterials] = useState<Material[]>([])
   const [designs, setDesigns] = useState<quotationDesigns[]>([])
-  const [quotationProducts, setQuotationProducts] = useState<FormDataShirtView[]>([])
-  const [filteredQuotationProducts, setFilteredQuotationProducts] = useState<FormDataShirtView[]>([])
+  const [quotationProducts, setQuotationProducts] = useState<(FormDataShirtView | FormDataShortView)[]>([])
+  const [filteredQuotationProducts, setFilteredQuotationProducts] = useState<(FormDataShirtView | FormDataShortView)[]>([])
   const [cuttingOrder, setCuttingOrder] = useState<Quotation[]>([])
   const [visible, setVisible] = useState<boolean>(false)
   const [searchText, setSearchText] = useState('')
   const [image, setImage] = useState<string | null>(null)
   const [currentSlide, setCurrentSlide] = useState(0)
   const [isModalVisible, setIsModalVisible] = useState(false)
-  const [selectedProduct, setSelectedProduct] = useState<FormDataShirtView | null>(null)
+  const [selectedProduct, setSelectedProduct] = useState<FormDataShirtView | FormDataShortView | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [allProducts, setAllProducts] = useState<FormDataShirtView[]>([])
+  const [allProducts, setAllProducts] = useState<(FormDataShirtView | FormDataShortView)[]>([])
   const [completedQuotationIds, setCompletedQuotationIds] = useState<number[]>([])
 
   useTokenRenewal(navigate)
   const CURRENT_AREA = 1
+
+  const isShortProduct = (product: FormDataShirtView | FormDataShortView): product is FormDataShortView => {
+    return 'shortSection' in product
+  }
 
   const fetchData = async () => {
     try {
@@ -53,6 +58,7 @@ const CuttingOrderList: React.FC = () => {
       setOrders(ordersData)
       setMaterials(materialsData)
       setDesigns(quotationsData)
+      console.log('Fetched data:', { orders: ordersData, materials: materialsData, quotations: quotationsData })
     } catch (error) {
       console.error('Error fetching data:', error)
       message.error('Error al cargar los datos. Por favor, intente de nuevo.')
@@ -64,6 +70,7 @@ const CuttingOrderList: React.FC = () => {
       setIsLoading(true)
       const products = await fetchAllProducts()
       setAllProducts(products)
+      console.log('Fetched all products:', products)
     } catch (error) {
       console.error('Error fetching all products:', error)
       message.error('Error al cargar los productos. Por favor, intente de nuevo.')
@@ -80,14 +87,14 @@ const CuttingOrderList: React.FC = () => {
         }
         acc[product.quotationId].push(product)
         return acc
-      }, {} as Record<number, FormDataShirtView[]>)
+      }, {} as Record<number, (FormDataShirtView | FormDataShortView)[]>)
 
       const completedQuotations: number[] = []
 
       for (const [quotationId, products] of Object.entries(productsByQuotation)) {
         const allProductsComplete = await Promise.all(
           products.map(async (product) => {
-            const status = await fetchProductStatus(product.id)
+            const status = await fetchProductStatus(product.id, isShortProduct(product) ? 'short' : 'shirt')
             return status.cuttingArea
           })
         )
@@ -98,6 +105,7 @@ const CuttingOrderList: React.FC = () => {
       }
 
       setCompletedQuotationIds(completedQuotations)
+      console.log('Completed quotation IDs:', completedQuotations)
     } catch (error) {
       console.error('Error checking cutting area status:', error)
       message.error('Error al verificar el estado de las áreas de corte. Por favor, intente de nuevo.')
@@ -125,7 +133,7 @@ const CuttingOrderList: React.FC = () => {
     return materialMap.get(id) || 'Unknown'
   }
 
-  const handleValidate = (record: FormDataShirtView) => {
+  const handleValidate = (record: FormDataShirtView | FormDataShortView) => {
     setSelectedProduct(record)
     setIsModalVisible(true)
   }
@@ -134,7 +142,8 @@ const CuttingOrderList: React.FC = () => {
     if (!selectedProduct) return
 
     try {
-      const response = await updateProductArea(selectedProduct.id, CURRENT_AREA)
+      const productType = isShortProduct(selectedProduct) ? 'short' : 'shirt'
+      const response = await updateProductArea(selectedProduct.id, CURRENT_AREA, productType)
 
       if (response.status === 200) {
         message.success("Artículo validado exitosamente")
@@ -143,7 +152,7 @@ const CuttingOrderList: React.FC = () => {
         setSelectedProduct(null)
         const updatedFilteredProducts = await Promise.all(
           filteredQuotationProducts.map(async (product) => {
-            const status = await fetchProductStatus(product.id)
+            const status = await fetchProductStatus(product.id, isShortProduct(product) ? 'short' : 'shirt')
             return { ...product, isCuttingAreaComplete: status.cuttingArea }
           })
         )
@@ -161,14 +170,18 @@ const CuttingOrderList: React.FC = () => {
   const handleViewOrderDetails = async (id: number) => {
     try {
       setIsLoading(true)
+      console.log('Fetching order details for id:', id)
       await CuttingUtils.handleView(id, setQuotationProducts, setVisible, setCuttingOrder)
+      console.log('Quotation products after handleView:', quotationProducts)
       const productsWithStatus = await Promise.all(
         quotationProducts.map(async (product) => {
-          const status = await fetchProductStatus(product.id)
+          const status = await fetchProductStatus(product.id, isShortProduct(product) ? 'short' : 'shirt')
           return { ...product, isCuttingAreaComplete: status.cuttingArea }
         })
       )
+      console.log('Products with status:', productsWithStatus)
       setFilteredQuotationProducts(productsWithStatus.filter(product => !product.isCuttingAreaComplete))
+      console.log('Filtered quotation products:', filteredQuotationProducts)
       setVisible(true)
     } catch (error) {
       console.error('Error viewing order details:', error)
@@ -186,12 +199,13 @@ const CuttingOrderList: React.FC = () => {
     setCurrentSlide((prevSlide) => (prevSlide - 1 + filteredOrdersWithKeys.length) % filteredOrdersWithKeys.length)
   }
 
-  const ResponsiveTable: React.FC<{ dataSource: FormDataShirtView[] }> = ({ dataSource }) => {
+  const ResponsiveTable: React.FC<{ dataSource: (FormDataShirtView | FormDataShortView)[] }> = ({ dataSource }) => {
     return (
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Talla</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Observación</th>
@@ -201,11 +215,12 @@ const CuttingOrderList: React.FC = () => {
           <tbody className="bg-white divide-y divide-gray-200">
             {dataSource.map((item) => (
               <tr key={item.id}>
+                <td className="px-6 py-4 whitespace-nowrap">{isShortProduct(item) ? 'Short' : 'Camisa'}</td>
                 <td className="px-6 py-4 whitespace-nowrap">{item.size}</td>
                 <td className="px-6 py-4 whitespace-nowrap">{item.quantity}</td>
                 <td className="px-6 py-4 whitespace-nowrap">{item.observation}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <Button onClick={() => handleValidate(item)}>Validate</Button>
+                  <Button onClick={() => handleValidate(item)}>Validar</Button>
                 </td>
               </tr>
             ))}
@@ -215,17 +230,18 @@ const CuttingOrderList: React.FC = () => {
     )
   }
 
-  const ResponsiveCardList: React.FC<{ dataSource: FormDataShirtView[] }> = ({ dataSource }) => {
+  const ResponsiveCardList: React.FC<{ dataSource: (FormDataShirtView | FormDataShortView)[] }> = ({ dataSource }) => {
     return (
       <div className="space-y-4">
         {dataSource.map((item) => (
           <Card key={item.id} className="shadow-sm">
             <div className="space-y-2">
+              <p><strong>Tipo:</strong> {isShortProduct(item) ? 'Short' : 'Camisa'}</p>
               <p><strong>Talla:</strong> {item.size}</p>
               <p><strong>Cantidad:</strong> {item.quantity}</p>
               <p><strong>Observación:</strong> {item.observation}</p>
               <div>
-                <Button onClick={() => handleValidate(item)}>Validate</Button>
+                <Button onClick={() => handleValidate(item)}>Validar</Button>
               </div>
             </div>
           </Card>
@@ -275,10 +291,6 @@ const CuttingOrderList: React.FC = () => {
                     <strong>Estado:</strong>{' '}
                     <span className="text-green-500">En proceso de corte</span>
                   </p>
-                  <p className="text-sm">
-                    <strong>Prioridad:</strong>{' '}
-                    <span className="text-yellow-500">Alta</span>
-                  </p>
                 </Card>
                 <button
                   className="absolute top-1/2 left-2 transform -translate-y-1/2 bg-white rounded-full p-2 shadow-md z-10 transition-all duration-300 hover:scale-110"
@@ -292,6 +304,7 @@ const CuttingOrderList: React.FC = () => {
                 <button
                   className="absolute top-1/2 right-2 transform -translate-y-1/2 bg-white rounded-full p-2 shadow-md z-10 transition-all duration-300 hover:scale-110"
                   onClick={(e) => {
+                    
                     e.stopPropagation()
                     nextSlide()
                   }}
@@ -333,90 +346,112 @@ const CuttingOrderList: React.FC = () => {
                 <img src={Logo} alt="Ink Sports" className="h-8" />
               </div>
 
-              {filteredQuotationProducts.map((product, index) => (
-                <div key={index} className="mb-4">
-                  <div className="flex justify-between mb-4">
-                    <p>
-                      
-                      <strong>Cotización Folio:</strong> {product.quotationId}
-                    </p>
-                    <p>
-                      <strong>Cliente:</strong>
-                    </p>
-                  </div>
-
-                  <h3 className="flex justify-center text-lg leading-6 font-medium text-gray-900 mb-4">
-                    Orden de corte
-                  </h3>
-
-                  <div className="flex flex-col md:flex-row mb-4">
-                    <div className="flex justify-center md:w-1/3">
-                      {image ? (
-                        <img className="w-64 h-44 object-cover" src={image} alt="Product" />
-                      ) : (
-                        <img
-                          className="w-64 h-44 object-cover"
-                          src={Missing}
-                          alt="missing image"
-                        />
-                      )}
+              {filteredQuotationProducts.map((product, index) => {
+                console.log('Rendering product:', product)
+                return (
+                  <div key={index} className="mb-4">
+                    <div className="flex justify-between mb-4">
+                      <p>
+                        <strong>Cotización Folio:</strong> {product.quotationId}
+                      </p>
+                      <p>
+                        <strong>Cliente:</strong>
+                      </p>
                     </div>
-                    <div className="md:w-2/3 mt-4 md:mt-0 md:pl-4">
-                      <div className="text-sm text-gray-500 space-y-2">
-                        <p>
-                          <strong>Disciplina:</strong> {product.discipline}
-                        </p>
-                        <p>
-                          <strong>Tela espalda:</strong>{' '}
-                          {getMaterialName(product.clothBackShirtId)}
-                        </p>
-                        <p>
-                          <strong>Tela Manga:</strong>{' '}
-                          {getMaterialName(product.clothSleeveId)}
-                        </p>
-                        <p>
-                          <strong>Tela cuello:</strong>{' '}
-                          {getMaterialName(product.clothNecklineId)}
-                        </p>
-                        <p>
-                          <strong>Tela frente:</strong>{' '}
-                          {getMaterialName(product.clothFrontShirtId)}
-                        </p>
-                        <p>
-                          <strong>Cuff:</strong> {product.cuff}
-                        </p>
-                        <p>
-                          <strong>Tipo Cuff:</strong> {product.typeCuff}
-                        </p>
-                        <p>
-                          <strong>Cuello:</strong> {product.neckline}
-                        </p>
-                        <p>
-                          <strong>Tipo Cuello:</strong> {product.typeNeckline}
-                        </p>
-                        <p>
-                          <strong>Tipo de Manga:</strong> {product.sleeveType}
-                        </p>
-                        <p>
-                          <strong>Forma de Manga:</strong>{' '}
-                          {product.sleeveShape}
-                        </p>
+
+                    <h3 className="flex justify-center text-lg leading-6 font-medium text-gray-900 mb-4">
+                      Orden de corte
+                    </h3>
+
+                    <div className="flex flex-col md:flex-row mb-4">
+                      <div className="flex justify-center md:w-1/3">
+                        {image ? (
+                          <img className="w-64 h-44 object-cover" src={image} alt="Product" />
+                        ) : (
+                          <img
+                            className="w-64 h-44 object-cover"
+                            src={Missing}
+                            alt="missing image"
+                          />
+                        )}
+                      </div>
+                      <div className="md:w-2/3 mt-4 md:mt-0 md:pl-4">
+                        <div className="text-sm text-gray-500 space-y-2">
+                          <p>
+                            <strong>Tipo:</strong> {isShortProduct(product) ? 'Short' : 'Camisa'}
+                          </p>
+                          <p>
+                            <strong>Disciplina:</strong> {product.discipline}
+                          </p>
+                          {isShortProduct(product) ? (
+                            <>
+                              <p>
+                                <strong>Tela Short:</strong>{' '}
+                                {getMaterialName(product.clothShortId)}
+                              </p>
+                              <p>
+                                <strong>Vista Short:</strong> {product.viewShort}
+                              </p>
+                              <p>
+                                <strong>Sección Short:</strong> {product.shortSection}
+                              </p>
+                            </>
+                          ) : (
+                            <>
+                              <p>
+                                <strong>Tela espalda:</strong>{' '}
+                                {getMaterialName(product.clothBackShirtId)}
+                              </p>
+                              <p>
+                                <strong>Tela Manga:</strong>{' '}
+                                {getMaterialName(product.clothSleeveId)}
+                              </p>
+                              <p>
+                                <strong>Tela cuello:</strong>{' '}
+                                {getMaterialName(product.clothNecklineId)}
+                              </p>
+                              <p>
+                                <strong>Tela frente:</strong>{' '}
+                                {getMaterialName(product.clothFrontShirtId)}
+                              </p>
+                              <p>
+                                <strong>Cuff:</strong> {product.cuff}
+                              </p>
+                              <p>
+                                <strong>Tipo Cuff:</strong> {product.typeCuff}
+                              </p>
+                              <p>
+                                <strong>Cuello:</strong> {product.neckline}
+                              </p>
+                              <p>
+                                <strong>Tipo Cuello:</strong> {product.typeNeckline}
+                              </p>
+                              <p>
+                                <strong>Tipo de Manga:</strong> {product.sleeveType}
+                              </p>
+                              <p>
+                                <strong>Forma de Manga:</strong>{' '}
+                                {product.sleeveShape}
+                              </p>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="hidden md:block">
-                    <ResponsiveTable
-                      dataSource={[product]}
-                    />
+                    <div className="hidden md:block">
+                      <ResponsiveTable
+                        dataSource={[product]}
+                      />
+                    </div>
+                    <div className="md:hidden">
+                      <ResponsiveCardList
+                        dataSource={[product]}
+                      />
+                    </div>
                   </div>
-                  <div className="md:hidden">
-                    <ResponsiveCardList
-                      dataSource={[product]}
-                    />
-                  </div>
-                </div>
-              ))}
+                )
+              })}
             </div>
           </Card>
         ) : (
@@ -432,9 +467,10 @@ const CuttingOrderList: React.FC = () => {
         onOk={handleConfirm}
         onCancel={() => setIsModalVisible(false)}
       >
-        <p>Are you sure you want to confirm the completion of this item?</p>
+        <p>Seguro que quieres validar la finalizacion de este producto?:</p>
         {selectedProduct && (
           <div>
+            <p><strong>Tipo:</strong> {isShortProduct(selectedProduct) ? 'Short' : 'Camisa'}</p>
             <p><strong>Size:</strong> {selectedProduct.size}</p>
             <p><strong>Quantity:</strong> {selectedProduct.quantity}</p>
             <p><strong>Observation:</strong> {selectedProduct.observation}</p>
@@ -445,4 +481,4 @@ const CuttingOrderList: React.FC = () => {
   )
 }
 
-export default CuttingOrderList
+export default CuttingArea
