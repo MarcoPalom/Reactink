@@ -23,7 +23,8 @@ import {
   fetchProductStatus,
   updateProductArea,
   fetchImage,
-  fetchQuotationDesigns
+  fetchQuotationDesigns,
+  fetchClientDetails
 } from 'components/Scripts/Apicalls'
 
 const CuttingArea: React.FC = () => {
@@ -43,6 +44,7 @@ const CuttingArea: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [allProducts, setAllProducts] = useState<(FormDataShirtView | FormDataShortView)[]>([])
   const [completedQuotationIds, setCompletedQuotationIds] = useState<number[]>([])
+  const [client, setClient] = useState<string | null>(null);
 
   useTokenRenewal(navigate)
   const CURRENT_AREA = 1
@@ -64,6 +66,26 @@ const CuttingArea: React.FC = () => {
       }
     } catch (error) {
       console.error('Error fetching Material details:', error)
+    }
+  }
+
+  const fetchClient = async ( client: number ) => {
+    try {
+      const res = await fetch(`http://62.72.51.60/api/client/${ client }`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const {name, surname, organization} = await res.json();
+      const cliente = `${ name } ${ surname } - ${ organization }`;
+
+      setClient( cliente );
+
+    } catch ( error ) {
+      message.error(`${ error }`);
     }
   }
 
@@ -206,6 +228,15 @@ const CuttingArea: React.FC = () => {
         setImage(null)
       }
 
+      const currentOrder = orders.find(o => o.quotationId === quotationId);
+
+      console.log( {currentOrder} );
+
+      if ( currentOrder?.quotation.clientId ) {
+        fetchClient( currentOrder?.quotation.clientId );
+      } else {
+        setClient(null);
+      }
 
       console.log('Fetching order details for id:', id)
       await CuttingUtils.handleView(id, setQuotationProducts, setVisible, setCuttingOrder)
@@ -392,7 +423,7 @@ const CuttingArea: React.FC = () => {
                         <strong>Cotización Folio:</strong> {product.quotationId}
                       </p>
                       <p>
-                        <strong>Cliente:</strong>
+                        <strong>Cliente:</strong> { client }
                       </p>
                     </div>
 

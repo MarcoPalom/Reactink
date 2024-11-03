@@ -45,6 +45,7 @@ const PrintingAreaList: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [allProducts, setAllProducts] = useState<(FormDataShirtView | FormDataShortView)[]>([])
   const [validatedProducts, setValidatedProducts] = useState<(FormDataShirtView | FormDataShortView)[]>([])
+  const [client, setClient] = useState<string | null>(null);
 
   useTokenRenewal(navigate)
   const CURRENT_AREA = 2
@@ -67,6 +68,26 @@ const PrintingAreaList: React.FC = () => {
       }
     } catch (error) {
       console.error('Error fetching Material details:', error)
+    }
+  }
+
+  const fetchClient = async ( client: number ) => {
+    try {
+      const res = await fetch(`http://62.72.51.60/api/client/${ client }`, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const {name, surname, organization} = await res.json();
+      const cliente = `${ name } ${ surname } - ${ organization }`;
+
+      setClient( cliente );
+
+    } catch ( error ) {
+      message.error(`${ error }`);
     }
   }
 
@@ -170,6 +191,16 @@ const PrintingAreaList: React.FC = () => {
       } else {
         console.log('Setting currentDesign to undefined')
         setImage(null)
+      }
+
+      const currentOrder = orders.find(o => o.quotationId === quotationId);
+
+      console.log( {currentOrder} );
+
+      if ( currentOrder?.quotation.clientId ) {
+        fetchClient( currentOrder?.quotation.clientId );
+      } else {
+        setClient(null);
       }
 
       console.log('Fetching order details for id:', id)
@@ -360,7 +391,7 @@ const PrintingAreaList: React.FC = () => {
                         <strong>Cotización Folio:</strong> {product.quotationId}
                       </p>
                       <p>
-                        <strong>Cliente:</strong>
+                        <strong>Cliente:</strong> { client }
                       </p>
                     </div>
 

@@ -938,7 +938,7 @@ const CotationList = () => {
                   )}
                 </p>
                 <p>
-                  <strong>Cliente:</strong> {selectedQuotation.clientId}
+                  <strong>Cliente:</strong> {`${ selectedQuotation.client.name } ${ selectedQuotation.client.surname} - ${ selectedQuotation.client.organization }`}
                 </p>
                 <p>
                   <strong>Subtotal:</strong> {'$'}

@@ -138,6 +138,7 @@ export const handleView = async (
 ) => {
   try {
     const data = await fetchQuotation(id)
+
     setSelectedQuotation(data)
     setVisible(true)
   } catch (error) {

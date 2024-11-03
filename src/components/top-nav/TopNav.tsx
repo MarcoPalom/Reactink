@@ -45,9 +45,7 @@ export default function TopNav() {
           trigger="click"
           content={
             <div>
-              <div>Notificación 1</div>
-              <div>Notificación 2</div>
-              <div>Notificación 3</div>
+              <div>Sin Notificaciones</div>
             </div>
           }
         >

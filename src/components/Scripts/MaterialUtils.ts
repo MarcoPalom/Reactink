@@ -28,7 +28,7 @@ import axios from 'axios'
 const { confirm } = Modal
 
 export const sizes: string[] = [
-  '6', '8', '12', '14', '16', '18', 'CH', 'M', 'G', 'XG', 'XXG', 'XXXG', '4XG'
+  '6', '8', '10', '12', '14', '16', '18', 'CH', 'M', 'G', 'XG', 'XXG', 'XXXG', '4XG'
 ];
 
 export const fetchAndSetData = async (
