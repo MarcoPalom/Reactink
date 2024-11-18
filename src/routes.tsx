@@ -11,6 +11,7 @@ import Login from 'pages/Login';
 import Production from 'pages/Production/Production';
 import DebtList from 'pages/finance/debt-list/DebtList';
 import CuttingOrderList from 'pages/finance/cuttingorder-list/CuttingOrderList';
+import DesingList from 'pages/finance/desing-list/DesingList';
 
 const AppRoutes = () => {
     return (
@@ -24,6 +25,7 @@ const AppRoutes = () => {
                 <Route path='/finanzas/gastos' element={<ExpenseList/>}/>
                 <Route path='/finanzas/deudas' element={<DebtList/>}/>
                 <Route path='/finanzas/cuttingorders' element={<CuttingOrderList/>}/>
+                <Route path='/finanzas/desinglist' element={<DesingList/>}/>
                 <Route path='/personal/empleados' element={<EmployeList/>}/>
                 <Route path='/personal/clientes' element={<ClientList/>}/>
                 <Route path='/produccion' element={<Production/>}/>
