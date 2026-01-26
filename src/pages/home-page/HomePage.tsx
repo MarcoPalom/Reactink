@@ -8,6 +8,7 @@ import SewingArea from "./SewingArea"
 import {useNavigate} from 'react-router-dom'
 import useTokenRenewal from 'components/Scripts/useTokenRenewal'
 import IroningAreaList from "./IroningArea";
+import FinishingAreaList from "./FinishingArea";
 
 const HomePage = () => {
     const navigate = useNavigate()
@@ -35,6 +36,8 @@ const HomePage = () => {
                 <SewingArea/>
             ) : roleNumber === 9 ? (
                 <IroningAreaList/>
+            ) : roleNumber === 10 ? (
+                <FinishingAreaList/>
             ) : (
                 null
             )}

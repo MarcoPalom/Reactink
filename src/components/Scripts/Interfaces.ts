@@ -177,6 +177,7 @@ export interface Employee {
   }
 
   export interface FormDataShort {
+    productType?: number;
     discipline: string;
     clothShortId: number;
     clothViewId : number;

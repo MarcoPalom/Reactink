@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { Upload, Button, Radio, message } from 'antd'
 import { UploadOutlined } from '@ant-design/icons'
 import axios from 'axios'
+import { API_BASE_URL } from 'config/api.config'
 import { UploadChangeParam } from 'antd/lib/upload'
 
 const DesignArea: React.FC = () => {
@@ -43,7 +44,7 @@ const DesignArea: React.FC = () => {
 
     try {
       const response = await axios.post(
-        'http://62.72.51.60/upload/single/quotation-desing',
+        `${API_BASE_URL}/upload/single/quotation-desing`,
         formData,
         {
           headers: {
@@ -93,7 +94,7 @@ const DesignArea: React.FC = () => {
       console.log(quotationDesignData)
 
       await axios.post(
-        'http://62.72.51.60/api/quotation-design',
+        `${API_BASE_URL}/quotation-design`,
         quotationDesignData
       )
 

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import useTokenRenewal from 'components/Scripts/useTokenRenewal'
+import { API_BASE_URL } from 'config/api.config'
 
 export default function DashCount() {
   const [dashCountData, setDashCountData] = useState<number[]>([0, 0, 0, 0])
@@ -17,14 +18,14 @@ export default function DashCount() {
       try {
         const token = localStorage.getItem('token');
   
-        const employeeResponse = await axios.get('http://62.72.51.60/api/user', {
+        const employeeResponse = await axios.get(`${API_BASE_URL}/user`, {
           headers: {
             Authorization: `Bearer ${token}`
           }
         });
         const totalEmployees = employeeResponse.data.length;
   
-        const clientResponse = await axios.get('http://62.72.51.60/api/client', {
+        const clientResponse = await axios.get(`${API_BASE_URL}/client`, {
           headers: {
             Authorization: `Bearer ${token}`
           }

@@ -25,7 +25,7 @@ import useTokenRenewal from 'components/Scripts/useTokenRenewal'
 import { Employee } from 'components/Scripts/Interfaces'
 import * as EmployeeUtils from 'components/Scripts/EmployeeUtils'
 import { UploadChangeParam } from 'antd/lib/upload'
-import { generatePDF } from 'components/Scripts/Utils'
+import { generatePDFTable } from 'components/Scripts/Utils'
 import Logo from 'assets/img/logo.png'
 import Missing from 'assets/img/noUserPhoto.jpg'
 import TodayDate from '../../../components/Scripts/Utils'
@@ -487,7 +487,18 @@ const EmployeList = () => {
             />
           </div>
           <div className="flex flex-row gap-4 text-lg">
-            <FilePdfOutlined className="text-red-500" onClick={generatePDF} />
+            <FilePdfOutlined className="text-red-500" onClick={() => {
+              const headers = ['ID', 'Nombre', 'Apellido', 'Email', 'Teléfono', 'Rol']
+              const data = filteredEmployeesWithKeys.map((e) => [
+                e.id?.toString() || '',
+                e.name || '',
+                e.surname || '',
+                e.email || '',
+                e.phone || '',
+                e.role?.toString() || ''
+              ])
+              generatePDFTable('Lista de Empleados', headers, data, 'empleados')
+            }} />
           </div>
         </Space>
         <div id="PDFtable">

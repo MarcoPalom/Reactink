@@ -12,7 +12,8 @@ import {
   Drawer,
   Switch,
   Upload,
-  Popover
+  Popover,
+  message
 } from 'antd'
 import {
   PlusOutlined,
@@ -63,7 +64,7 @@ import {
   contentBlockAceptEdit
 } from 'components/Scripts/Utils'
 import { UploadChangeParam } from 'antd/lib/upload'
-import { fetchMaterialName } from 'components/Scripts/Apicalls'
+import { fetchMaterialName, checkCuttingOrderExists } from 'components/Scripts/Apicalls'
 import { useNavigate } from 'react-router-dom'
 import FormItem from 'antd/es/form/FormItem'
 import TodayDate from 'components/Scripts/Utils'
@@ -886,7 +887,13 @@ const CotationList = () => {
           />
           <Button
             icon={<ScissorOutlined className="text-gray-700" />}
-            onClick={() => {
+            onClick={async () => {
+              // Verificar si ya existe una orden de corte para esta cotización
+              const existingOrder = await checkCuttingOrderExists(record.id)
+              if (existingOrder.exists) {
+                message.warning(`Ya existe una orden de corte para la cotización #${record.id}. Si desea modificarla, use la opción de editar en la sección de órdenes de corte.`)
+                return
+              }
               setSelectedQuotation(record)
               setVisibleCut(true)
             }}
@@ -906,7 +913,7 @@ const CotationList = () => {
           <Button
             key="pdf"
             icon={<FilePdfOutlined className="text-red-500" />}
-            onClick={() => generatePDFMODAL(selectedQuotation, modalRef)}
+            onClick={() => generatePDFMODAL(selectedQuotation, modalRef, quotationProducts, quotationProductsMaquila)}
           ></Button>
         ]}
       >
@@ -2135,7 +2142,7 @@ const CotationList = () => {
             />
           </div>
           <div className="flex flex-row gap-4 text-lg">
-            <FilePdfOutlined className="text-red-500" onClick={generatePDF} />
+            <FilePdfOutlined className="text-red-500" onClick={() => generatePDF(filteredQuotationsWithKeys)} />
           </div>
         </Space>
         <div id="PDFtable">

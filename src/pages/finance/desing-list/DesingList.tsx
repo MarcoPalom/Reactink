@@ -5,9 +5,10 @@ import useTokenRenewal from 'components/Scripts/useTokenRenewal';
 import { useNavigate } from 'react-router-dom';
 import { QuotationDesign } from '../../../components/Scripts/Interfaces'; // Define esta interfaz con `folio` y `logo`.
 import * as QuotationDesignUtils from '../../../components/Scripts/QuotationDesignUtils'; // Crea un módulo para manejar las operaciones.
-import { generatePDF } from 'components/Scripts/Utils';
+import { generatePDFTable } from 'components/Scripts/Utils';
 import Logo from 'assets/img/logo.png';
 import TodayDate from '../../../components/Scripts/Utils';
+import { API_BASE_URL } from 'config/api.config';
 
 const { Search } = Input;
 
@@ -41,7 +42,7 @@ const QuotationDesignList = () => {
       key: 'logo',
       render: (logo: string) => (
         logo ? (
-          <img src={`http://62.72.51.60/${logo}`} alt="Logo" className="h-10" />
+          <img src={`${API_BASE_URL.replace('/api', '')}/${logo}`} alt="Logo" className="h-10" />
         ) : (
           'No disponible'
         )
@@ -70,7 +71,15 @@ const QuotationDesignList = () => {
           <div className="flex flex-row gap-4 text-lg">
             <FilePdfOutlined
               className="text-red-500"
-              onClick={() => generatePDF()}
+              onClick={() => {
+                const headers = ['Folio', 'Cotización', 'Observación']
+                const data = filteredDesignsWithKeys.map((d) => [
+                  d.id?.toString() || '',
+                  d.quotationId?.toString() || '',
+                  d.observation || ''
+                ])
+                generatePDFTable('Diseños de Cotización', headers, data, 'disenos')
+              }}
             />
           </div>
         </Space>

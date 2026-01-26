@@ -5,36 +5,54 @@ import { UserOutlined, LockOutlined, EyeInvisibleOutlined, EyeTwoTone } from '@a
 import axios from 'axios'
 import Logo from 'assets/img/logo.png'
 import login from 'assets/img/login.jpg'
+import { authToast, toast } from 'components/Scripts/ToastUtils'
+import { API_BASE_URL } from 'config/api.config'
 
 export default function Login() {
   const navigate = useNavigate()
   const [form] = Form.useForm()
+  const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (values: { email: string; password: string }) => {
+    setLoading(true)
+    
     try {
       const response = await axios.post(
-        'http://62.72.51.60/api/user/login',
+        `${API_BASE_URL}/user/login`,
         values
       )
-
-      console.log('Respuesta del servidor:', response.data)
 
       if (response.data.token && response.data.user) {
         localStorage.setItem('token', response.data.token)
         localStorage.setItem('userRole', response.data.user.role.toString())
+        authToast.loginSuccess()
         navigate('/homepage')
       } else {
-        console.error('No se recibió un token o un usuario en la respuesta del servidor')
+        authToast.loginError()
       }
-    } catch (error) {
-      console.error('Error al hacer la solicitud:', error)
+    } catch (error: any) {
+      if (error.response) {
+        // Error de respuesta del servidor (401, 403, etc.)
+        if (error.response.status === 401 || error.response.status === 403) {
+          authToast.loginError()
+        } else {
+          toast.error(error.response.data?.message || 'Error en el servidor')
+        }
+      } else if (error.request) {
+        // Error de red (sin respuesta)
+        authToast.loginNetworkError()
+      } else {
+        toast.error('Error inesperado. Intenta nuevamente')
+      }
+    } finally {
+      setLoading(false)
     }
   }
 
   return (
-    <div className="flex flex-col md:flex-row h-screen">
-      <div className="md:w-1/2 flex items-center justify-center p-8 h-1/2 md:h-full">
-        <div className="w-full max-w-md bg-white shadow-lg rounded-lg p-8">
+    <div className="flex flex-col md:flex-row h-screen w-screen overflow-hidden fixed inset-0">
+      <div className="w-full md:w-1/2 flex items-center justify-center h-full bg-white">
+        <div className="w-full h-full md:h-auto md:max-w-md bg-white md:shadow-lg md:rounded-lg px-6 py-8 sm:p-8 flex flex-col justify-center">
           <div className="flex justify-center mb-6">
             <img src={Logo} alt="Ink Sports" className="h-10" />
           </div>
@@ -76,15 +94,16 @@ export default function Login() {
               <Button
                 type="primary"
                 htmlType="submit"
+                loading={loading}
                 className="w-full h-10 bg-red-600 hover:bg-red-700 rounded-md text-white font-semibold"
               >
-                Entrar
+                {loading ? 'Iniciando sesión...' : 'Entrar'}
               </Button>
             </Form.Item>
           </Form>
         </div>
       </div>
-      <div className="md:w-1/2 bg-cover bg-center hidden md:block h-1/2 md:h-full">
+      <div className="hidden md:block md:w-1/2 h-full">
         <img src={login} alt="Imagen de inicio de sesión" className="w-full h-full object-cover" />
       </div>
     </div>

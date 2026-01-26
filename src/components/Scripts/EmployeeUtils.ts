@@ -9,6 +9,7 @@ import {
 import { message, Modal } from 'antd'
 import { Employee } from './Interfaces'
 import axios from 'axios'
+import { API_BASE_URL } from 'config/api.config'
 import { FormInstance } from 'antd'
 
 const { confirm } = Modal
@@ -256,7 +257,7 @@ const uploadImage = async (file: File): Promise<string> => {
 
   try {
     const response = await axios.post(
-      'http://62.72.51.60/api/upload/single/user',
+      `${API_BASE_URL}/upload/single/user`,
       formData,
       {
         headers: {

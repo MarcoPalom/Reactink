@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import axios from 'axios';
+import { API_BASE_URL } from 'config/api.config';
 
 const useTokenRenewal = (navigate:any) => {
   useEffect(() => {
@@ -12,7 +13,7 @@ const useTokenRenewal = (navigate:any) => {
         }
 
         const response = await axios.get(
-          'http://62.72.51.60/api/user/renew-token',
+          `${API_BASE_URL}/user/renew-token`,
           {
             headers: {
               Authorization: `Bearer ${token}`,

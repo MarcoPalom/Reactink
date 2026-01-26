@@ -11,7 +11,7 @@ import {
 import useTokenRenewal from 'components/Scripts/useTokenRenewal'
 import { Client } from 'components/Scripts/Interfaces'
 import * as clientUtils from 'components/Scripts/ClientUtils'
-import { generatePDF } from 'components/Scripts/Utils'
+import { generatePDFTable } from 'components/Scripts/Utils'
 import Logo from 'assets/img/logo.png'
 import TodayDate from '../../../components/Scripts/Utils'
 
@@ -249,7 +249,19 @@ const ClientList = () => {
             />
           </div>
           <div className="flex flex-row gap-4 text-lg">
-            <FilePdfOutlined className="text-red-500" onClick={generatePDF} />
+            <FilePdfOutlined className="text-red-500" onClick={() => {
+              const filteredClients = clientUtils.filterClients(Clients, searchText)
+              const headers = ['ID', 'Nombre', 'Apellido', 'Organización', 'Email', 'Teléfono']
+              const data = filteredClients.map((c) => [
+                c.id?.toString() || '',
+                c.name || '',
+                c.surname || '',
+                c.organization || '',
+                c.email || '',
+                c.phone || ''
+              ])
+              generatePDFTable('Lista de Clientes', headers, data, 'clientes')
+            }} />
           </div>
         </Space>
         <div id="PDFtable">

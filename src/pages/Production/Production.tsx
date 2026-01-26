@@ -8,6 +8,7 @@ import {
   CloseOutlined
 } from '@ant-design/icons'
 import { useEffect, useState } from 'react'
+import { API_BASE_URL } from 'config/api.config'
 
 const Production = () => {
   const [current, setCurrent] = useState(0);
@@ -45,7 +46,7 @@ const Production = () => {
 
   const getOrders = async () => {
     try {
-      const res = await fetch("http://62.72.51.60/api/cutting-order", {
+      const res = await fetch(`${API_BASE_URL}/cutting-order`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -71,7 +72,7 @@ const Production = () => {
 
   const getQuotation = async (id: number) => {
     try {
-      const res = await fetch(`http://62.72.51.60/api/quotation/${id}`, {
+      const res = await fetch(`${API_BASE_URL}/quotation/${id}`, {
         method: "GET",
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,

@@ -5,7 +5,7 @@ import useTokenRenewal from 'components/Scripts/useTokenRenewal'
 import { useNavigate } from 'react-router-dom'
 import { Quotation, Client } from '../../../components/Scripts/Interfaces'
 import * as DebtsUtils from 'components/Scripts/DebtsUtils'
-import { generatePDF } from 'components/Scripts/Utils'
+import { generatePDFTable } from 'components/Scripts/Utils'
 import Logo from 'assets/img/logo.png'
 import TodayDate from '../../../components/Scripts/Utils'
 
@@ -88,7 +88,18 @@ const DebtList = () => {
             <Search placeholder="Busqueda..." className="w-44" />
           </div>
           <div className="flex flex-row gap-4 text-lg">
-            <FilePdfOutlined className="text-red-500" onClick={generatePDF} />
+            <FilePdfOutlined className="text-red-500" onClick={() => {
+              const headers = ['Folio', 'Cliente', 'Total', 'Avance', 'Restante', 'Estado']
+              const data = filteredQuotationsWithKeys.map((q) => [
+                q.id?.toString() || '',
+                `${q.client?.name || ''} ${q.client?.surname || ''}`,
+                `$${q.netAmount || 0}`,
+                `$${q.advance || 0}`,
+                `$${(q.netAmount || 0) - (q.advance || 0)}`,
+                q.advance >= q.netAmount ? 'Pagado' : 'Pendiente'
+              ])
+              generatePDFTable('Lista de Deudas', headers, data, 'deudas')
+            }} />
           </div>
         </Space>
         <div id="PDFtable">

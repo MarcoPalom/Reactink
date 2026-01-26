@@ -31,7 +31,7 @@ import {
   SupplierAdd,
   MaterialRends
 } from 'components/Scripts/Interfaces'
-import { generatePDF } from 'components/Scripts/Utils'
+import { generatePDFTable } from 'components/Scripts/Utils'
 import Logo from 'assets/img/logo.png'
 import TodayDate from '../../../components/Scripts/Utils'
 import { UploadChangeParam } from 'antd/lib/upload'
@@ -844,7 +844,17 @@ const MaterialList = () => {
             />
           </div>
           <div className="flex flex-row gap-4 text-lg">
-            <FilePdfOutlined className="text-red-500" onClick={generatePDF} />
+            <FilePdfOutlined className="text-red-500" onClick={() => {
+              const headers = ['ID', 'Nombre', 'Descripción', 'Stock', 'Ubicación']
+              const data = filteredMaterialsWithKeys.map((m) => [
+                m.id?.toString() || '',
+                m.name || '',
+                m.description || '',
+                m.stock?.toString() || '0',
+                m.location || ''
+              ])
+              generatePDFTable('Lista de Materiales', headers, data, 'materiales')
+            }} />
           </div>
         </Space>
         <div id="PDFtable">

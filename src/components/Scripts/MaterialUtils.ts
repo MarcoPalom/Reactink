@@ -13,6 +13,7 @@ import {
   fetchEmployees,
   fetchSizes
 } from 'components/Scripts/Apicalls'
+import { API_BASE_URL } from 'config/api.config'
 import { message, Modal, FormInstance } from 'antd'
 import {
   Material,
@@ -407,7 +408,7 @@ const uploadImage = async (file: File): Promise<string> => {
 
   try {
     const response = await axios.post(
-      'http://62.72.51.60/api/upload/single/material',
+      `${API_BASE_URL}/upload/single/material`,
       formData,
       {
         headers: {

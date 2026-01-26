@@ -3,6 +3,7 @@ import { Card, Drawer, Button, Modal, message, Spin } from 'antd'
 import { RightOutlined, LeftOutlined, ScissorOutlined } from '@ant-design/icons'
 import useTokenRenewal from 'components/Scripts/useTokenRenewal'
 import { useNavigate } from 'react-router-dom'
+import { API_BASE_URL } from 'config/api.config'
 import * as CuttingUtils from 'components/Scripts/CuttingUtils'
 import Logo from 'assets/img/logo.png'
 import Missing from 'assets/img/noUserPhoto.jpg'
@@ -71,7 +72,7 @@ const CuttingArea: React.FC = () => {
 
   const fetchClient = async ( client: number ) => {
     try {
-      const res = await fetch(`http://62.72.51.60/api/client/${ client }`, {
+      const res = await fetch(`${API_BASE_URL}/client/${ client }`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -239,10 +240,12 @@ const CuttingArea: React.FC = () => {
       }
 
       console.log('Fetching order details for id:', id)
-      await CuttingUtils.handleView(id, setQuotationProducts, setVisible, setCuttingOrder)
-      console.log('Quotation products after handleView:', quotationProducts)
+      // Usar los productos devueltos directamente en lugar del estado
+      const fetchedProducts = await CuttingUtils.handleView(id, setQuotationProducts, setVisible, setCuttingOrder)
+      console.log('Quotation products after handleView:', fetchedProducts)
+      
       const productsWithStatus = await Promise.all(
-        quotationProducts.map(async (product) => {
+        fetchedProducts.map(async (product) => {
           const status = await fetchProductStatus(product.id, isShortProduct(product) ? 'short' : 'shirt')
           return { ...product, isCuttingAreaComplete: status.cuttingArea }
         })
@@ -483,10 +486,10 @@ const CuttingArea: React.FC = () => {
                                 {getMaterialName(product.clothFrontShirtId)}
                               </p>
                               <p>
-                                <strong>Cuff:</strong> {product.cuff}
+                                <strong>Puño:</strong> {product.cuff}
                               </p>
                               <p>
-                                <strong>Tipo Cuff:</strong> {product.typeCuff}
+                                <strong>Tipo Puño:</strong> {product.typeCuff}
                               </p>
                               <p>
                                 <strong>Cuello:</strong> {product.neckline}

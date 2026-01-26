@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
-import { Card, Drawer, Button, Modal, message, Spin } from 'antd'
-import { RightOutlined, LeftOutlined, SkinOutlined } from '@ant-design/icons'
+import { Card, Drawer, Spin, message } from 'antd'
+import { RightOutlined, LeftOutlined, CheckCircleOutlined } from '@ant-design/icons'
 import useTokenRenewal from 'components/Scripts/useTokenRenewal'
 import { useNavigate } from 'react-router-dom'
 import { API_BASE_URL } from 'config/api.config'
@@ -12,8 +12,6 @@ import {
   Quotation,
   FormDataShirtView,
   FormDataShortView,
-  Material,
-  quotationDesigns,
   QuotationDesign
 } from 'components/Scripts/Interfaces'
 import {
@@ -22,12 +20,11 @@ import {
   fetchQuotations,
   fetchAllProducts,
   fetchProductStatus,
-  updateProductArea,
   fetchImage,
   fetchQuotationDesigns
 } from 'components/Scripts/Apicalls'
 
-const SewingAreaList: React.FC = () => {
+const FinishingAreaList: React.FC = () => {
   const navigate = useNavigate()
   const [orders, setOrders] = useState<CuttingOrderData[]>([])
   const [designs, setDesigns] = useState<QuotationDesign[]>([])
@@ -38,15 +35,12 @@ const SewingAreaList: React.FC = () => {
   const [visible, setVisible] = useState<boolean>(false)
   const [searchText, setSearchText] = useState('')
   const [currentSlide, setCurrentSlide] = useState(0)
-  const [isModalVisible, setIsModalVisible] = useState(false)
-  const [selectedProduct, setSelectedProduct] = useState<FormDataShirtView | FormDataShortView | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [allProducts, setAllProducts] = useState<(FormDataShirtView | FormDataShortView)[]>([])
-  const [validatedProducts, setValidatedProducts] = useState<(FormDataShirtView | FormDataShortView)[]>([])
+  const [completedProducts, setCompletedProducts] = useState<(FormDataShirtView | FormDataShortView)[]>([])
   const [client, setClient] = useState<string | null>(null);
 
   useTokenRenewal(navigate)
-  const CURRENT_AREA = 4
 
   const isShortProduct = (product: FormDataShirtView | FormDataShortView): product is FormDataShortView => {
     return 'shortSection' in product
@@ -78,13 +72,19 @@ const SewingAreaList: React.FC = () => {
         },
       });
 
+      if (!res.ok) {
+        setClient('Cliente no disponible');
+        return;
+      }
+
       const {name, surname, organization} = await res.json();
       const cliente = `${ name } ${ surname } - ${ organization }`;
 
       setClient( cliente );
 
     } catch ( error ) {
-      message.error(`${ error }`);
+      console.error('Error fetching client:', error);
+      setClient('Cliente no disponible');
     }
   }
 
@@ -120,17 +120,19 @@ const SewingAreaList: React.FC = () => {
     }
   }
 
+  // Para acabado, mostrar productos que ya pasaron por todas las áreas incluyendo planchado (finishingArea = true)
   const checkProductStatus = async (products: (FormDataShirtView | FormDataShortView)[]) => {
-    const validatedProductsData = await Promise.all(
+    const completedProductsData = await Promise.all(
       products.map(async (product) => {
         const status = await fetchProductStatus(product.id, isShortProduct(product) ? 'short' : 'shirt')
-        if ( status.cuttingArea && status.printingArea && status.sublimationArea && !status.sewingArea ) {
+        // Mostrar productos que ya fueron validados en planchado (finishingArea = true)
+        if ( status.cuttingArea && status.printingArea && status.sublimationArea && status.sewingArea && status.finishingArea ) {
           return product
         }
         return null
       })
     )
-    setValidatedProducts(validatedProductsData.filter((product): product is FormDataShirtView | FormDataShortView => product !== null))
+    setCompletedProducts(completedProductsData.filter((product): product is FormDataShirtView | FormDataShortView => product !== null))
   }
 
   useEffect(() => {
@@ -139,35 +141,8 @@ const SewingAreaList: React.FC = () => {
   }, [])
 
   const filteredOrders = CuttingUtils.filterOrders(orders, searchText)
-    .filter(order => validatedProducts.some(product => product.quotationId === order.quotationId))
+    .filter(order => completedProducts.some(product => product.quotationId === order.quotationId))
   const filteredOrdersWithKeys = CuttingUtils.addKeysToOrders(filteredOrders)
-
-  const handleValidate = (record: FormDataShirtView | FormDataShortView) => {
-    setSelectedProduct(record)
-    setIsModalVisible(true)
-  }
-
-  const handleConfirm = async () => {
-    if (!selectedProduct) return
-
-    try {
-      const productType = isShortProduct(selectedProduct) ? 'short' : 'shirt'
-      const response = await updateProductArea(selectedProduct.id, CURRENT_AREA, productType)
-
-      if (response.status === 200) {
-        message.success("Artículo validado exitosamente")
-        fetchData()
-        setIsModalVisible(false)
-        setSelectedProduct(null)
-        await fetchAllProductsData()
-      } else {
-        throw new Error('Unexpected response status')
-      }
-    } catch (error) {
-      console.error('Error validating item:', error)
-      message.error("No se pudo validar el artículo. Por favor, intente de nuevo.")
-    }
-  }
 
   const handleViewOrderDetails = async (id: number, quotationId: number) => {
     try {
@@ -197,15 +172,15 @@ const SewingAreaList: React.FC = () => {
       console.log('Fetching order details for id:', id)
       const fetchedProducts = await CuttingUtils.handleView(id, setQuotationProducts, setVisible, setCuttingOrder)
       console.log('Quotation products after handleView:', fetchedProducts)
+      
+      // Filtrar solo productos completados
       const productsWithStatus = await Promise.all(
         fetchedProducts.map(async (product) => {
           const status = await fetchProductStatus(product.id, isShortProduct(product) ? 'short' : 'shirt')
-          return { ...product, isSewingAreaComplete: status.sewingArea }
+          return { ...product, isCompleted: status.finishingArea }
         })
       )
-      console.log('Products with status:', productsWithStatus)
-      setFilteredQuotationProducts(productsWithStatus.filter(product => !product.isSewingAreaComplete))
-      console.log('Filtered quotation products:', filteredQuotationProducts)
+      setFilteredQuotationProducts(productsWithStatus.filter(product => product.isCompleted))
       setVisible(true)
     } catch (error) {
       console.error('Error viewing order details:', error)
@@ -232,7 +207,7 @@ const SewingAreaList: React.FC = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Talla</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Validar</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -242,7 +217,9 @@ const SewingAreaList: React.FC = () => {
                 <td className="px-6 py-4 whitespace-nowrap">{item.size}</td>
                 <td className="px-6 py-4 whitespace-nowrap">{item.quantity}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <Button onClick={() => handleValidate(item)}>Validar</Button>
+                  <span className="text-green-600 flex items-center">
+                    <CheckCircleOutlined className="mr-2" /> Completado
+                  </span>
                 </td>
               </tr>
             ))}
@@ -261,9 +238,9 @@ const SewingAreaList: React.FC = () => {
               <p><strong>Tipo:</strong> {isShortProduct(item) ? 'Short' : 'Camisa'}</p>
               <p><strong>Talla:</strong> {item.size}</p>
               <p><strong>Cantidad:</strong> {item.quantity}</p>
-              <div>
-                <Button onClick={() => handleValidate(item)}>Validar</Button>
-              </div>
+              <p className="text-green-600 flex items-center">
+                <CheckCircleOutlined className="mr-2" /> Completado
+              </p>
             </div>
           </Card>
         ))}
@@ -273,7 +250,7 @@ const SewingAreaList: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6 text-center">Área de Costura</h1>
+      <h1 className="text-3xl font-bold mb-6 text-center">Área de Acabado</h1>
       
       {filteredOrdersWithKeys.length > 0 ? (
         <div className="mt-10 relative">
@@ -290,9 +267,9 @@ const SewingAreaList: React.FC = () => {
                   >
                     <div className="flex justify-between items-center mb-4">
                       <div className="relative">
-                        <div className="absolute inset-0 rounded-full bg-blue-400 opacity-50 animate-pulse" />
-                        <div className="flex items-center justify-center bg-blue-500 rounded-full p-4">
-                          <SkinOutlined className="text-white text-2xl" />
+                        <div className="absolute inset-0 rounded-full bg-green-400 opacity-50 animate-pulse" />
+                        <div className="flex items-center justify-center bg-green-500 rounded-full p-4">
+                          <CheckCircleOutlined className="text-white text-2xl" />
                         </div>
                       </div>
                       <div className="text-right">
@@ -311,7 +288,7 @@ const SewingAreaList: React.FC = () => {
                     </div>
                     <p className="text-sm mb-2">
                       <strong>Estado:</strong>{' '}
-                      <span className="text-green-500">En proceso de Costura</span>
+                      <span className="text-green-600">Listo para entrega</span>
                     </p>
                   </Card>
                   <button
@@ -342,7 +319,7 @@ const SewingAreaList: React.FC = () => {
               <div
                 key={index}
                 className={`h-2 w-2 rounded-full mx-1 ${
-                  currentSlide === index ? 'bg-blue-500' : 'bg-blue-300'
+                  currentSlide === index ? 'bg-green-500' : 'bg-green-300'
                 }`}
               />
             ))}
@@ -350,12 +327,12 @@ const SewingAreaList: React.FC = () => {
         </div>
       ) : (
         <div className="mt-10 text-center">
-          <p className="text-xl font-semibold">De momento no hay trabajo en esta área.</p>
+          <p className="text-xl font-semibold">No hay pedidos completados para revisar.</p>
         </div>
       )}
 
       <Drawer
-        title="Detalles de la orden"
+        title="Detalles del pedido completado"
         placement="right"
         onClose={() => setVisible(false)}
         open={visible}
@@ -364,7 +341,6 @@ const SewingAreaList: React.FC = () => {
         {isLoading ? (
           <div className="flex justify-center items-center h-full">
             <Spin size="large" />
-          
           </div>
         ) : filteredQuotationProducts && filteredQuotationProducts.length > 0 ? (
           <Card className="p-4">
@@ -374,7 +350,6 @@ const SewingAreaList: React.FC = () => {
               </div>
 
               {filteredQuotationProducts.map((product, index) => {
-                console.log('Rendering product:', product)
                 return (
                   <div key={index} className="mb-4">
                     <div className="flex justify-between mb-4">
@@ -387,7 +362,7 @@ const SewingAreaList: React.FC = () => {
                     </div>
 
                     <h3 className="flex justify-center text-lg leading-6 font-medium text-gray-900 mb-4">
-                      Orden de Costura
+                      Pedido Completado
                     </h3>
 
                     <div className="flex flex-col md:flex-row mb-4">
@@ -435,24 +410,8 @@ const SewingAreaList: React.FC = () => {
           </div>
         )}
       </Drawer>
-
-      <Modal
-        title="Confirm Validation"
-        open={isModalVisible}
-        onOk={handleConfirm}
-        onCancel={() => setIsModalVisible(false)}
-      >
-        <p>Seguro que quieres validar la finalización de este producto?:</p>
-        {selectedProduct && (
-          <div>
-            <p><strong>Tipo:</strong> {isShortProduct(selectedProduct) ? 'Short' : 'Camisa'}</p>
-            <p><strong>Size:</strong> {selectedProduct.size}</p>
-            <p><strong>Quantity:</strong> {selectedProduct.quantity}</p>
-          </div>
-        )}
-      </Modal>
     </div>
   )
 }
 
-export default SewingAreaList
+export default FinishingAreaList

@@ -3,6 +3,7 @@ import { Card, Drawer, Button, Modal, message, Spin } from 'antd'
 import { RightOutlined, LeftOutlined, SkinOutlined } from '@ant-design/icons'
 import useTokenRenewal from 'components/Scripts/useTokenRenewal'
 import { useNavigate } from 'react-router-dom'
+import { API_BASE_URL } from 'config/api.config'
 import * as CuttingUtils from 'components/Scripts/CuttingUtils'
 import Logo from 'assets/img/logo.png'
 import Missing from 'assets/img/noUserPhoto.jpg'
@@ -69,7 +70,7 @@ const IroningAreaList: React.FC = () => {
 
   const fetchClient = async ( client: number ) => {
     try {
-      const res = await fetch(`http://62.72.51.60/api/client/${ client }`, {
+      const res = await fetch(`${API_BASE_URL}/client/${ client }`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -194,12 +195,12 @@ const IroningAreaList: React.FC = () => {
       }
 
       console.log('Fetching order details for id:', id)
-      await CuttingUtils.handleView(id, setQuotationProducts, setVisible, setCuttingOrder)
-      console.log('Quotation products after handleView:', quotationProducts)
+      const fetchedProducts = await CuttingUtils.handleView(id, setQuotationProducts, setVisible, setCuttingOrder)
+      console.log('Quotation products after handleView:', fetchedProducts)
       const productsWithStatus = await Promise.all(
-        quotationProducts.map(async (product) => {
+        fetchedProducts.map(async (product) => {
           const status = await fetchProductStatus(product.id, isShortProduct(product) ? 'short' : 'shirt')
-          return { ...product, isIroningAreaComplete: status.IroningArea }
+          return { ...product, isIroningAreaComplete: status.finishingArea }
         })
       )
       console.log('Products with status:', productsWithStatus)
@@ -272,7 +273,7 @@ const IroningAreaList: React.FC = () => {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-6 text-center">Área de Planchado y Acabado</h1>
+      <h1 className="text-3xl font-bold mb-6 text-center">Área de Planchado</h1>
       
       {filteredOrdersWithKeys.length > 0 ? (
         <div className="mt-10 relative">
@@ -310,7 +311,7 @@ const IroningAreaList: React.FC = () => {
                     </div>
                     <p className="text-sm mb-2">
                       <strong>Estado:</strong>{' '}
-                      <span className="text-green-500">En proceso de Planchado</span>
+                      <span className="text-blue-500">En proceso de Planchado</span>
                     </p>
                   </Card>
                   <button

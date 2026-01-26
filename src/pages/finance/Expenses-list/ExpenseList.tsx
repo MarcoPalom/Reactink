@@ -23,7 +23,7 @@ import {
 import useTokenRenewal from 'components/Scripts/useTokenRenewal'
 import { Employee, Expense, Material } from 'components/Scripts/Interfaces'
 import * as ExpenseUtils from 'components/Scripts/ExpenseUtils'
-import { generatePDF } from 'components/Scripts/Utils'
+import { generatePDFTable } from 'components/Scripts/Utils'
 import Logo from 'assets/img/logo.png'
 import TodayDate from '../../../components/Scripts/Utils'
 import type { SelectProps } from 'antd/es/select';
@@ -299,7 +299,17 @@ const ExpenseList = () => {
             />
           </div>
           <div className="flex flex-row gap-4 text-lg">
-            <FilePdfOutlined className="text-red-500" onClick={generatePDF} />
+            <FilePdfOutlined className="text-red-500" onClick={() => {
+              const headers = ['ID', 'Concepto', 'Total', 'Banco', 'Fecha']
+              const data = filteredExpensesWithKeys.map((e) => [
+                e.id?.toString() || '',
+                e.concept || '',
+                `$${e.total || 0}`,
+                e.bank || '',
+                e.dateExpense ? new Date(e.dateExpense).toLocaleDateString('es-ES') : ''
+              ])
+              generatePDFTable('Lista de Gastos', headers, data, 'gastos')
+            }} />
           </div>
         </Space>
         <div id="PDFtable">

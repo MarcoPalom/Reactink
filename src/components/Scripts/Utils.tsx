@@ -1,5 +1,7 @@
 import html2pdf from 'html2pdf.js'
-import { Quotation } from 'components/Scripts/Interfaces'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
+import { Quotation, QuotationProduct, QuotationProductMaquila } from 'components/Scripts/Interfaces'
 import ButtDisables from 'assets/img/AceptBlocked.png'
 import SendButt from 'assets/img/Send.png'
 import TaxBloq from 'assets/img/TaxBloq.jpg'
@@ -130,41 +132,240 @@ const TodayDate = () => {
 
 export default TodayDate
 
-export const generatePDF = () => {
-  const element = document.getElementById('PDFtable')
-  const actionColumns = document.querySelectorAll('#PDFtable .action-column')
-  actionColumns.forEach((column) => {
-    column.classList.add('hidden')
+// Función genérica para generar PDF de cualquier tabla
+export const generatePDFTable = (
+  title: string,
+  headers: string[],
+  data: string[][],
+  filename: string,
+  orientation: 'portrait' | 'landscape' = 'landscape'
+) => {
+  const doc = new jsPDF({
+    orientation: orientation,
+    unit: 'mm',
+    format: 'letter'
   })
 
-  const options = {
-    margin: 0.5,
-    filename: 'Tabla-no:',
-    image: { type: 'jpeg', quality: 0.98 },
-    html2canvas: { scale: 2, scrollY: 1000 },
-    jsPDF: {
-      unit: 'cm',
-      format: 'letter',
-      orientation: 'landscape'
-    },
-    pagebreak: { mode: 'avoid-all' },
-    html2pdf: {
-      dpi: 300
-    }
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const margin = 10
+  let yPosition = 15
+
+  // Título
+  doc.setFontSize(16)
+  doc.setFont('helvetica', 'bold')
+  doc.text(`INK SPORTS - ${title}`, pageWidth / 2, yPosition, { align: 'center' })
+  yPosition += 8
+
+  // Fecha
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'normal')
+  const today = new Date().toLocaleDateString('es-ES')
+  doc.text(`Ciudad Victoria, Tamaulipas a ${today}`, pageWidth / 2, yPosition, { align: 'center' })
+  yPosition += 10
+
+  if (data && data.length > 0) {
+    autoTable(doc, {
+      startY: yPosition,
+      head: [headers],
+      body: data,
+      margin: { left: margin, right: margin },
+      styles: { fontSize: 8, cellPadding: 2 },
+      headStyles: { fillColor: [66, 66, 66], textColor: 255 },
+      alternateRowStyles: { fillColor: [245, 245, 245] }
+    })
+  } else {
+    doc.text('No hay datos para mostrar', pageWidth / 2, yPosition + 20, { align: 'center' })
   }
 
-  html2pdf()
-    .set(options)
-    .from(element)
-    .save()
-    .then(() => {
-      actionColumns.forEach((column) => {
-        column.classList.remove('hidden')
-      })
-    })
+  doc.save(`${filename}.pdf`)
+}
+
+// Función específica para cotizaciones (mantiene compatibilidad)
+export const generatePDF = (quotations?: Quotation[]) => {
+  if (!quotations || quotations.length === 0) {
+    generatePDFTable('Lista de Cotizaciones', [], [], 'lista_cotizaciones')
+    return
+  }
+
+  const headers = ['Folio', 'Fecha', 'Cliente', 'Organización', 'Subtotal', 'Impuesto', 'Total', 'En Producción']
+  const data = quotations.map((q) => [
+    q.id.toString(),
+    new Date(q.dateReceipt).toLocaleDateString('es-ES'),
+    `${q.client?.name || ''} ${q.client?.surname || ''}`,
+    q.client?.organization || '',
+    `$${q.subtotal}`,
+    `${q.tax}%`,
+    `$${q.total}`,
+    q.inProduction ? 'Sí' : 'No'
+  ])
+
+  generatePDFTable('Lista de Cotizaciones', headers, data, 'lista_cotizaciones')
 }
 
 export const generatePDFMODAL = (
+  selectedQuotation: Quotation | null,
+  modalRef: React.RefObject<HTMLElement>,
+  quotationProducts?: QuotationProduct[],
+  quotationProductsMaquila?: QuotationProductMaquila[]
+) => {
+  if (!selectedQuotation) {
+    console.error('No hay cotización seleccionada')
+    return
+  }
+
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'letter'
+  })
+
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const margin = 15
+  let yPosition = 20
+
+  // Título y folio
+  doc.setFontSize(18)
+  doc.setFont('helvetica', 'bold')
+  doc.text('INK SPORTS', pageWidth / 2, yPosition, { align: 'center' })
+  yPosition += 10
+
+  doc.setFontSize(14)
+  doc.text(`Cotización Folio: ${selectedQuotation.id}`, pageWidth / 2, yPosition, { align: 'center' })
+  yPosition += 10
+
+  // Fecha
+  doc.setFontSize(10)
+  doc.setFont('helvetica', 'normal')
+  const today = new Date().toLocaleDateString('es-ES')
+  doc.text(`Ciudad Victoria, Tamaulipas a ${today}`, pageWidth / 2, yPosition, { align: 'center' })
+  yPosition += 15
+
+  // Información del cliente y cotización
+  doc.setFontSize(10)
+  const leftColX = margin
+  const rightColX = pageWidth / 2 + 10
+
+  // Columna izquierda
+  doc.setFont('helvetica', 'bold')
+  doc.text('Fecha de recibido:', leftColX, yPosition)
+  doc.setFont('helvetica', 'normal')
+  doc.text(new Date(selectedQuotation.dateReceipt).toLocaleDateString('es-ES'), leftColX + 40, yPosition)
+  
+  // Columna derecha
+  doc.setFont('helvetica', 'bold')
+  doc.text('Impuesto:', rightColX, yPosition)
+  doc.setFont('helvetica', 'normal')
+  doc.text(`${selectedQuotation.tax}%`, rightColX + 25, yPosition)
+  yPosition += 6
+
+  doc.setFont('helvetica', 'bold')
+  doc.text('Fecha de expiración:', leftColX, yPosition)
+  doc.setFont('helvetica', 'normal')
+  doc.text(new Date(selectedQuotation.expirationDate).toLocaleDateString('es-ES'), leftColX + 40, yPosition)
+  
+  doc.setFont('helvetica', 'bold')
+  doc.text('Total neto:', rightColX, yPosition)
+  doc.setFont('helvetica', 'normal')
+  doc.text(`$${selectedQuotation.netAmount}`, rightColX + 25, yPosition)
+  yPosition += 6
+
+  doc.setFont('helvetica', 'bold')
+  doc.text('Cliente:', leftColX, yPosition)
+  doc.setFont('helvetica', 'normal')
+  const clientName = `${selectedQuotation.client.name} ${selectedQuotation.client.surname} - ${selectedQuotation.client.organization}`
+  doc.text(clientName.substring(0, 50), leftColX + 18, yPosition)
+  
+  doc.setFont('helvetica', 'bold')
+  doc.text('Avance:', rightColX, yPosition)
+  doc.setFont('helvetica', 'normal')
+  doc.text(`$${selectedQuotation.advance}`, rightColX + 25, yPosition)
+  yPosition += 6
+
+  doc.setFont('helvetica', 'bold')
+  doc.text('Subtotal:', leftColX, yPosition)
+  doc.setFont('helvetica', 'normal')
+  doc.text(`$${selectedQuotation.subtotal}`, leftColX + 22, yPosition)
+  
+  doc.setFont('helvetica', 'bold')
+  doc.text('Total:', rightColX, yPosition)
+  doc.setFont('helvetica', 'normal')
+  doc.text(`$${selectedQuotation.total}`, rightColX + 25, yPosition)
+  yPosition += 15
+
+  // Tabla de productos
+  if (quotationProducts && quotationProducts.length > 0) {
+    doc.setFontSize(12)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Productos', margin, yPosition)
+    yPosition += 5
+
+    const productData = quotationProducts.map((product) => [
+      product.description || 'Sin descripción',
+      product.quantity.toString(),
+      `$${parseFloat(String(product.amount)).toFixed(2)}`,
+      `${parseFloat(String(product.tax || 0)).toFixed(2)}%`,
+      `$${parseFloat(String(product.total)).toFixed(2)}`
+    ])
+
+    autoTable(doc, {
+      startY: yPosition,
+      head: [['Descripción', 'Cantidad', 'Precio C/U', 'Impuesto', 'Total']],
+      body: productData,
+      margin: { left: margin, right: margin },
+      styles: { fontSize: 9, cellPadding: 2 },
+      headStyles: { fillColor: [66, 66, 66], textColor: 255 },
+      alternateRowStyles: { fillColor: [245, 245, 245] },
+      columnStyles: {
+        0: { cellWidth: 70 }, // Descripción más ancha
+        1: { cellWidth: 25, halign: 'center' },
+        2: { cellWidth: 30, halign: 'right' },
+        3: { cellWidth: 25, halign: 'center' },
+        4: { cellWidth: 30, halign: 'right' }
+      }
+    })
+
+    yPosition = (doc as any).lastAutoTable.finalY + 10
+  }
+
+  // Tabla de productos maquila
+  if (quotationProductsMaquila && quotationProductsMaquila.length > 0) {
+    doc.setFontSize(12)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Productos Maquila', margin, yPosition)
+    yPosition += 5
+
+    const maquilaData = quotationProductsMaquila.map((product) => [
+      product.description || 'Sin descripción',
+      product.quantity.toString(),
+      `$${parseFloat(String(product.price_meter || 0)).toFixed(2)}`,
+      `${parseFloat(String(product.meters_impression || 0)).toFixed(2)}`,
+      `$${parseFloat(String(product.amount)).toFixed(2)}`
+    ])
+
+    autoTable(doc, {
+      startY: yPosition,
+      head: [['Descripción', 'Cantidad', 'Precio/M', 'Metros Imp.', 'Monto']],
+      body: maquilaData,
+      margin: { left: margin, right: margin },
+      styles: { fontSize: 9, cellPadding: 2 },
+      headStyles: { fillColor: [66, 66, 66], textColor: 255 },
+      alternateRowStyles: { fillColor: [245, 245, 245] },
+      columnStyles: {
+        0: { cellWidth: 70 },
+        1: { cellWidth: 25, halign: 'center' },
+        2: { cellWidth: 30, halign: 'right' },
+        3: { cellWidth: 25, halign: 'center' },
+        4: { cellWidth: 30, halign: 'right' }
+      }
+    })
+  }
+
+  // Guardar PDF
+  doc.save(`cotizacion_folio_${selectedQuotation.id}.pdf`)
+}
+
+// Función legacy usando html2pdf (backup)
+export const generatePDFMODAL_HTML = (
   selectedQuotation: Quotation | null,
   modalRef: React.RefObject<HTMLElement>
 ) => {

@@ -3,6 +3,7 @@ import { Card, Drawer, Button, Modal, message, Spin } from 'antd'
 import { RightOutlined, LeftOutlined, SkinOutlined } from '@ant-design/icons'
 import useTokenRenewal from 'components/Scripts/useTokenRenewal'
 import { useNavigate } from 'react-router-dom'
+import { API_BASE_URL } from 'config/api.config'
 import * as CuttingUtils from 'components/Scripts/CuttingUtils'
 import Logo from 'assets/img/logo.png'
 import Missing from 'assets/img/noUserPhoto.jpg'
@@ -69,7 +70,7 @@ const SublimateAreaList: React.FC = () => {
 
   const fetchClient = async ( client: number ) => {
     try {
-      const res = await fetch(`http://62.72.51.60/api/client/${ client }`, {
+      const res = await fetch(`${API_BASE_URL}/client/${ client }`, {
         method: 'GET',
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
@@ -195,12 +196,12 @@ const SublimateAreaList: React.FC = () => {
       }
 
       console.log('Fetching order details for id:', id)
-      await CuttingUtils.handleView(id, setQuotationProducts, setVisible, setCuttingOrder)
-      console.log('Quotation products after handleView:', quotationProducts)
+      const fetchedProducts = await CuttingUtils.handleView(id, setQuotationProducts, setVisible, setCuttingOrder)
+      console.log('Quotation products after handleView:', fetchedProducts)
       const productsWithStatus = await Promise.all(
-        quotationProducts.map(async (product) => {
+        fetchedProducts.map(async (product) => {
           const status = await fetchProductStatus(product.id, isShortProduct(product) ? 'short' : 'shirt')
-          return { ...product, isSublimateAreaComplete: status.SublimateArea }
+          return { ...product, isSublimateAreaComplete: status.sublimationArea }
         })
       )
       console.log('Products with status:', productsWithStatus)

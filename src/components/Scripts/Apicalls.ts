@@ -1,7 +1,7 @@
 
 import axios from 'axios'
 import { Material,Quotation,FormDataShirtView, FormDataShortView } from 'components/Scripts/Interfaces'
-const API_BASE_URL = 'http://62.72.51.60/api'
+import { API_BASE_URL } from 'config/api.config'
 
 const getAuthHeaders = () => ({
   headers: {
@@ -19,19 +19,33 @@ export const fetchAllProducts = async (): Promise<FormDataShirtView[]> => {
 }
 
 export const fetchProductStatus = async (productId: number, productType: 'shirt' | 'short') => {
+  // El endpoint statusAreas solo existe para shirts, no para shorts
+  if (productType === 'short') {
+    // Retornar valores por defecto para shorts (el backend no tiene esta ruta)
+    return {
+      cuttingArea: false,
+      printingArea: false,
+      sublimationArea: false,
+      sewingArea: false,
+      finishingArea: false,
+    }
+  }
+  
   const response = await axios.get(`${API_BASE_URL}/quotation-product-${productType}/statusAreas/${productId}`, getAuthHeaders())
   return response.data
 }
 
 export const updateProductArea = async (productId: number, areaId: number, productType: 'shirt' | 'short') => {
-
-  console.log( {productId} );
+  console.log({ productId });
   console.log({ areaId });
-  const response = await axios.put(
-    `${API_BASE_URL}/quotation-product-${productType}/checkArea/?id=${ productId }&area=${ areaId }`,
-    {},
-    getAuthHeaders()
-  )
+  
+  // Shirts usa parámetros de ruta: /checkArea/:id/:area
+  // Shorts usa query params: /checkArea/?id=X&area=Y
+  const url = productType === 'shirt' 
+    ? `${API_BASE_URL}/quotation-product-${productType}/checkArea/${productId}/${areaId}`
+    : `${API_BASE_URL}/quotation-product-${productType}/checkArea/?id=${productId}&area=${areaId}`;
+  
+  const response = await axios.put(url, {}, getAuthHeaders())
   return response
 }
 // Funciones relacionadas con empleados
@@ -518,6 +532,62 @@ export const addCuttingOrder = async (
 
 export const fetchOrders = async () => {
   const response = await axios.get(`${API_BASE_URL}/cutting-order/`, getAuthHeaders())
+  return response.data
+}
+
+// Función para verificar si ya existe una orden de corte para una cotización
+export const checkCuttingOrderExists = async (quotationId: number): Promise<{ exists: boolean; orderId?: number }> => {
+  try {
+    const response = await axios.get(`${API_BASE_URL}/cutting-order/`, getAuthHeaders())
+    const orders = response.data
+    
+    // Buscar si existe una orden de corte con el quotationId dado
+    const existingOrder = orders.find((order: any) => order.quotationId === quotationId)
+    
+    if (existingOrder) {
+      return { exists: true, orderId: existingOrder.id }
+    }
+    return { exists: false }
+  } catch (error) {
+    console.error('Error checking cutting order:', error)
+    return { exists: false }
+  }
+}
+
+export const fetchCuttingOrderDetails = async (id: number) => {
+  const response = await axios.get(`${API_BASE_URL}/cutting-order/${id}`, getAuthHeaders())
+  return response.data
+}
+
+export const updateCuttingOrder = async (id: number, cuttingOrderData: any) => {
+  const response = await axios.put(
+    `${API_BASE_URL}/cutting-order/update/${id}`,
+    cuttingOrderData,
+    getAuthHeaders()
+  )
+  return response.data
+}
+
+export const deleteCuttingOrder = async (id: number) => {
+  await axios.delete(`${API_BASE_URL}/cutting-order/delete/${id}`, getAuthHeaders())
+}
+
+// Funciones para actualizar productos de playera y short
+export const updateQuotationProductShirt = async (id: number, shirtData: any) => {
+  const response = await axios.put(
+    `${API_BASE_URL}/quotation-product-shirt/update/${id}`,
+    shirtData,
+    getAuthHeaders()
+  )
+  return response.data
+}
+
+export const updateQuotationProductShort = async (id: number, shortData: any) => {
+  const response = await axios.put(
+    `${API_BASE_URL}/quotation-product-short/update/${id}`,
+    shortData,
+    getAuthHeaders()
+  )
   return response.data
 }
 
