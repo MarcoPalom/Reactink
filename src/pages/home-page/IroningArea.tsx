@@ -46,7 +46,7 @@ const IroningAreaList: React.FC = () => {
   const [client, setClient] = useState<string | null>(null);
 
   useTokenRenewal(navigate)
-  const CURRENT_AREA = 5
+  const CURRENT_AREA = 9
 
   const isShortProduct = (product: FormDataShirtView | FormDataShortView): product is FormDataShortView => {
     return 'shortSection' in product
@@ -124,7 +124,7 @@ const IroningAreaList: React.FC = () => {
     const validatedProductsData = await Promise.all(
       products.map(async (product) => {
         const status = await fetchProductStatus(product.id, isShortProduct(product) ? 'short' : 'shirt')
-        if ( status.cuttingArea && status.printingArea && status.sublimationArea && status.sewingArea && !status.finishingArea ) {
+        if ( status.cuttingArea && status.printingArea && status.sublimationArea && status.sewingArea && !status.ironingArea ) {
           return product
         }
         return null
@@ -200,7 +200,7 @@ const IroningAreaList: React.FC = () => {
       const productsWithStatus = await Promise.all(
         fetchedProducts.map(async (product) => {
           const status = await fetchProductStatus(product.id, isShortProduct(product) ? 'short' : 'shirt')
-          return { ...product, isIroningAreaComplete: status.finishingArea }
+          return { ...product, isIroningAreaComplete: status.ironingArea }
         })
       )
       console.log('Products with status:', productsWithStatus)

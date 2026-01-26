@@ -278,7 +278,8 @@ const EmployeList = () => {
               <Select.Option value={6}>Impresion</Select.Option>
               <Select.Option value={7}>Sublimado</Select.Option>
               <Select.Option value={8}>Costura</Select.Option>
-              <Select.Option value={9}>Planchado y Acabado</Select.Option>
+              <Select.Option value={9}>Planchado</Select.Option>
+              <Select.Option value={10}>Acabado</Select.Option>
             </Select>
           </Form.Item>
           <Form.Item
@@ -435,7 +436,8 @@ const EmployeList = () => {
               <Select.Option value={6}>Impresion</Select.Option>
               <Select.Option value={7}>Sublimado</Select.Option>
               <Select.Option value={8}>Costura</Select.Option>
-              <Select.Option value={9}>Planchado y Acabado</Select.Option>
+              <Select.Option value={9}>Planchado</Select.Option>
+              <Select.Option value={10}>Acabado</Select.Option>
             </Select>
           </Form.Item>
           <Form.Item

@@ -145,6 +145,18 @@ const Production = () => {
       progress: product?.sewingArea ? [{ percent: 100, status: "success" }] : [],
     },
     {
+      title: "Planchado",
+      description: product?.ironingArea
+      ? `Talla: ${product.size}, Cantidad: ${product.quantity}`
+      : "Pendiente",
+      icon: product?.ironingArea ? (
+        <CheckOutlined className="text-green-500" />
+      ) : (
+        <CloseOutlined className="text-red-500" />
+      ),
+      progress: product?.ironingArea ? [{ percent: 100, status: "success" }] : [],
+    },
+    {
       title: "Acabado",
       description: product?.finishingArea
       ? `Talla: ${product.size}, Cantidad: ${product.quantity}`

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Card, Drawer, Spin, message } from 'antd'
+import { Card, Drawer, Spin, message, Button, Modal } from 'antd'
 import { RightOutlined, LeftOutlined, CheckCircleOutlined } from '@ant-design/icons'
 import useTokenRenewal from 'components/Scripts/useTokenRenewal'
 import { useNavigate } from 'react-router-dom'
@@ -20,6 +20,7 @@ import {
   fetchQuotations,
   fetchAllProducts,
   fetchProductStatus,
+  updateProductArea,
   fetchImage,
   fetchQuotationDesigns
 } from 'components/Scripts/Apicalls'
@@ -39,8 +40,11 @@ const FinishingAreaList: React.FC = () => {
   const [allProducts, setAllProducts] = useState<(FormDataShirtView | FormDataShortView)[]>([])
   const [completedProducts, setCompletedProducts] = useState<(FormDataShirtView | FormDataShortView)[]>([])
   const [client, setClient] = useState<string | null>(null);
+  const [isModalVisible, setIsModalVisible] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState<FormDataShirtView | FormDataShortView | null>(null)
 
   useTokenRenewal(navigate)
+  const CURRENT_AREA = 10
 
   const isShortProduct = (product: FormDataShirtView | FormDataShortView): product is FormDataShortView => {
     return 'shortSection' in product
@@ -120,13 +124,13 @@ const FinishingAreaList: React.FC = () => {
     }
   }
 
-  // Para acabado, mostrar productos que ya pasaron por todas las áreas incluyendo planchado (finishingArea = true)
+  // Para acabado, mostrar productos que ya pasaron por todas las áreas incluyendo planchado (ironingArea = true)
   const checkProductStatus = async (products: (FormDataShirtView | FormDataShortView)[]) => {
     const completedProductsData = await Promise.all(
       products.map(async (product) => {
         const status = await fetchProductStatus(product.id, isShortProduct(product) ? 'short' : 'shirt')
-        // Mostrar productos que ya fueron validados en planchado (finishingArea = true)
-        if ( status.cuttingArea && status.printingArea && status.sublimationArea && status.sewingArea && status.finishingArea ) {
+        // Mostrar productos que ya fueron validados en planchado (ironingArea = true) pero no en acabado todavía
+        if ( status.cuttingArea && status.printingArea && status.sublimationArea && status.sewingArea && status.ironingArea && !status.finishingArea ) {
           return product
         }
         return null
@@ -143,6 +147,33 @@ const FinishingAreaList: React.FC = () => {
   const filteredOrders = CuttingUtils.filterOrders(orders, searchText)
     .filter(order => completedProducts.some(product => product.quotationId === order.quotationId))
   const filteredOrdersWithKeys = CuttingUtils.addKeysToOrders(filteredOrders)
+
+  const handleValidate = (record: FormDataShirtView | FormDataShortView) => {
+    setSelectedProduct(record)
+    setIsModalVisible(true)
+  }
+
+  const handleConfirm = async () => {
+    if (!selectedProduct) return
+
+    try {
+      const productType = isShortProduct(selectedProduct) ? 'short' : 'shirt'
+      const response = await updateProductArea(selectedProduct.id, CURRENT_AREA, productType)
+
+      if (response.status === 200) {
+        message.success("Artículo validado exitosamente")
+        fetchData()
+        setIsModalVisible(false)
+        setSelectedProduct(null)
+        await fetchAllProductsData()
+      } else {
+        throw new Error('Unexpected response status')
+      }
+    } catch (error) {
+      console.error('Error validating item:', error)
+      message.error("No se pudo validar el artículo. Por favor, intente de nuevo.")
+    }
+  }
 
   const handleViewOrderDetails = async (id: number, quotationId: number) => {
     try {
@@ -173,11 +204,11 @@ const FinishingAreaList: React.FC = () => {
       const fetchedProducts = await CuttingUtils.handleView(id, setQuotationProducts, setVisible, setCuttingOrder)
       console.log('Quotation products after handleView:', fetchedProducts)
       
-      // Filtrar solo productos completados
+      // Filtrar solo productos que pasaron por planchado pero no por acabado
       const productsWithStatus = await Promise.all(
         fetchedProducts.map(async (product) => {
           const status = await fetchProductStatus(product.id, isShortProduct(product) ? 'short' : 'shirt')
-          return { ...product, isCompleted: status.finishingArea }
+          return { ...product, isCompleted: status.ironingArea && !status.finishingArea }
         })
       )
       setFilteredQuotationProducts(productsWithStatus.filter(product => product.isCompleted))
@@ -207,7 +238,7 @@ const FinishingAreaList: React.FC = () => {
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Talla</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Estado</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Validar</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
@@ -217,9 +248,7 @@ const FinishingAreaList: React.FC = () => {
                 <td className="px-6 py-4 whitespace-nowrap">{item.size}</td>
                 <td className="px-6 py-4 whitespace-nowrap">{item.quantity}</td>
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <span className="text-green-600 flex items-center">
-                    <CheckCircleOutlined className="mr-2" /> Completado
-                  </span>
+                  <Button onClick={() => handleValidate(item)}>Validar</Button>
                 </td>
               </tr>
             ))}
@@ -238,9 +267,9 @@ const FinishingAreaList: React.FC = () => {
               <p><strong>Tipo:</strong> {isShortProduct(item) ? 'Short' : 'Camisa'}</p>
               <p><strong>Talla:</strong> {item.size}</p>
               <p><strong>Cantidad:</strong> {item.quantity}</p>
-              <p className="text-green-600 flex items-center">
-                <CheckCircleOutlined className="mr-2" /> Completado
-              </p>
+              <div>
+                <Button onClick={() => handleValidate(item)}>Validar</Button>
+              </div>
             </div>
           </Card>
         ))}
@@ -410,6 +439,22 @@ const FinishingAreaList: React.FC = () => {
           </div>
         )}
       </Drawer>
+
+      <Modal
+        title="Confirm Validation"
+        open={isModalVisible}
+        onOk={handleConfirm}
+        onCancel={() => setIsModalVisible(false)}
+      >
+        <p>Seguro que quieres validar la finalización de este producto?:</p>
+        {selectedProduct && (
+          <div>
+            <p><strong>Tipo:</strong> {isShortProduct(selectedProduct) ? 'Short' : 'Camisa'}</p>
+            <p><strong>Size:</strong> {selectedProduct.size}</p>
+            <p><strong>Quantity:</strong> {selectedProduct.quantity}</p>
+          </div>
+        )}
+      </Modal>
     </div>
   )
 }

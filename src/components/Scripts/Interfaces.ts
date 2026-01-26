@@ -218,6 +218,8 @@ export interface Employee {
     cuttingArea?:number;
     printingArea?:number;
     sublimationArea?:number;
+    sewingArea?:number;
+    ironingArea?:number;
     finishingArea?:number;
   }
 
@@ -238,6 +240,8 @@ export interface Employee {
     cuttingArea?:number;
     printingArea?:number;
     sublimationArea?:number;
+    sewingArea?:number;
+    ironingArea?:number;
     finishingArea?:number;
   }
 

@@ -27,6 +27,7 @@ export const fetchProductStatus = async (productId: number, productType: 'shirt'
       printingArea: false,
       sublimationArea: false,
       sewingArea: false,
+      ironingArea: false,
       finishingArea: false,
     }
   }
