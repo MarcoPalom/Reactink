@@ -1,6 +1,6 @@
 import DashCount from "./homepage-components/DashCount";
 import ChartNTable from "./homepage-components/ChartNTable";
-import DesignArea from "./DesingArea";
+import DesingList from 'pages/finance/desing-list/DesingList';
 import CuttingArea from "./CuttingArea";
 import PrintingArea from "./PrintingArea"
 import SublimateArea from "./SublimateArea";
@@ -25,7 +25,7 @@ const HomePage = () => {
                     <ChartNTable />
                 </div>
             ) : roleNumber === 4 ? (
-                <DesignArea/>
+                <DesingList />
             ) : roleNumber === 5 ? (
                 <CuttingArea/>
             ) : roleNumber === 6 ? (

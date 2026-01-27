@@ -6,6 +6,8 @@ import {
   addMaterial,
   deleteMaterial,
   addMaterialSize,
+  updateMaterialSize,
+  deleteMaterialSize,
   fetchImage,
   fetchMaterials,
   fetchCategories,
@@ -201,15 +203,19 @@ export const handleAddSave = async (
     const response = await addMaterial(materialData)
     setMaterials([...Materials, response])
     message.success('Material agregado exitosamente')
-  } catch (error: any) {
-    console.error('Error al agregar el Material:', error)
-    message.error(
-      error.response?.data.message || 'Error al agregar el Material'
-    )
-  } finally {
     setVisibleAdd(false)
     addForm.resetFields()
     setFile(null)
+  } catch (error: any) {
+    console.error('Error al agregar el Material:', error)
+    const isValidationError = error.errorFields && Array.isArray(error.errorFields)
+    if (isValidationError) {
+      message.warning('Complete los campos requeridos (Nombre, Cantidad, Categoría, Proveedor, Fecha de recibido, Ubicación)')
+    } else {
+      message.error(
+        error.response?.data?.message || error.response?.data?.error || 'Error al agregar el Material'
+      )
+    }
   }
 }
 
@@ -291,13 +297,13 @@ export const handleSaveMatSize = async (
     if (selectedMaterial) {
       try {
         const fetchedsizes = await fetchSizes(selectedMaterial.id);
-        const usedSizes = fetchedsizes.map((size: MaterialRends) => size.size);
-        setUsedSizes(usedSizes);
+        setMaterialRends(fetchedsizes);
+        const sizes = fetchedsizes.map((s: MaterialRends) => s.size);
+        setUsedSizes(sizes);
       } catch (error) {
         console.error('Error fetching sizes:', error);
       }
     }
-    setVisibleMaterialSize(true);
   }
 };
 
@@ -309,12 +315,93 @@ export const handleCloseMaterialSize = (
   MaterialSizeform.resetFields()
 }
 
-export const openMaterialSizeModal = async (
-  setVisibleMaterialSize: (visible: boolean) => void
+export const openMaterialSizeModal = (
+  setVisibleMaterialSize: (visible: boolean) => void,
+  setEditingRend?: (r: MaterialRends | null) => void
 ) => {
+  if (setEditingRend) setEditingRend(null)
   setVisibleMaterialSize(true)
 }
- 
+
+export const handleEditRend = (
+  record: MaterialRends,
+  setEditingRend: (r: MaterialRends | null) => void,
+  editRendForm: FormInstance,
+  setVisibleEditRend: (v: boolean) => void
+) => {
+  setEditingRend(record)
+  editRendForm.setFieldsValue({
+    size: record.size,
+    consumption: record.consumption,
+    performance: record.performance
+  })
+  setVisibleEditRend(true)
+}
+
+export const handleSaveEditRend = async (
+  editingRend: MaterialRends | null,
+  editRendForm: FormInstance,
+  setVisibleEditRend: (v: boolean) => void,
+  setEditingRend: (r: MaterialRends | null) => void,
+  materialRends: MaterialRends[] | null,
+  setMaterialRends: (r: MaterialRends[] | null) => void,
+  selectedMaterial: Material | null,
+  setUsedSizes: (s: string[]) => void
+) => {
+  if (!editingRend) return
+  try {
+    const values = await editRendForm.validateFields()
+    await updateMaterialSize(editingRend.id, {
+      consumption: values.consumption,
+      performance: values.performance
+    })
+    message.success('Rendimiento actualizado')
+    setVisibleEditRend(false)
+    setEditingRend(null)
+    editRendForm.resetFields()
+    if (selectedMaterial) {
+      const list = await fetchSizes(selectedMaterial.id)
+      setMaterialRends(list)
+      setUsedSizes(list.map((s: MaterialRends) => s.size))
+    }
+  } catch (error: any) {
+    if (!error.errorFields) {
+      message.error(error.response?.data?.error || 'Error al actualizar')
+    }
+  }
+}
+
+export const handleDeleteRend = (
+  record: MaterialRends,
+  materialRends: MaterialRends[] | null,
+  setMaterialRends: (r: MaterialRends[] | null) => void,
+  selectedMaterial: Material | null,
+  setUsedSizes: (s: string[]) => void
+) => {
+  confirm({
+    title: 'Eliminar rendimiento',
+    content: `¿Eliminar talla ${record.size} (consumo: ${record.consumption}, rendimiento: ${record.performance})?`,
+    okText: 'Eliminar',
+    okType: 'danger',
+    cancelText: 'Cancelar',
+    onOk: async () => {
+      try {
+        await deleteMaterialSize(record.id)
+        message.success('Rendimiento eliminado')
+        if (selectedMaterial) {
+          const list = await fetchSizes(selectedMaterial.id)
+          setMaterialRends(list)
+          setUsedSizes(list.map((s: MaterialRends) => s.size))
+        } else {
+          setMaterialRends(materialRends?.filter((r) => r.id !== record.id) ?? [])
+        }
+      } catch {
+        message.error('Error al eliminar')
+      }
+    }
+  })
+}
+
 export const openMaterialRends = async (
   record: Material,
   setVisibleMaterialRen: (visible: boolean) => void,

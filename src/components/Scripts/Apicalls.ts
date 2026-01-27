@@ -141,17 +141,25 @@ export const deleteExpense = async (id: number) => {
 }
 //funciones relacionadas con diseños
 
-export const fetchQuotationDesigns = async () => {
+export const fetchQuotationDesigns = async (page = 1, pageSize = 999) => {
   try {
     const response = await axios.get(
       `${API_BASE_URL}/quotation-design/`,
-      getAuthHeaders()
+      { ...getAuthHeaders(), params: { page, pageSize } }
     )
     return response.data
   } catch (error) {
     console.error('Error fetching quotation-design:', error)
     throw error
   }
+}
+
+export const fetchQuotationDesign = async (id: number) => {
+  const response = await axios.get(
+    `${API_BASE_URL}/quotation-design/${id}`,
+    getAuthHeaders()
+  )
+  return response.data
 }
 
 export const updateQuotationDesign = async (id: number, values: any) => {
@@ -163,10 +171,10 @@ export const updateQuotationDesign = async (id: number, values: any) => {
   return response.data
 }
 
-export const addQuotationDesign = async (employeeData: any) => {
+export const addQuotationDesign = async (data: any) => {
   const response = await axios.post(
     `${API_BASE_URL}/quotation-design/`,
-    employeeData,
+    data,
     getAuthHeaders()
   )
   return response.data
@@ -174,6 +182,23 @@ export const addQuotationDesign = async (employeeData: any) => {
 
 export const deleteQuotationDesign = async (id: number) => {
   await axios.delete(`${API_BASE_URL}/quotation-design/delete/${id}`, getAuthHeaders())
+}
+
+export const uploadDesignFile = async (file: File): Promise<{ fileName: string }> => {
+  const formData = new FormData()
+  formData.append('file', file)
+  const response = await axios.post(
+    `${API_BASE_URL}/upload/single/quotation_design`,
+    formData,
+    {
+      ...getAuthHeaders(),
+      headers: {
+        ...getAuthHeaders().headers,
+        'Content-Type': 'multipart/form-data'
+      }
+    }
+  )
+  return response.data
 }
 // Funciones relacionadas con cotizaciones
 
@@ -431,6 +456,26 @@ export const addMaterialSize = async (materialSizeData: any) => {
   const response = await axios.post(
     `${API_BASE_URL}/material-size/`,
     materialSizeData,
+    getAuthHeaders()
+  )
+  return response.data
+}
+
+export const updateMaterialSize = async (
+  id: number,
+  materialSizeData: { materialId?: number; consumption?: number; performance?: number; size?: string }
+) => {
+  const response = await axios.put(
+    `${API_BASE_URL}/material-size/update/${id}`,
+    materialSizeData,
+    getAuthHeaders()
+  )
+  return response.data
+}
+
+export const deleteMaterialSize = async (id: number) => {
+  const response = await axios.delete(
+    `${API_BASE_URL}/material-size/delete/${id}`,
     getAuthHeaders()
   )
   return response.data

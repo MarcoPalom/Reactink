@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Space, Table, Card, Input, Button, Drawer, Form, message, Select, InputNumber, Upload, Spin } from 'antd'
+import { Space, Table, Card, Input, Button, Drawer, Form, message, Select, InputNumber, Upload, Spin, Steps, Divider } from 'antd'
 import { FilePdfOutlined, DatabaseOutlined, EditOutlined, DeleteOutlined, UploadOutlined, PictureOutlined } from '@ant-design/icons'
 import useTokenRenewal from 'components/Scripts/useTokenRenewal'
 import { useNavigate } from 'react-router-dom'
@@ -42,6 +42,8 @@ const CuttingOrderList: React.FC = () => {
   const [currentDesign, setCurrentDesign] = useState<any>(null)
   const [currentQuotationId, setCurrentQuotationId] = useState<number | null>(null)
   const [uploadingImage, setUploadingImage] = useState(false)
+  const [editProductStep, setEditProductStep] = useState(0)
+  const editProductMaxStep = isEditingShirt ? 2 : 1
 
   useTokenRenewal(navigate)
 
@@ -515,90 +517,169 @@ const CuttingOrderList: React.FC = () => {
       <Drawer
         title={isEditingShirt ? "Editar Playera" : "Editar Short"}
         placement="right"
-        onClose={() => CuttingUtils.handleCloseEditProduct(editProductForm, setVisibleEditProduct)}
+        onClose={() => {
+          CuttingUtils.handleCloseEditProduct(editProductForm, setVisibleEditProduct)
+          setEditProductStep(0)
+        }}
         open={visibleEditProduct}
-        width={500}
+        width={520}
         footer={
-          <div style={{ textAlign: 'right' }}>
-            <Button
-              onClick={() => CuttingUtils.handleCloseEditProduct(editProductForm, setVisibleEditProduct)}
-              style={{ marginRight: 8 }}
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={() => {
-                editProductForm
-                  .validateFields()
-                  .then(() => {
-                    CuttingUtils.handleSaveProduct(
-                      editProductForm,
-                      editingProduct,
-                      isEditingShirt,
-                      quotationProducts,
-                      setQuotationProducts,
-                      setVisibleEditProduct
-                    )
-                  })
-                  .catch((errorInfo) => {
-                    console.error('Error validating form:', errorInfo)
-                    message.error('Por favor completa todos los campos requeridos.')
-                  })
-              }}
-              type="primary"
-            >
-              Guardar
-            </Button>
+          <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+            <div>
+              {editProductStep > 0 ? (
+                <Button onClick={() => setEditProductStep((s) => s - 1)}>Atrás</Button>
+              ) : (
+                <Button onClick={() => CuttingUtils.handleCloseEditProduct(editProductForm, setVisibleEditProduct)}>
+                  Cancelar
+                </Button>
+              )}
+            </div>
+            <div>
+              {editProductStep < editProductMaxStep ? (
+                <Button type="primary" onClick={() => setEditProductStep((s) => s + 1)}>
+                  Siguiente
+                </Button>
+              ) : (
+                <Button
+                  type="primary"
+                  onClick={() => {
+                    editProductForm
+                      .validateFields()
+                      .then(() => {
+                        CuttingUtils.handleSaveProduct(
+                          editProductForm,
+                          editingProduct,
+                          isEditingShirt,
+                          quotationProducts,
+                          setQuotationProducts,
+                          setVisibleEditProduct
+                        )
+                        setEditProductStep(0)
+                      })
+                      .catch((errorInfo) => {
+                        console.error('Error validating form:', errorInfo)
+                        message.error('Por favor completa todos los campos requeridos.')
+                      })
+                  }}
+                >
+                  Guardar
+                </Button>
+              )}
+            </div>
           </div>
         }
       >
         <Form form={editProductForm} layout="vertical">
-          <Form.Item name="discipline" label="Disciplina" rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
-
-          {isEditingShirt ? (
-            // Campos para Playera
+          <Steps
+            current={editProductStep}
+            size="small"
+            className="mb-4"
+            items={
+              isEditingShirt
+                ? [
+                    { title: 'General' },
+                    { title: 'Telas' },
+                    { title: 'Cuello / Manga / Puño' }
+                  ]
+                : [
+                    { title: 'General' },
+                    { title: 'Telas y vista' }
+                  ]
+            }
+          />
+          {editProductStep === 0 && (
             <>
+              <Form.Item name="discipline" label="Disciplina" rules={[{ required: true, message: 'Requerido' }]}>
+                <Input placeholder="Ej. Fútbol" />
+              </Form.Item>
               <div className="grid grid-cols-2 gap-4">
-                <Form.Item name="clothFrontShirtId" label="Tela Frente">
-                  <Select placeholder="Seleccionar tela">
-                    {materials.map((m) => (
-                      <Select.Option key={m.id} value={m.id}>{m.name}</Select.Option>
+                <Form.Item name="size" label="Talla" rules={[{ required: true }]}>
+                  <Select placeholder="Talla">
+                    {['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '8', '10', '12', '14', '16'].map((s) => (
+                      <Select.Option key={s} value={s}>{s}</Select.Option>
                     ))}
                   </Select>
                 </Form.Item>
-                <Form.Item name="clothBackShirtId" label="Tela Espalda">
-                  <Select placeholder="Seleccionar tela">
-                    {materials.map((m) => (
-                      <Select.Option key={m.id} value={m.id}>{m.name}</Select.Option>
-                    ))}
-                  </Select>
+                <Form.Item name="quantity" label="Cantidad" rules={[{ required: true }]}>
+                  <InputNumber min={1} style={{ width: '100%' }} placeholder="0" />
                 </Form.Item>
-                <Form.Item name="clothSleeveId" label="Tela Manga">
-                  <Select placeholder="Seleccionar tela">
-                    {materials.map((m) => (
-                      <Select.Option key={m.id} value={m.id}>{m.name}</Select.Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-                <Form.Item name="clothNecklineId" label="Tela Cuello">
-                  <Select placeholder="Seleccionar tela">
-                    {materials.map((m) => (
-                      <Select.Option key={m.id} value={m.id}>{m.name}</Select.Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-                <Form.Item name="clothCuffId" label="Tela Puño">
-                  <Select placeholder="Seleccionar tela">
-                    {materials.map((m) => (
-                      <Select.Option key={m.id} value={m.id}>{m.name}</Select.Option>
-                    ))}
+                <Form.Item name="gender" label="Género">
+                  <Select placeholder="Género">
+                    <Select.Option value={1}>Masculino</Select.Option>
+                    <Select.Option value={2}>Femenino</Select.Option>
+                    <Select.Option value={3}>Unisex</Select.Option>
                   </Select>
                 </Form.Item>
               </div>
-
-              <div className="grid grid-cols-2 gap-4">
+              <Form.Item name="observation" label="Observación">
+                <Input.TextArea rows={3} placeholder="Notas opcionales" />
+              </Form.Item>
+            </>
+          )}
+          {editProductStep === 1 && isEditingShirt && (
+            <div className="grid grid-cols-2 gap-4">
+              <Form.Item name="clothFrontShirtId" label="Tela Frente">
+                <Select placeholder="Seleccionar tela">
+                  {materials.map((m) => (
+                    <Select.Option key={m.id} value={m.id}>{m.name}</Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+              <Form.Item name="clothBackShirtId" label="Tela Espalda">
+                <Select placeholder="Seleccionar tela">
+                  {materials.map((m) => (
+                    <Select.Option key={m.id} value={m.id}>{m.name}</Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+              <Form.Item name="clothSleeveId" label="Tela Manga">
+                <Select placeholder="Seleccionar tela">
+                  {materials.map((m) => (
+                    <Select.Option key={m.id} value={m.id}>{m.name}</Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+              <Form.Item name="clothNecklineId" label="Tela Cuello">
+                <Select placeholder="Seleccionar tela">
+                  {materials.map((m) => (
+                    <Select.Option key={m.id} value={m.id}>{m.name}</Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+              <Form.Item name="clothCuffId" label="Tela Puño">
+                <Select placeholder="Seleccionar tela">
+                  {materials.map((m) => (
+                    <Select.Option key={m.id} value={m.id}>{m.name}</Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+            </div>
+          )}
+          {editProductStep === 1 && !isEditingShirt && (
+            <div className="grid grid-cols-2 gap-4">
+              <Form.Item name="clothShortId" label="Tela Short">
+                <Select placeholder="Seleccionar tela">
+                  {materials.map((m) => (
+                    <Select.Option key={m.id} value={m.id}>{m.name}</Select.Option>
+                  ))}
+                </Select>
+              </Form.Item>
+              <Form.Item name="viewShort" label="Vista Short">
+                <Select placeholder="Vista">
+                  <Select.Option value="Frontal">Frontal</Select.Option>
+                  <Select.Option value="Trasera">Trasera</Select.Option>
+                  <Select.Option value="Completa">Completa</Select.Option>
+                </Select>
+              </Form.Item>
+              <Form.Item name="shortSection" label="Sección Short">
+                <Input placeholder="Opcional" />
+              </Form.Item>
+            </div>
+          )}
+          {editProductStep === 2 && isEditingShirt && (
+            <>
+              <Divider plain>Cuello</Divider>
+              <div className="grid grid-cols-2 gap-4 mb-4">
                 <Form.Item name="neckline" label="Cuello">
                   <Select placeholder="Tipo de cuello">
                     <Select.Option value="Redondo">Redondo</Select.Option>
@@ -614,6 +695,9 @@ const CuttingOrderList: React.FC = () => {
                     <Select.Option value="None">None</Select.Option>
                   </Select>
                 </Form.Item>
+              </div>
+              <Divider plain>Manga</Divider>
+              <div className="grid grid-cols-2 gap-4 mb-4">
                 <Form.Item name="sleeveType" label="Tipo de Manga">
                   <Select placeholder="Tipo de manga">
                     <Select.Option value="Corta">Corta</Select.Option>
@@ -631,6 +715,9 @@ const CuttingOrderList: React.FC = () => {
                     <Select.Option value="None">None</Select.Option>
                   </Select>
                 </Form.Item>
+              </div>
+              <Divider plain>Puño</Divider>
+              <div className="grid grid-cols-2 gap-4">
                 <Form.Item name="cuff" label="Puños">
                   <Select placeholder="Puños">
                     <Select.Option value="Si">Sí</Select.Option>
@@ -647,59 +734,10 @@ const CuttingOrderList: React.FC = () => {
                 </Form.Item>
               </div>
             </>
-          ) : (
-            // Campos para Short
-            <>
-              <div className="grid grid-cols-2 gap-4">
-                <Form.Item name="clothShortId" label="Tela Short">
-                  <Select placeholder="Seleccionar tela">
-                    {materials.map((m) => (
-                      <Select.Option key={m.id} value={m.id}>{m.name}</Select.Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-                <Form.Item name="viewShort" label="Vista Short">
-                  <Select placeholder="Vista">
-                    <Select.Option value="Frontal">Frontal</Select.Option>
-                    <Select.Option value="Trasera">Trasera</Select.Option>
-                    <Select.Option value="Completa">Completa</Select.Option>
-                  </Select>
-                </Form.Item>
-                <Form.Item name="shortSection" label="Sección Short">
-                  <Input />
-                </Form.Item>
-              </div>
-            </>
           )}
-
-          {/* Campos comunes */}
-          <div className="grid grid-cols-2 gap-4">
-            <Form.Item name="size" label="Talla" rules={[{ required: true }]}>
-              <Select placeholder="Talla">
-                <Select.Option value="XS">XS</Select.Option>
-                <Select.Option value="S">S</Select.Option>
-                <Select.Option value="M">M</Select.Option>
-                <Select.Option value="L">L</Select.Option>
-                <Select.Option value="XL">XL</Select.Option>
-                <Select.Option value="XXL">XXL</Select.Option>
-                <Select.Option value="XXXL">XXXL</Select.Option>
-              </Select>
-            </Form.Item>
-            <Form.Item name="quantity" label="Cantidad" rules={[{ required: true }]}>
-              <InputNumber min={1} style={{ width: '100%' }} />
-            </Form.Item>
-            <Form.Item name="gender" label="Género">
-              <Select placeholder="Género">
-                <Select.Option value={1}>Masculino</Select.Option>
-                <Select.Option value={2}>Femenino</Select.Option>
-                <Select.Option value={3}>Unisex</Select.Option>
-              </Select>
-            </Form.Item>
-          </div>
-
-          <Form.Item name="observation" label="Observación">
-            <Input.TextArea rows={3} />
-          </Form.Item>
+          {editProductStep === 2 && !isEditingShirt && (
+            <p className="text-gray-500 text-sm">No hay más campos. Use &quot;Guardar&quot; para aplicar cambios.</p>
+          )}
         </Form>
       </Drawer>
     </>

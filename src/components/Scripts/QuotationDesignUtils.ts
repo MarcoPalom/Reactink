@@ -1,16 +1,22 @@
-import { QuotationDesign } from './Interfaces'; 
-import { fetchQuotationDesigns } from 'components/Scripts/Apicalls'; 
-
+import { QuotationDesign } from './Interfaces';
+import { fetchQuotationDesigns } from 'components/Scripts/Apicalls';
 
 export const fetchAndSetQuotationDesigns = async (
   setQuotationDesigns: React.Dispatch<React.SetStateAction<QuotationDesign[]>>
 ) => {
   try {
-    const response = await fetchQuotationDesigns();
-    setQuotationDesigns(response);
+    const response = await fetchQuotationDesigns(1, 999);
+    setQuotationDesigns(Array.isArray(response) ? response : []);
   } catch (error) {
     console.error('Error fetching and setting quotation designs:', error);
+    throw error;
   }
+};
+
+export const getDesignStatusLabel = (design: QuotationDesign): string => {
+  if (design.approved) return 'Aprobado';
+  if (design.designFront || design.designBack) return 'Diseño Enviado';
+  return 'En Proceso';
 };
 
 export const filterQuotationDesigns = (

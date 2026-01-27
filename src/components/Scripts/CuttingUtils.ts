@@ -616,8 +616,8 @@ export const handleFormSubmitShirt = async (
   shirts: FormDataShirt[],
   CuttingOrderDt: any,
   productType: number | null,
-  file: File | null,
-  setImageFileName: (fileName: string | null) => void
+  _file?: File | null,
+  _setImageFileName?: (fileName: string | null) => void
 ) => {
   try {
     const values = await ShirtForm.validateFields()
@@ -630,18 +630,7 @@ export const handleFormSubmitShirt = async (
       ...restValues
     } = values
 
-    if (file) {
-      try {
-        const response = await uploadImageShirt(file)
-        setImageFileName(response)
-        message.success('Imagen subida exitosamente')
-      } catch (uploadError) {
-        console.error('Error al subir la imagen:', uploadError)
-        message.error('Error al subir la imagen')
-        return null
-      }
-    }
-
+    // La imagen se sube en el paso final (Lista e imagen), no aquí
     const formData: FormDataShirt = {
       ...restValues,
       productType: productType
@@ -672,25 +661,14 @@ export const handleFormSubmitShort = async (
   setCuttingOrderDt: any,
   shorts: FormDataShort[],
   CuttingOrderDt: any,
-  file: File | null,
-  setImageFileName: (fileName: string | null) => void
+  _file?: File | null,
+  _setImageFileName?: (fileName: string | null) => void
 ) => {
   try {
     const values = await ShortForm.validateFields()
     const { clothShortColor, clothViewColor, image, ...restValues } = values
 
-    if (file) {
-      try {
-        const response = await uploadImageShort(file)
-        setImageFileName(response)
-        message.success('Imagen subida exitosamente')
-      } catch (uploadError) {
-        console.error('Error al subir la imagen:', uploadError)
-        message.error('Error al subir la imagen')
-        return null
-      }
-    }
-
+    // La imagen se sube en el paso final (Lista e imagen), no aquí
     const formData: FormDataShirt = {
       ...restValues
     }
@@ -815,10 +793,11 @@ const validateAndCleanShirtData = (shirt: FormDataShirt, quotationId: number): {
     return String(value);
   };
 
-  // Construir objeto limpio con tipos correctos
+  // Construir objeto limpio con tipos correctos (tShirtType requerido por BD)
   const cleanData: any = {
     quotationId: Number(quotationId),
-    productType: Number(shirt.productType) || 1, // Default a 1 si no está definido
+    productType: Number(shirt.productType) || 1,
+    tShirtType: 1, // Requerido por BD en orden de corte
     discipline: shirt.discipline.trim(),
     size: shirt.size.trim(),
     quantity: Number(shirt.quantity),
@@ -1058,7 +1037,7 @@ const validateAndCleanShortData = (short: FormDataShort, quotationId: number): {
   // Construir objeto limpio con tipos correctos
   const cleanData: any = {
     quotationId: Number(quotationId),
-    productType: Number(short.productType) || 2, // Default a 2 para shorts si no está definido
+    productType: Number(short.productType) || 2,
     discipline: short.discipline.trim(),
     size: short.size.trim(),
     quantity: Number(short.quantity),
@@ -1299,7 +1278,8 @@ export const handleDuplicateOrderShorts = (
   setShorts((prevShorts) => [...prevShorts, newShort])
 }
 
-const uploadImageShirt = async (file: File): Promise<string> => {
+/** Sube la imagen de diseño para playera; usar en el paso final antes de enviar. */
+export const uploadImageShirt = async (file: File): Promise<string> => {
   const formData = new FormData()
   formData.append('file', file)
 
@@ -1320,7 +1300,8 @@ const uploadImageShirt = async (file: File): Promise<string> => {
   }
 }
 
-const uploadImageShort = async (file: File): Promise<string> => {
+/** Sube la imagen de diseño para short; usar en el paso final antes de enviar. */
+export const uploadImageShort = async (file: File): Promise<string> => {
   const formData = new FormData()
   formData.append('file', file)
 

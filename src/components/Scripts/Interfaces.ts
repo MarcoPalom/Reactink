@@ -275,34 +275,38 @@ export interface Employee {
     typeProduct:boolean
   }
 
-  export interface MaterialRends{
+  export interface MaterialRends {
     id: number
-    material: Material[]
     materialId: number
+    size: string
+    consumption: number
     performance: number
-    size: number
+    status?: boolean
   }
 
   export interface QuotationDesign {
     id: number;
     quotationId: number;
-    observation: string;
-    logo: string;
-    imageReference: string;
-    observationDesigner: string;
-    designFront: string;
-    designBack: string;
-    designShort: string;
-    designCouch: string;
-    designHubby: string;
-    neckline: string;
-    sleeveShape: string;
-    typeCuff: string;
-    neckGoalie: string;
-    sleeveGoalie: string;
-    typeShort: string;
-    typeShortGoalie: string;
-    approved: boolean;
+    cuttingOrderId?: number | null;
+    observation?: string | null;
+    logo?: string | null;
+    imageReference?: string | null;
+    observationDesigner?: string | null;
+    designFront?: string | null;
+    designBack?: string | null;
+    designShort?: string | null;
+    designCouch?: string | null;
+    designHubby?: string | null;
+    neckline?: string | null;
+    sleeveShape?: string | null;
+    typeCuff?: string | null;
+    neckGoalie?: string | null;
+    sleeveGoalie?: string | null;
+    typeShort?: string | null;
+    typeShortGoalie?: string | null;
+    approved?: boolean | null;
+    status?: boolean;
+    quotation?: { id: number; client?: { name?: string; surname?: string; organization?: string } };
   }
 
 

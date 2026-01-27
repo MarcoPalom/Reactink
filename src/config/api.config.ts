@@ -1,11 +1,9 @@
 // Configuración de la API
-// Cambia esta URL según el entorno (desarrollo/producción)
+// Backend debe estar en 3000; front en 3001. CORS en el backend permite localhost:3001.
 
-// Para desarrollo local:
-export const API_BASE_URL = 'http://localhost:3000/api'
+export const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3000/api'
 
-// Para producción (descomentar cuando se despliegue):
-// export const API_BASE_URL = 'http://62.72.51.60/api'
+// Para producción, definir REACT_APP_API_URL (ej: http://tu-servidor.com/api)
 
 // WebSocket URL (para conexiones en tiempo real)
 export const WS_BASE_URL = API_BASE_URL.replace('http', 'ws').replace('/api', '')

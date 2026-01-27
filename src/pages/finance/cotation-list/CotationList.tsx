@@ -13,7 +13,9 @@ import {
   Switch,
   Upload,
   Popover,
-  message
+  message,
+  Steps,
+  Divider
 } from 'antd'
 import {
   PlusOutlined,
@@ -77,6 +79,9 @@ const { confirm } = Modal
 const { Option } = Select
 
 const CotationList = () => {
+  const userRole = Number(localStorage.getItem('userRole') || 0)
+  const readOnly = userRole === 4
+
   const [Quotations, setQuotations] = useState<Quotation[]>([])
   const [searchText, setSearchText] = useState('')
   const [visible, setVisible] = useState<boolean>(false)
@@ -141,8 +146,11 @@ const CotationList = () => {
   const isSaveDisabled = CuttingUtils.isSaveButtonDisabled(shirts)
   const [productType, setProductType] = useState<number | null>(null)
   const [productTypeShort, setProductTypeShort] = useState<number | null>(null)
-  const [file, setFile] = useState<File | null>(null)
-  const [imageFileName, setImageFileName] = useState<string | null>(null)
+  const [fileShirt, setFileShirt] = useState<File | null>(null)
+  const [imageFileNameShirt, setImageFileNameShirt] = useState<string | null>(null)
+  const [fileShort, setFileShort] = useState<File | null>(null)
+  const [imageFileNameShort, setImageFileNameShort] = useState<string | null>(null)
+  const [cuttingOrderStep, setCuttingOrderStep] = useState(0)
   const modalRef = useRef(null)
 
   useTokenRenewal(navigate)
@@ -164,9 +172,13 @@ const CotationList = () => {
     )
   }, [selectedQuotation])
 
-  const handleFileChange = (info: UploadChangeParam) => {
+  const handleFileChangeShirt = (info: UploadChangeParam) => {
     const fileList = [...info.fileList]
-    setFile(fileList[0]?.originFileObj as File)
+    setFileShirt(fileList[0]?.originFileObj as File)
+  }
+  const handleFileChangeShort = (info: UploadChangeParam) => {
+    const fileList = [...info.fileList]
+    setFileShort(fileList[0]?.originFileObj as File)
   }
 
   const filteredQuotations = QuotationUtils.filterQuotations(
@@ -1531,8 +1543,13 @@ const CotationList = () => {
         open={visibleCut}
         onClose={() => {
           setVisibleCut(false)
+          setCuttingOrderStep(0)
           setShirts([])
           setShorts([])
+          setFileShirt(null)
+          setImageFileNameShirt(null)
+          setFileShort(null)
+          setImageFileNameShort(null)
           ShirtForm.resetFields()
           ShortForm.resetFields()
           CuttingForm.resetFields()
@@ -1540,10 +1557,44 @@ const CotationList = () => {
           setIsShortFormVisible(false)
         }}
         size="large"
-        title={
-          <div className="flex items-center justify-between">
-            <span className="text-lg font-semibold">Orden de corte</span>
-            <div className="flex space-x-4">
+        title={<span className="text-lg font-semibold">Orden de corte</span>}
+      >
+        <Steps
+          current={cuttingOrderStep}
+          size="small"
+          className="mb-6"
+          items={[
+            { title: 'Tipo y fechas' },
+            { title: 'Especificaciones' },
+            { title: 'Lista e imagen' }
+          ]}
+        />
+
+        {/* Paso 1: Tipo y fechas */}
+        {cuttingOrderStep === 0 && (
+          <>
+            <Form form={CuttingForm} layout="vertical">
+              <div className="grid grid-cols-2 gap-4">
+                <FormItem
+                  name="dateReceipt"
+                  label="* Fecha de recibido"
+                  rules={[{ required: true, message: 'Seleccione la fecha' }]}
+                >
+                  <Input type="date" className="w-full" />
+                </FormItem>
+                <FormItem
+                  name="dueDate"
+                  label="* Fecha de entrega"
+                  rules={[{ required: true, message: 'Seleccione la fecha' }]}
+                >
+                  <Input type="date" className="w-full" />
+                </FormItem>
+              </div>
+            </Form>
+            <p className="text-gray-500 text-sm mt-2 mb-2">
+              Elija uno o ambos tipos de prenda (en el siguiente paso se abrirán los formularios correspondientes):
+            </p>
+            <div className="flex gap-4 mb-4">
               <Button
                 onClick={() =>
                   QuotationUtils.toggleShirtForm(
@@ -1555,12 +1606,13 @@ const CotationList = () => {
                 className="flex items-center justify-center space-x-2 transition-transform duration-300 hover:scale-110"
               >
                 <FaTshirt
-                  className={`w-10 h-10 ${isShirtFormVisible ? 'text-green-500' : 'text-red-500'}`}
+                  className={`w-10 h-10 ${isShirtFormVisible ? 'text-green-500' : 'text-gray-400'}`}
                 />
+                <span className="text-sm">Playera</span>
                 {isShirtFormVisible ? (
-                  <EyeOutlined />
+                  <EyeOutlined className="text-green-500" />
                 ) : (
-                  <EyeInvisibleOutlined />
+                  <EyeInvisibleOutlined className="text-gray-400" />
                 )}
               </Button>
               <Button
@@ -1574,65 +1626,46 @@ const CotationList = () => {
                 className="flex items-center justify-center space-x-2 transition-transform duration-300 hover:scale-110"
               >
                 <GiUnderwearShorts
-                  className={`w-10 h-10 ${isShortFormVisible ? 'text-green-500' : 'text-red-500'}`}
+                  className={`w-10 h-10 ${isShortFormVisible ? 'text-green-500' : 'text-gray-400'}`}
                 />
+                <span className="text-sm">Short</span>
                 {isShortFormVisible ? (
-                  <EyeOutlined />
+                  <EyeOutlined className="text-green-500" />
                 ) : (
-                  <EyeInvisibleOutlined />
+                  <EyeInvisibleOutlined className="text-gray-400" />
                 )}
               </Button>
             </div>
-          </div>
-        }
-      >
-        <Form form={CuttingForm} layout="vertical">
-          <div className="grid grid-cols-2 gap-2">
-            <FormItem
-              name="dateReceipt"
-              label="Fecha de recibido"
-              rules={[
-                {
-                  required: true,
-                  message: 'Por favor, seleccione una fecha'
+            <Button
+              type="primary"
+              onClick={() => {
+                if (!isShirtFormVisible && !isShortFormVisible) {
+                  message.warning('Seleccione al menos un tipo de prenda (playera o short).')
+                  return
                 }
-              ]}
+                setCuttingOrderStep(1)
+              }}
             >
-              <Input type="date" className="w-full" />
-            </FormItem>
-            <FormItem
-              name="dueDate"
-              label="Fecha de entrega"
-              rules={[
-                {
-                  required: true,
-                  message: 'Por favor, seleccione una fecha'
-                }
-              ]}
-            >
-              <Input type="date" className="w-full" />
-            </FormItem>
-          </div>
-        </Form>
+              Siguiente: Especificaciones
+            </Button>
+          </>
+        )}
+        {/* Paso 2: Especificaciones (formulario(s) + añadir a lista) */}
+        {cuttingOrderStep === 1 && (isShirtFormVisible || isShortFormVisible) && (
+          <div className="space-y-6">
         {isShirtFormVisible && (
           <div>
             <div className="flex justify-center mb-4">
-              <div className="flex items-center space-x-2">
-                <FaTshirt
-                  className={`w-10 h-10 text-green-500 ${isShirtForm ? 'block' : 'hidden'}`}
-                />
-                <GiGoalKeeper
-                  className={`w-10 h-10 text-green-500 ${!isShirtForm ? 'block' : 'hidden'}`}
-                />
-              </div>
+              <FaTshirt className="w-10 h-10 text-green-500" />
             </div>
             {isShirtForm ? (
               <div className="overflow-auto">
                 <Form form={ShirtForm} layout="vertical" className="p-4">
-                  <div className="grid grid-cols-2 gap-2 bg-gray-100 p-4 rounded-md ">
+                  <Divider orientation="left" plain>General</Divider>
+                  <div className="grid grid-cols-2 gap-2 bg-gray-50 p-4 rounded-md mb-4">
                     <Form.Item
                       name="discipline"
-                      label="Disciplina"
+                      label="* Disciplina"
                       rules={[
                         {
                           required: true,
@@ -1684,6 +1717,9 @@ const CotationList = () => {
                     <Form.Item name="frontClothColor" label="Color de tela">
                       <Input value={colors.frontClothColor} readOnly />
                     </Form.Item>
+                  </div>
+                  <Divider orientation="left" plain>Cuello</Divider>
+                  <div className="grid grid-cols-2 gap-2 bg-gray-50 p-4 rounded-md mb-4">
                     <Form.Item name="neckline" label="Forma cuello">
                       <Select>
                         {neckForms.map((neckForm) => (
@@ -1724,6 +1760,9 @@ const CotationList = () => {
                     <Form.Item name="neckClothColor" label="Color de tela">
                       <Input value={colors.frontClothColor} readOnly />
                     </Form.Item>
+                  </div>
+                  <Divider orientation="left" plain>Manga</Divider>
+                  <div className="grid grid-cols-2 gap-2 bg-gray-50 p-4 rounded-md mb-4">
                     <Form.Item name="sleeveShape" label="Forma de manga">
                       <Select>
                         {sleeveForms.map((sleeveForm) => (
@@ -1802,6 +1841,9 @@ const CotationList = () => {
                     <Form.Item name="cuffClothColor" label="Color de tela">
                       <Input value={colors.cuffClothColor} readOnly />
                     </Form.Item>
+                  </div>
+                  <Divider orientation="left" plain>DTF y tramos</Divider>
+                  <div className="grid grid-cols-2 gap-2 bg-gray-50 p-4 rounded-md mb-4">
                     <Form.Item name="dtfShirt" label="DTF playera">
                       <Input />
                     </Form.Item>
@@ -1811,81 +1853,40 @@ const CotationList = () => {
                         <Option value={false}>No</Option>
                       </Select>
                     </Form.Item>
-                    <Form.Item
-                      name="image"
-                      label="Imagen"
-                      rules={[
-                        {
-                          required: true,
-                          message: 'Por favor, seleccione una imagen'
-                        }
-                      ]}
-                      getValueFromEvent={(e) => {
-                        if (Array.isArray(e)) {
-                          return e
-                        }
-                        if (e && e.fileList) {
-                          return e.fileList
-                        }
-                        return []
-                      }}
-                    >
-                      <Upload
-                        name="image"
-                        listType="picture"
-                        beforeUpload={() => false}
-                        onChange={handleFileChange}
-                      >
-                        <Button icon={<UploadOutlined />}>
-                          Click para subir
-                        </Button>
-                      </Upload>
-                    </Form.Item>
-                    <div className="flex justify-end mt-20">
-                      <Button
-                        icon={<SaveOutlined className="text-blue-500" />}
-                        onClick={() =>
-                          CuttingUtils.handleFormSubmitShirt(
-                            ShirtForm,
-                            setShirts,
-                            CuttingForm,
-                            setCuttingOrderDt,
-                            shirts,
-                            CuttingOrderDt,
-                            productType,
-                            file,
-                            setImageFileName
-                          )
-                        }
-                        disabled={isSaveDisabled}
-                      />
-                    </div>
                   </div>
-                  <Space>
+                  <div className="flex justify-end mb-4">
+                    <Button
+                      icon={<SaveOutlined className="text-blue-500" />}
+                      onClick={() =>
+                        CuttingUtils.handleFormSubmitShirt(
+                          ShirtForm,
+                          setShirts,
+                          CuttingForm,
+                          setCuttingOrderDt,
+                          shirts,
+                          CuttingOrderDt,
+                          productType
+                        )
+                      }
+                      disabled={isSaveDisabled}
+                    >
+                      Añadir a la lista
+                    </Button>
+                  </div>
+                  <Space className="w-full">
                     {shirts.length > 0 && (
                       <Table
+                        className="w-full"
+                        size="small"
                         columns={columnsTempShirt}
                         dataSource={shirts.map((shirt, index) => ({
                           ...shirt,
                           key: index
                         }))}
+                        pagination={{ pageSize: 5 }}
                       />
                     )}
                   </Space>
-                  <Button
-                    className="mt-2"
-                    type="primary"
-                    onClick={() =>
-                      CuttingUtils.handleCutSubmitShirts(
-                        selectedQuotation,
-                        shirts,
-                        CuttingOrderDt,
-                        imageFileName
-                      )
-                    }
-                  >
-                    Enviar Formulario
-                  </Button>
                   <Modal
                     title={`Orden`}
                     open={isModalShirtsTempVisible}
@@ -1923,23 +1924,17 @@ const CotationList = () => {
         {isShortFormVisible && (
           <div>
             <div className="flex justify-center mb-4">
-              <div className="flex items-center space-x-2">
-                <GiUnderwearShorts
-                  className={`w-10 h-10 text-green-500 ${isShortForm ? 'block' : 'hidden'}`}
-                />
-                <GiGoalKeeper
-                  className={`w-10 h-10 text-green-500 ${!isShortForm ? 'block' : 'hidden'}`}
-                />
-              </div>
+              <GiUnderwearShorts className="w-10 h-10 text-green-500" />
             </div>
 
             {isShortForm ? (
               <div className="overflow-auto">
                 <Form form={ShortForm} layout="vertical" className="p-4">
-                  <div className="grid grid-cols-2 gap-2 bg-gray-100 p-4 rounded-md ">
+                  <Divider orientation="left" plain>General</Divider>
+                  <div className="grid grid-cols-2 gap-2 bg-gray-50 p-4 rounded-md mb-4">
                     <Form.Item
                       name="discipline"
-                      label="Disciplina"
+                      label="* Disciplina"
                       rules={[
                         {
                           required: true,
@@ -1976,6 +1971,9 @@ const CotationList = () => {
                     <Form.Item name="clothShortColor" label="Color de tela">
                       <Input value={colorsShorts.clothShortColor} readOnly />
                     </Form.Item>
+                  </div>
+                  <Divider orientation="left" plain>Vista y tramos</Divider>
+                  <div className="grid grid-cols-2 gap-2 bg-gray-50 p-4 rounded-md mb-4">
                     <Form.Item label="Vista de short">
                       <Select>
                         {shortLooks.map((shortLook) => (
@@ -2018,80 +2016,47 @@ const CotationList = () => {
                         ))}
                       </Select>
                     </Form.Item>
-                    <Form.Item
-                      name="image"
-                      label="Imagen"
-                      rules={[
-                        {
-                          required: true,
-                          message: 'Por favor, seleccione una imagen'
-                        }
-                      ]}
-                      getValueFromEvent={(e) => {
-                        if (Array.isArray(e)) {
-                          return e
-                        }
-                        if (e && e.fileList) {
-                          return e.fileList
-                        }
-                        return []
-                      }}
-                    >
-                      <Upload
-                        name="image"
-                        listType="picture"
-                        beforeUpload={() => false}
-                        onChange={handleFileChange}
-                      >
-                        <Button icon={<UploadOutlined />}>
-                          Click para subir
-                        </Button>
-                      </Upload>
-                    </Form.Item>
-                    <div className="flex justify-end mt-20">
-                      <Button
-                        icon={<SaveOutlined className="text-blue-500" />}
-                        onClick={() =>
-                          CuttingUtils.handleFormSubmitShort(
-                            ShortForm,
-                            setShorts,
-                            CuttingForm,
-                            setCuttingOrderDt,
-                            shorts,
-                            CuttingOrderDt,
-                            file,
-                            setImageFileName
-                          )
-                        }
-                        disabled={isSaveDisabled}
-                      />
-                    </div>
                   </div>
-                  <Space>
+                  <div className="flex justify-end mb-4">
+                    <Button
+                      icon={<SaveOutlined className="text-blue-500" />}
+                      onClick={() =>
+                        CuttingUtils.handleFormSubmitShort(
+                          ShortForm,
+                          setShorts,
+                          CuttingForm,
+                          setCuttingOrderDt,
+                          shorts,
+                          CuttingOrderDt
+                        )
+                      }
+                      disabled={isSaveDisabled}
+                    >
+                      Añadir a la lista
+                    </Button>
+                  </div>
+                  <Space className="w-full">
                     {shorts.length > 0 && (
                       <Table
+                        className="w-full"
+                        size="small"
                         columns={columnsTempShort}
                         dataSource={shorts.map((short, index) => ({
                           ...short,
                           key: index
                         }))}
+                        pagination={{ pageSize: 5 }}
                       />
                     )}
                   </Space>
-                  <Button
-                    className="mt-2"
-                    type="primary"
-                    onClick={() =>
-                      CuttingUtils.handleCutSubmitShorts(
-                        selectedQuotation,
-                        shorts,
-                        CuttingOrderDt,
-                        imageFileName
-                      )
-                    }
-                  >
-                    Enviar Formulario
-                  </Button>
+                  <div className="mt-4 flex gap-2">
+                    <Button onClick={() => setCuttingOrderStep(0)}>Atrás</Button>
+                    {shorts.length > 0 && (
+                      <Button type="primary" onClick={() => setCuttingOrderStep(2)}>
+                        Siguiente: Lista e imagen
+                      </Button>
+                    )}
+                  </div>
                   <Modal
                     title={`Orden`}
                     open={isModalShortsTempVisible}
@@ -2114,22 +2079,155 @@ const CotationList = () => {
             ) : null}
           </div>
         )}
+            <div className="mt-4 flex gap-2 border-t pt-4">
+              <Button onClick={() => setCuttingOrderStep(0)}>Atrás</Button>
+              <Button
+                type="primary"
+                onClick={() => setCuttingOrderStep(2)}
+                disabled={
+                  (isShirtFormVisible && shirts.length === 0) ||
+                  (isShortFormVisible && shorts.length === 0)
+                }
+              >
+                Siguiente: Lista e imagen
+              </Button>
+            </div>
+          </div>
+        )}
+
+        {/* Paso 3: Lista, imagen opcional y envío */}
+        {cuttingOrderStep === 2 && (
+          <div className="space-y-4">
+            <p className="text-gray-600 text-sm">
+              Revise la lista. Opcionalmente suba la imagen del diseño y envíe la orden.
+            </p>
+            {isShirtFormVisible && shirts.length > 0 && (
+              <Table
+                size="small"
+                columns={columnsTempShirt}
+                dataSource={shirts.map((shirt, index) => ({ ...shirt, key: index }))}
+                pagination={{ pageSize: 5 }}
+              />
+            )}
+            {isShortFormVisible && shorts.length > 0 && (
+              <Table
+                size="small"
+                columns={columnsTempShort}
+                dataSource={shorts.map((short, index) => ({ ...short, key: index }))}
+                pagination={{ pageSize: 5 }}
+              />
+            )}
+            <Divider />
+            {isShirtFormVisible && shirts.length > 0 && (
+              <Form.Item
+                label="Imagen playera (opcional)"
+                help="Imagen del diseño para la orden de playeras."
+              >
+                <Upload
+                  name="imageShirt"
+                  listType="picture"
+                  beforeUpload={() => false}
+                  onChange={handleFileChangeShirt}
+                  maxCount={1}
+                >
+                  <Button icon={<UploadOutlined />}>Subir imagen playera</Button>
+                </Upload>
+              </Form.Item>
+            )}
+            {isShortFormVisible && shorts.length > 0 && (
+              <Form.Item
+                label="Imagen short (opcional)"
+                help="Imagen del diseño para la orden de shorts."
+              >
+                <Upload
+                  name="imageShort"
+                  listType="picture"
+                  beforeUpload={() => false}
+                  onChange={handleFileChangeShort}
+                  maxCount={1}
+                >
+                  <Button icon={<UploadOutlined />}>Subir imagen short</Button>
+                </Upload>
+              </Form.Item>
+            )}
+            <Button
+              type="primary"
+              size="large"
+              className="mt-2"
+              onClick={async () => {
+                let imageShirt: string | null = imageFileNameShirt
+                let imageShort: string | null = imageFileNameShort
+                if (fileShirt && isShirtFormVisible && shirts.length > 0) {
+                  try {
+                    imageShirt = await CuttingUtils.uploadImageShirt(fileShirt)
+                    setImageFileNameShirt(imageShirt)
+                    message.success('Imagen playera subida')
+                  } catch (e) {
+                    message.error('Error al subir la imagen de playera')
+                    return
+                  }
+                }
+                if (fileShort && isShortFormVisible && shorts.length > 0) {
+                  try {
+                    imageShort = await CuttingUtils.uploadImageShort(fileShort)
+                    setImageFileNameShort(imageShort)
+                    message.success('Imagen short subida')
+                  } catch (e) {
+                    message.error('Error al subir la imagen de short')
+                    return
+                  }
+                }
+                if (isShirtFormVisible && shirts.length > 0) {
+                  await CuttingUtils.handleCutSubmitShirts(
+                    selectedQuotation,
+                    shirts,
+                    CuttingOrderDt,
+                    imageShirt
+                  )
+                }
+                if (isShortFormVisible && shorts.length > 0) {
+                  await CuttingUtils.handleCutSubmitShorts(
+                    selectedQuotation,
+                    shorts,
+                    CuttingOrderDt,
+                    imageShort
+                  )
+                }
+                setVisibleCut(false)
+                setCuttingOrderStep(0)
+                setShirts([])
+                setShorts([])
+                setFileShirt(null)
+                setImageFileNameShirt(null)
+                setFileShort(null)
+                setImageFileNameShort(null)
+              }}
+            >
+              Enviar formulario
+            </Button>
+            <Button className="ml-2" onClick={() => setCuttingOrderStep(1)}>
+              Atrás
+            </Button>
+          </div>
+        )}
       </Drawer>
 
       <div className="flex flex-col md:flex-row md:justify-between mb-4">
         <div className="flex-1 flex flex-col items-center justify-center md:items-start md:justify-start">
           <h4 className="font-bold text-lg">Finanzas</h4>
-          <h6 className="text-sm">Lista de Cotizaciones</h6>
+          <h6 className="text-sm">Lista de Cotizaciones{readOnly ? ' (solo lectura)' : ''}</h6>
         </div>
-        <Button
-          className=" h-10 bg-indigo-900 rounded-md text-white text-base font-bold p-2 items-center "
-          onClick={() => setVisibleAdd(true)}
-        >
-          <div>
-            <PlusOutlined className="text-white font-bold" /> Añadir Nueva
-            Cotizacion{' '}
-          </div>
-        </Button>
+        {!readOnly && (
+          <Button
+            className=" h-10 bg-indigo-900 rounded-md text-white text-base font-bold p-2 items-center "
+            onClick={() => setVisibleAdd(true)}
+          >
+            <div>
+              <PlusOutlined className="text-white font-bold" /> Añadir Nueva
+              Cotizacion{' '}
+            </div>
+          </Button>
+        )}
       </div>
 
       <Card>

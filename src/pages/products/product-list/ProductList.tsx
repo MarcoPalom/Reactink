@@ -77,6 +77,9 @@ const MaterialList = () => {
     null
   )
   const [usedSizes, setUsedSizes] = useState<string[]>([])
+  const [editingRend, setEditingRend] = useState<MaterialRends | null>(null)
+  const [visibleEditRend, setVisibleEditRend] = useState<boolean>(false)
+  const [editRendForm] = Form.useForm()
 
   const { Option } = Select
 
@@ -228,27 +231,64 @@ const MaterialList = () => {
     {
       title: 'Talla',
       dataIndex: 'size',
-      key: 'size'
+      key: 'size',
+      width: 100,
+      sorter: (a: MaterialRends, b: MaterialRends) => String(a.size).localeCompare(String(b.size))
     },
     {
       title: 'Consumo',
       dataIndex: 'consumption',
       key: 'consumption',
-      sorter: (a: any, b: any) => a.surname.length - b.surname.length
+      width: 120,
+      align: 'right' as const,
+      sorter: (a: MaterialRends, b: MaterialRends) => Number(a.consumption) - Number(b.consumption)
     },
     {
       title: 'Rendimiento',
       dataIndex: 'performance',
       key: 'performance',
-      sorter: (a: any, b: any) => a.surname.length - b.surname.length
+      width: 120,
+      align: 'right' as const,
+      sorter: (a: MaterialRends, b: MaterialRends) => Number(a.performance) - Number(b.performance)
     },
     {
-      title: 'Editar',
-      key: 'Edit',
-      className: 'action-column',
-      render: () => (
-        <Space size="middle">
-          <Button icon={<EditOutlined className="text-blue-700" />} />
+      title: 'Acciones',
+      key: 'actions',
+      width: 120,
+      render: (_: unknown, record: MaterialRends) => (
+        <Space size="small">
+          <Button
+            type="link"
+            size="small"
+            icon={<EditOutlined className="text-blue-600" />}
+            onClick={() =>
+              MaterialUtils.handleEditRend(
+                record,
+                setEditingRend,
+                editRendForm,
+                setVisibleEditRend
+              )
+            }
+          >
+            Editar
+          </Button>
+          <Button
+            type="link"
+            size="small"
+            danger
+            icon={<DeleteOutlined />}
+            onClick={() =>
+              MaterialUtils.handleDeleteRend(
+                record,
+                materialRends,
+                setMaterialRends,
+                selectedMaterial,
+                setUsedSizes
+              )
+            }
+          >
+            Eliminar
+          </Button>
         </Space>
       )
     }
@@ -319,7 +359,7 @@ const MaterialList = () => {
       </Modal>
 
       <Modal
-        title="Agregar Tamaño de Material"
+        title="Agregar rendimiento por talla"
         open={VisibleMaterialSize}
         onOk={() =>
           MaterialUtils.handleSaveMatSize(
@@ -337,73 +377,162 @@ const MaterialList = () => {
             setVisibleMaterialSize
           )
         }
+        okText="Guardar"
+        cancelText="Cancelar"
+        width={420}
       >
-        <Form form={MaterialSizeform} layout="vertical">
-          <div className="flex flex-row justify-between">
-            <Form.Item
-              name="size"
-              label="Tamaño"
-              rules={[
-                { required: true, message: 'Por favor ingrese el tamaño' }
-              ]}
-            >
-              <Select placeholder="Selecciona un tamaño">
-                {MaterialUtils.getAvailableSizes(usedSizes).map((size) => (
-                  <Select.Option key={size} value={size}>
-                    {size}
-                  </Select.Option>
-                ))}
-              </Select>
-            </Form.Item>
-            <Form.Item
-              name="consumption"
-              label="Consumo"
-              rules={[
-                { required: true, message: 'Por favor ingrese el consumo' }
-              ]}
-            >
-              <InputNumber min={0} />
-            </Form.Item>
-            <Form.Item
-              name="performance"
-              label="Desempeño"
-              rules={[
-                { required: true, message: 'Por favor ingrese el desempeño' }
-              ]}
-            >
-              <InputNumber min={0} />
-            </Form.Item>
-          </div>
+        <Form form={MaterialSizeform} layout="vertical" className="pt-2">
+          <Form.Item
+            name="size"
+            label="Talla"
+            rules={[{ required: true, message: 'Selecciona una talla' }]}
+          >
+            <Select placeholder="Selecciona una talla" allowClear>
+              {MaterialUtils.getAvailableSizes(usedSizes).map((size) => (
+                <Option key={size} value={size}>
+                  {size}
+                </Option>
+              ))}
+            </Select>
+          </Form.Item>
+          <Form.Item
+            name="consumption"
+            label="Consumo"
+            rules={[{ required: true, message: 'Ingresa el consumo' }]}
+          >
+            <InputNumber min={0} step={0.01} className="w-full" />
+          </Form.Item>
+          <Form.Item
+            name="performance"
+            label="Rendimiento"
+            rules={[{ required: true, message: 'Ingresa el rendimiento' }]}
+          >
+            <InputNumber min={0} step={0.01} className="w-full" />
+          </Form.Item>
         </Form>
       </Modal>
 
       <Modal
-        title="Rendimientos"
+        title={
+          <span className="text-lg font-semibold">
+            Rendimientos por talla
+            {selectedMaterial && (
+              <span className="block text-sm font-normal text-gray-500 mt-1">
+                {selectedMaterial.name}
+              </span>
+            )}
+          </span>
+        }
         open={VisibleMaterialRen}
         onCancel={() => setVisibleMaterialRen(false)}
+        width={640}
         footer={
-          <Button
-            onClick={() =>
-              MaterialUtils.openMaterialSizeModal(setVisibleMaterialSize)
-            }
-            icon={<PlusOutlined />}
-          >
-            Agregar rendimiento
-          </Button>
+          <div className="flex justify-end">
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() =>
+                MaterialUtils.openMaterialSizeModal(
+                  setVisibleMaterialSize,
+                  setEditingRend
+                )
+              }
+            >
+              Agregar rendimiento
+            </Button>
+          </div>
+        }
+        styles={{ body: { paddingTop: 16 } }}
+      >
+        {materialRends && materialRends.length > 0 ? (
+          <Table
+            columns={columnsRen}
+            dataSource={materialRends.map((r, i) => ({ ...r, key: r.id ?? i }))}
+            pagination={false}
+            size="middle"
+            scroll={{ x: 400 }}
+          />
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            <RiseOutlined style={{ fontSize: 48, marginBottom: 12 }} />
+            <p>No hay rendimientos registrados para este material.</p>
+            <Button
+              type="primary"
+              className="mt-4"
+              icon={<PlusOutlined />}
+              onClick={() =>
+                MaterialUtils.openMaterialSizeModal(
+                  setVisibleMaterialSize,
+                  setEditingRend
+                )
+              }
+            >
+              Agregar el primero
+            </Button>
+          </div>
+        )}
+      </Modal>
+
+      <Drawer
+        title="Editar rendimiento"
+        open={visibleEditRend}
+        onClose={() => {
+          setVisibleEditRend(false)
+          setEditingRend(null)
+          editRendForm.resetFields()
+        }}
+        width={400}
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button
+              onClick={() => {
+                setVisibleEditRend(false)
+                setEditingRend(null)
+                editRendForm.resetFields()
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="primary"
+              onClick={() =>
+                MaterialUtils.handleSaveEditRend(
+                  editingRend,
+                  editRendForm,
+                  setVisibleEditRend,
+                  setEditingRend,
+                  materialRends,
+                  setMaterialRends,
+                  selectedMaterial,
+                  setUsedSizes
+                )
+              }
+            >
+              Guardar
+            </Button>
+          </div>
         }
       >
-        <Table
-          columns={columnsRen}
-          dataSource={
-            materialRends
-              ? materialRends.map((materialRend, index) => ({
-                  ...materialRend,
-                  key: index
-                }))
-              : []
-          }
-        />
-      </Modal>
+        <Form form={editRendForm} layout="vertical">
+          <Form.Item name="size" label="Talla">
+            <Input disabled />
+          </Form.Item>
+          <Form.Item
+            name="consumption"
+            label="Consumo"
+            rules={[{ required: true, message: 'Ingresa el consumo' }]}
+          >
+            <InputNumber min={0} step={0.01} className="w-full" />
+          </Form.Item>
+          <Form.Item
+            name="performance"
+            label="Rendimiento"
+            rules={[{ required: true, message: 'Ingresa el rendimiento' }]}
+          >
+            <InputNumber min={0} step={0.01} className="w-full" />
+          </Form.Item>
+        </Form>
+      </Drawer>
 
       <Drawer
         title="Editar Material"
@@ -571,12 +700,12 @@ const MaterialList = () => {
           <Form.Item
             name="name"
             label="Nombre"
-            rules={[{ required: true, message: 'Por favor ingrese el nombre' }]}
+            rules={[{ required: true, message: 'Por favor ingrese el nombre del material' }]}
           >
-            <Input />
+            <Input placeholder="Ej: CALCETA LISA, TELA POLO" />
           </Form.Item>
-          <Form.Item name="description" label="descripcion">
-            <Input />
+          <Form.Item name="description" label="Descripción">
+            <Input placeholder="Opcional" />
           </Form.Item>
           <Form.Item
             name="stock"
@@ -663,13 +792,13 @@ const MaterialList = () => {
           <Form.Item name="dateReceipt" label="Fecha de recibido">
             <Input type="date" />
           </Form.Item>
-          <Form.Item name="serial" label="serial">
-            <Input />
-            <Form.Item name="color" label="Color">
-            <Input />
+          <Form.Item name="serial" label="Serial">
+            <Input placeholder="Opcional" />
           </Form.Item>
+          <Form.Item name="color" label="Color">
+            <Input placeholder="Ej: BLANCO, NEGRO" />
           </Form.Item>
-          <Form.Item name="location" label="Ubicacion">
+          <Form.Item name="location" label="Ubicación">
             <Input />
           </Form.Item>
           <Form.Item
