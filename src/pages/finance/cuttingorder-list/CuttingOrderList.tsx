@@ -170,14 +170,17 @@ const CuttingOrderList: React.FC = () => {
           />
           <Button
             icon={<EditOutlined className="text-blue-700" />}
-            onClick={() =>
+            onClick={() => {
               CuttingUtils.handleEdit(
                 record,
                 setEditingOrder,
                 editForm,
-                setVisibleEdit
+                setVisibleEdit,
+                setImage,
+                setCurrentDesign,
+                setCurrentQuotationId
               )
-            }
+            }}
             title="Editar"
           />
           <Button
@@ -254,7 +257,7 @@ const CuttingOrderList: React.FC = () => {
                 <img src={Logo} alt="Ink Sports" className="h-8" />
               </div>
 
-              {/* Sección de Imagen del Diseño */}
+              {/* Sección de Imagen del Diseño - Solo visualización */}
               <div className="mb-6 p-4 bg-gray-50 rounded-lg">
                 <div className="flex justify-between items-center mb-3">
                   <h4 className="text-md font-medium text-gray-900">
@@ -263,41 +266,17 @@ const CuttingOrderList: React.FC = () => {
                   </h4>
                 </div>
                 <div className="flex flex-col items-center">
-                  <Spin spinning={uploadingImage}>
-                    {image ? (
-                      <img
-                        src={image}
-                        alt="Diseño"
-                        className="w-64 h-48 object-contain rounded border mb-3"
-                      />
-                    ) : (
-                      <div className="w-64 h-48 bg-gray-200 rounded flex items-center justify-center mb-3">
-                        <span className="text-gray-400 text-sm">Sin imagen de diseño</span>
-                      </div>
-                    )}
-                    <Upload
-                      beforeUpload={(file) => {
-                        if (currentQuotationId) {
-                          const isShirt = quotationProducts.some(p => 'clothFrontShirtId' in p);
-                          CuttingUtils.handleUploadOrderImage(
-                            file,
-                            isShirt,
-                            currentDesign,
-                            currentQuotationId,
-                            setImage,
-                            setCurrentDesign,
-                            setUploadingImage
-                          );
-                        }
-                        return false;
-                      }}
-                      showUploadList={false}
-                    >
-                      <Button icon={<UploadOutlined />} type="primary">
-                        {image ? 'Cambiar Imagen' : 'Subir Imagen'}
-                      </Button>
-                    </Upload>
-                  </Spin>
+                  {image ? (
+                    <img
+                      src={image}
+                      alt="Diseño"
+                      className="w-64 h-48 object-contain rounded border"
+                    />
+                  ) : (
+                    <div className="w-64 h-48 bg-gray-200 rounded flex items-center justify-center">
+                      <span className="text-gray-400 text-sm">Sin imagen de diseño</span>
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -455,7 +434,7 @@ const CuttingOrderList: React.FC = () => {
         placement="right"
         onClose={() => CuttingUtils.handleCloseEdit(editForm, setVisibleEdit)}
         open={visibleEdit}
-        width={400}
+        width={500}
         footer={
           <div style={{ textAlign: 'right' }}>
             <Button
@@ -510,6 +489,62 @@ const CuttingOrderList: React.FC = () => {
           >
             <Input type="date" />
           </Form.Item>
+          
+          {/* Sección de Imagen del Diseño - Editable */}
+          <Divider>Imagen del Diseño</Divider>
+          <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+            <div className="flex flex-col items-center">
+              <Spin spinning={uploadingImage}>
+                {image ? (
+                  <img
+                    src={image}
+                    alt="Diseño"
+                    className="w-64 h-48 object-contain rounded border mb-3"
+                  />
+                ) : (
+                  <div className="w-64 h-48 bg-gray-200 rounded flex items-center justify-center mb-3">
+                    <span className="text-gray-400 text-sm">Sin imagen de diseño</span>
+                  </div>
+                )}
+                <Upload
+                  beforeUpload={(file) => {
+                    if (editingOrder && currentQuotationId) {
+                      // Determinar si es playera o short basándose en el diseño actual o en los productos
+                      let isShirt = false;
+                      if (currentDesign) {
+                        // Si hay diseño, verificar si tiene designFront (playera) o designShort (short)
+                        isShirt = !!currentDesign.designFront || (!currentDesign.designShort && !currentDesign.design);
+                      } else if (quotationProducts.length > 0) {
+                        // Si no hay diseño pero hay productos, verificar el tipo de producto
+                        isShirt = quotationProducts.some(p => 'clothFrontShirtId' in p);
+                      } else {
+                        // Por defecto, intentar cargar los productos para determinar el tipo
+                        // Si no se puede determinar, asumir que es playera
+                        isShirt = true;
+                      }
+                      
+                      CuttingUtils.handleUploadOrderImage(
+                        file,
+                        isShirt,
+                        currentDesign,
+                        currentQuotationId,
+                        editingOrder.id, // Pasar el cuttingOrderId
+                        setImage,
+                        setCurrentDesign,
+                        setUploadingImage
+                      );
+                    }
+                    return false;
+                  }}
+                  showUploadList={false}
+                >
+                  <Button icon={<UploadOutlined />} type="primary">
+                    {image ? 'Cambiar Imagen' : 'Subir Imagen'}
+                  </Button>
+                </Upload>
+              </Spin>
+            </div>
+          </div>
         </Form>
       </Drawer>
 

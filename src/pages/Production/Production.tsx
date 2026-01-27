@@ -32,8 +32,9 @@ const Production = () => {
   useEffect(() => {
     if (quotation) {
       // Combina los productos de camisetas y shorts si existen
-      const shirts = quotation.quotationProductShirts || [];
-      const shorts = quotation.quotationProductShorts || [];
+      // El backend devuelve quotation_product_shirt y quotation_product_short (snake_case)
+      const shirts = quotation.quotation_product_shirt || quotation.quotationProductShirts || [];
+      const shorts = quotation.quotation_product_short || quotation.quotationProductShorts || [];
       const allProducts = [...shirts, ...shorts]; // Combinar los productos
       setActiveProducts(allProducts);
     }

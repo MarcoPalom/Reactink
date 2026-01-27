@@ -117,8 +117,13 @@ export interface Employee {
     quotationDesigns: quotationDesigns[]; 
     quotationProduct: QuotationProduct[]; 
     quotationProductMaquila: QuotationProductMaquila[]; 
-    quotationProductShirts: FormDataShirt[]; 
-    quotationProductShorts: any[]; 
+    // Nombres del backend (snake_case)
+    quotation_product_shirt?: FormDataShirt[]; 
+    quotation_product_short?: any[];
+    quotation_design?: any[];
+    // Nombres legacy (camelCase) - mantener para compatibilidad
+    quotationProductShirts?: FormDataShirt[]; 
+    quotationProductShorts?: any[]; 
   }
 
  export interface QuotationItem {
