@@ -90,8 +90,11 @@ export const handleView = async (
     // Obtener la imagen del diseño si existe
     if (cuttingOrder) {
       const quotationData = cuttingOrder as any;
-      if (quotationData.quotationDesigns && quotationData.quotationDesigns.length > 0) {
-        const design = quotationData.quotationDesigns[0];
+      // El backend devuelve quotation_design (snake_case)
+      const designs = quotationData.quotation_design || quotationData.quotationDesigns || [];
+      if (designs.length > 0) {
+        // Buscar el diseño asociado a esta orden de corte
+        const design = designs.find((d: any) => d.cuttingOrderId === id) || designs[0];
         
         // Guardar el diseño actual para edición
         if (setCurrentDesign) {
@@ -134,7 +137,10 @@ export const handleEdit = async (
   record: CuttingOrderData,
   setEditingOrder: (order: CuttingOrderData) => void,
   editForm: FormInstance,
-  setVisibleEdit: (visible: boolean) => void
+  setVisibleEdit: (visible: boolean) => void,
+  setImage?: (imageUrl: string | null) => void,
+  setCurrentDesign?: (design: any) => void,
+  setCurrentQuotationId?: (id: number | null) => void
 ) => {
   try {
     setEditingOrder(record);
@@ -145,6 +151,54 @@ export const handleEdit = async (
       dueDate: record.dueDate ? new Date(record.dueDate).toISOString().split('T')[0] : ''
     };
     editForm.setFieldsValue(formattedRecord);
+    
+    // Cargar la imagen y el diseño si se proporcionan los setters
+    if (setCurrentQuotationId) {
+      setCurrentQuotationId(record.quotationId);
+    }
+    
+    // Obtener el diseño asociado a esta orden de corte
+    if (setImage || setCurrentDesign) {
+      try {
+        const cuttingOrder = await fetchCuttingOrderDetails(record.id);
+        if (cuttingOrder && cuttingOrder.quotation) {
+          const quotationData = cuttingOrder.quotation as any;
+          const designs = quotationData.quotation_design || quotationData.quotationDesigns || [];
+          // Buscar el diseño asociado a esta orden de corte
+          const design = designs.find((d: any) => d.cuttingOrderId === record.id) || designs[0];
+          
+          if (design) {
+            if (setCurrentDesign) {
+              setCurrentDesign(design);
+            }
+            
+            if (setImage) {
+              // Priorizar: designFront (playeras) > designShort > imageReference > logo
+              if (design.designFront) {
+                setImage(`${API_BASE_URL}/image/quotation_shirt/${design.designFront}`);
+              } else if (design.designShort || design.design) {
+                const shortImage = design.designShort || design.design;
+                setImage(`${API_BASE_URL}/image/quotation_short/${shortImage}`);
+              } else if (design.imageReference) {
+                setImage(`${API_BASE_URL}/image/quotation_design/${design.imageReference}`);
+              } else if (design.logo) {
+                setImage(`${API_BASE_URL}/image/quotation_design/${design.logo}`);
+              } else {
+                setImage(null);
+              }
+            }
+          } else {
+            if (setImage) setImage(null);
+            if (setCurrentDesign) setCurrentDesign(null);
+          }
+        }
+      } catch (error) {
+        console.error('Error al cargar el diseño:', error);
+        if (setImage) setImage(null);
+        if (setCurrentDesign) setCurrentDesign(null);
+      }
+    }
+    
     setVisibleEdit(true);
   } catch (error) {
     console.error('Error al preparar la edición:', error);
@@ -343,6 +397,7 @@ export const handleUploadOrderImage = async (
   isShirt: boolean,
   currentDesign: any,
   quotationId: number,
+  cuttingOrderId: number | null,
   setImage: (imageUrl: string | null) => void,
   setCurrentDesign: (design: any) => void,
   setUploading: (uploading: boolean) => void
@@ -369,10 +424,19 @@ export const handleUploadOrderImage = async (
 
     // Preparar los datos del diseño
     const designField = isShirt ? 'designFront' : 'designShort';
-    const designData = {
+    const designData: {
+      quotationId: number;
+      [key: string]: any;
+      cuttingOrderId?: number;
+    } = {
       quotationId,
       [designField]: fileName
     };
+
+    // Si hay cuttingOrderId, asociarlo al diseño
+    if (cuttingOrderId) {
+      designData.cuttingOrderId = cuttingOrderId;
+    }
 
     if (currentDesign && currentDesign.id) {
       // Actualizar el diseño existente
@@ -380,9 +444,9 @@ export const handleUploadOrderImage = async (
       message.success('Imagen actualizada exitosamente');
       
       // Actualizar el diseño local
-      setCurrentDesign({ ...currentDesign, [designField]: fileName });
+      setCurrentDesign({ ...currentDesign, [designField]: fileName, cuttingOrderId });
     } else {
-      // Crear nuevo diseño
+      // Crear nuevo diseño con cuttingOrderId si está disponible
       const newDesign = await addDesign(designData);
       message.success('Imagen agregada exitosamente');
       setCurrentDesign(newDesign);
@@ -642,15 +706,23 @@ export const handleFormSubmitShirt = async (
     console.error('Failed:', errorInfo)
   }
 
-  try {
-    const values = await CuttingForm.validateFields()
-    const formDataCut: CuttingOrderData = {
-      ...values
-    }
+  // Solo actualizar CuttingOrderDt si no tiene valores ya guardados
+  // Los valores del CuttingForm ya se guardaron en el paso 0
+  if (CuttingOrderDt.length === 0) {
+    try {
+      const values = await CuttingForm.validateFields()
+      const formDataCut: CuttingOrderData = {
+        id: 0,
+        quotationId: 0, // Se asignará cuando se envíe
+        dateReceipt: values.dateReceipt,
+        dueDate: values.dueDate,
+        quotation: {} as any
+      }
 
-    setCuttingOrderDt([...CuttingOrderDt, { ...formDataCut }])
-  } catch (errorInfo) {
-    console.error('Failed:', errorInfo)
+      setCuttingOrderDt([formDataCut])
+    } catch (errorInfo) {
+      console.error('Failed to capture CuttingForm values:', errorInfo)
+    }
   }
 }
 
@@ -679,15 +751,23 @@ export const handleFormSubmitShort = async (
     console.error('Failed:', errorInfo)
   }
 
-  try {
-    const values = await CuttingForm.validateFields()
-    const formDataCut: CuttingOrderData = {
-      ...values
-    }
+  // Solo actualizar CuttingOrderDt si no tiene valores ya guardados
+  // Los valores del CuttingForm ya se guardaron en el paso 0
+  if (CuttingOrderDt.length === 0) {
+    try {
+      const values = await CuttingForm.validateFields()
+      const formDataCut: CuttingOrderData = {
+        id: 0,
+        quotationId: 0, // Se asignará cuando se envíe
+        dateReceipt: values.dateReceipt,
+        dueDate: values.dueDate,
+        quotation: {} as any
+      }
 
-    setCuttingOrderDt([...CuttingOrderDt, { ...formDataCut }])
-  } catch (errorInfo) {
-    console.error('Failed:', errorInfo)
+      setCuttingOrderDt([formDataCut])
+    } catch (errorInfo) {
+      console.error('Failed to capture CuttingForm values:', errorInfo)
+    }
   }
 }
 
@@ -793,11 +873,10 @@ const validateAndCleanShirtData = (shirt: FormDataShirt, quotationId: number): {
     return String(value);
   };
 
-  // Construir objeto limpio con tipos correctos (tShirtType requerido por BD)
+  // Construir objeto limpio con tipos correctos
   const cleanData: any = {
     quotationId: Number(quotationId),
     productType: Number(shirt.productType) || 1,
-    tShirtType: 1, // Requerido por BD en orden de corte
     discipline: shirt.discipline.trim(),
     size: shirt.size.trim(),
     quantity: Number(shirt.quantity),
@@ -895,7 +974,8 @@ export const handleSubmitShirts = async (
   shirts: FormDataShirt[],
   CuttingOrderDt: CuttingOrderData[],
   quotationId: number,
-  imageFileName: string | null
+  imageFileName: string | null,
+  cuttingOrderData?: CuttingOrderData
 ) => {
   console.log(imageFileName)
   const Type: boolean = true
@@ -945,43 +1025,67 @@ export const handleSubmitShirts = async (
       }
     }
 
+    // Usar cuttingOrderData si está disponible, sino usar CuttingOrderDt[0]
+    const orderData = cuttingOrderData || (CuttingOrderDt.length > 0 ? CuttingOrderDt[0] : null);
+    
+    let cuttingOrderId: number | null = null;
+    
+    if (orderData && orderData.dateReceipt && orderData.dueDate) {
+      // Verificar si ya existe una orden de corte para esta cotización
+      const existingOrder = await checkCuttingOrderExists(quotationId)
+      
+      if (existingOrder.exists) {
+        // Si ya existe, actualizar en lugar de crear
+        message.info('Ya existe una orden de corte para esta cotización. Actualizando...')
+        try {
+          // Limpiar el objeto: solo enviar los campos que acepta Prisma
+          const cleanUpdateData = {
+            quotationId: quotationId,
+            dateReceipt: orderData.dateReceipt,
+            dueDate: orderData.dueDate,
+            ...(orderData.status !== undefined ? { status: orderData.status } : {})
+          };
+          const updateResponse = await updateCuttingOrder(existingOrder.orderId!, cleanUpdateData)
+          if (updateResponse) {
+            cuttingOrderId = existingOrder.orderId!;
+            message.success('Orden de corte actualizada con éxito')
+          }
+        } catch (updateError) {
+          console.error('Error al actualizar orden de corte:', updateError)
+          message.error('Error al actualizar la orden de corte existente')
+        }
+      } else {
+        // Si no existe, crear una nueva
+        // Limpiar el objeto: solo enviar los campos que acepta Prisma
+        const cleanOrderData = {
+          quotationId: quotationId,
+          dateReceipt: orderData.dateReceipt,
+          dueDate: orderData.dueDate,
+          ...(orderData.status !== undefined ? { status: orderData.status } : {})
+        };
+        console.log('Sending cutting order data:', cleanOrderData);
+        const cuttingOrderResponse = await addCuttingOrder(cleanOrderData)
+
+        if (cuttingOrderResponse && cuttingOrderResponse.id) {
+          cuttingOrderId = cuttingOrderResponse.id;
+          message.success('Orden de corte generada con éxito')
+        } else {
+          message.error('Error al generar la orden de corte')
+        }
+      }
+    } else {
+      console.error('Missing cutting order data:', { orderData, CuttingOrderDt });
+      message.warning('No se pudo generar la orden de corte: faltan datos de fecha')
+    }
+
+    // Crear el diseño después de crear/obtener la orden de corte para asociarlo
+    if (cuttingOrderId) {
+      DesignData.cuttingOrderId = cuttingOrderId;
+    }
+    
     const designResponse = await addDesign(DesignData)
     if ((designResponse.status = true)) {
       message.success('Diseño agregado con éxito')
-
-      if (CuttingOrderDt.length > 0) {
-        // Verificar si ya existe una orden de corte para esta cotización
-        const existingOrder = await checkCuttingOrderExists(quotationId)
-        
-        if (existingOrder.exists) {
-          // Si ya existe, actualizar en lugar de crear
-          message.info('Ya existe una orden de corte para esta cotización. Actualizando...')
-          try {
-            const updateResponse = await updateCuttingOrder(existingOrder.orderId!, {
-              ...CuttingOrderDt[0],
-              quotationId
-            })
-            if (updateResponse) {
-              message.success('Orden de corte actualizada con éxito')
-            }
-          } catch (updateError) {
-            console.error('Error al actualizar orden de corte:', updateError)
-            message.error('Error al actualizar la orden de corte existente')
-          }
-        } else {
-          // Si no existe, crear una nueva
-          const cuttingOrderResponse = await addCuttingOrder({
-            ...CuttingOrderDt[0],
-            quotationId
-          })
-
-          if ((cuttingOrderResponse.status = true)) {
-            message.success('Orden de corte generada con éxito')
-          } else {
-            message.error('Error al generar la orden de corte')
-          }
-        }
-      }
     } else {
       message.error('Error al agregar el diseño')
     }
@@ -1106,7 +1210,8 @@ export const handleSubmitShorts = async (
   shorts: FormDataShort[],
   CuttingOrderDt: CuttingOrderData[],
   quotationId: number,
-  imageFileName: string | null
+  imageFileName: string | null,
+  cuttingOrderData?: CuttingOrderData
 ) => {
   console.log(imageFileName)
   const Type: boolean = true
@@ -1156,43 +1261,67 @@ export const handleSubmitShorts = async (
       }
     }
 
+    // Usar cuttingOrderData si está disponible, sino usar CuttingOrderDt[0]
+    const orderData = cuttingOrderData || (CuttingOrderDt.length > 0 ? CuttingOrderDt[0] : null);
+    
+    let cuttingOrderId: number | null = null;
+    
+    if (orderData && orderData.dateReceipt && orderData.dueDate) {
+      // Verificar si ya existe una orden de corte para esta cotización
+      const existingOrder = await checkCuttingOrderExists(quotationId)
+      
+      if (existingOrder.exists) {
+        // Si ya existe, actualizar en lugar de crear
+        message.info('Ya existe una orden de corte para esta cotización. Actualizando...')
+        try {
+          // Limpiar el objeto: solo enviar los campos que acepta Prisma
+          const cleanUpdateData = {
+            quotationId: quotationId,
+            dateReceipt: orderData.dateReceipt,
+            dueDate: orderData.dueDate,
+            ...(orderData.status !== undefined ? { status: orderData.status } : {})
+          };
+          const updateResponse = await updateCuttingOrder(existingOrder.orderId!, cleanUpdateData)
+          if (updateResponse) {
+            cuttingOrderId = existingOrder.orderId!;
+            message.success('Orden de corte actualizada con éxito')
+          }
+        } catch (updateError) {
+          console.error('Error al actualizar orden de corte:', updateError)
+          message.error('Error al actualizar la orden de corte existente')
+        }
+      } else {
+        // Si no existe, crear una nueva
+        // Limpiar el objeto: solo enviar los campos que acepta Prisma
+        const cleanOrderData = {
+          quotationId: quotationId,
+          dateReceipt: orderData.dateReceipt,
+          dueDate: orderData.dueDate,
+          ...(orderData.status !== undefined ? { status: orderData.status } : {})
+        };
+        console.log('Sending cutting order data:', cleanOrderData);
+        const cuttingOrderResponse = await addCuttingOrder(cleanOrderData)
+
+        if (cuttingOrderResponse && cuttingOrderResponse.id) {
+          cuttingOrderId = cuttingOrderResponse.id;
+          message.success('Orden de corte generada con éxito')
+        } else {
+          message.error('Error al generar la orden de corte')
+        }
+      }
+    } else {
+      console.error('Missing cutting order data:', { orderData, CuttingOrderDt });
+      message.warning('No se pudo generar la orden de corte: faltan datos de fecha')
+    }
+
+    // Crear el diseño después de crear/obtener la orden de corte para asociarlo
+    if (cuttingOrderId) {
+      DesignData.cuttingOrderId = cuttingOrderId;
+    }
+    
     const designResponse = await addDesign(DesignData)
     if ((designResponse.status = true)) {
       message.success('Diseño agregado con éxito')
-
-      if (CuttingOrderDt.length > 0) {
-        // Verificar si ya existe una orden de corte para esta cotización
-        const existingOrder = await checkCuttingOrderExists(quotationId)
-        
-        if (existingOrder.exists) {
-          // Si ya existe, actualizar en lugar de crear
-          message.info('Ya existe una orden de corte para esta cotización. Actualizando...')
-          try {
-            const updateResponse = await updateCuttingOrder(existingOrder.orderId!, {
-              ...CuttingOrderDt[0],
-              quotationId
-            })
-            if (updateResponse) {
-              message.success('Orden de corte actualizada con éxito')
-            }
-          } catch (updateError) {
-            console.error('Error al actualizar orden de corte:', updateError)
-            message.error('Error al actualizar la orden de corte existente')
-          }
-        } else {
-          // Si no existe, crear una nueva
-          const cuttingOrderResponse = await addCuttingOrder({
-            ...CuttingOrderDt[0],
-            quotationId
-          })
-
-          if ((cuttingOrderResponse.status = true)) {
-            message.success('Orden de corte generada con éxito')
-          } else {
-            message.error('Error al generar la orden de corte')
-          }
-        }
-      }
     } else {
       message.error('Error al agregar el diseño')
     }
@@ -1227,15 +1356,35 @@ export const handleCutSubmitShirts = async (
   selectedQuotation: { id: number } | null,
   shirts: FormDataShirt[],
   CuttingOrderDt: CuttingOrderData[],
-  imageFileName: string | null
+  imageFileName: string | null,
+  CuttingForm?: any
 ) => {
   console.log(shirts)
   if (selectedQuotation) {
+    // Capturar valores del CuttingForm si está disponible
+    let cuttingOrderData = CuttingOrderDt[0] || {};
+    
+    if (CuttingForm) {
+      try {
+        const cuttingFormValues = await CuttingForm.validateFields();
+        cuttingOrderData = {
+          ...cuttingOrderData,
+          dateReceipt: cuttingFormValues.dateReceipt,
+          dueDate: cuttingFormValues.dueDate
+        };
+      } catch (error) {
+        console.error('Error al validar CuttingForm:', error);
+        // Si falla la validación, usar los valores de CuttingOrderDt si existen
+      }
+    }
+    
+    // Pasar los datos del cutting order directamente
     await handleSubmitShirts(
       shirts,
       CuttingOrderDt,
       selectedQuotation.id,
-      imageFileName
+      imageFileName,
+      cuttingOrderData.dateReceipt && cuttingOrderData.dueDate ? cuttingOrderData : undefined
     )
   } else {
     console.error('No quotation selected')
@@ -1246,14 +1395,34 @@ export const handleCutSubmitShorts = async (
   selectedQuotation: { id: number } | null,
   shorts: FormDataShort[],
   CuttingOrderDt: CuttingOrderData[],
-  imageFileName: string | null
+  imageFileName: string | null,
+  CuttingForm?: any
 ) => {
   if (selectedQuotation) {
+    // Capturar valores del CuttingForm si está disponible
+    let cuttingOrderData = CuttingOrderDt[0] || {};
+    
+    if (CuttingForm) {
+      try {
+        const cuttingFormValues = await CuttingForm.validateFields();
+        cuttingOrderData = {
+          ...cuttingOrderData,
+          dateReceipt: cuttingFormValues.dateReceipt,
+          dueDate: cuttingFormValues.dueDate
+        };
+      } catch (error) {
+        console.error('Error al validar CuttingForm:', error);
+        // Si falla la validación, usar los valores de CuttingOrderDt si existen
+      }
+    }
+    
+    // Pasar los datos del cutting order directamente
     await handleSubmitShorts(
       shorts,
       CuttingOrderDt,
       selectedQuotation.id,
-      imageFileName
+      imageFileName,
+      cuttingOrderData.dateReceipt && cuttingOrderData.dueDate ? cuttingOrderData : undefined
     )
   } else {
     console.error('No quotation selected')

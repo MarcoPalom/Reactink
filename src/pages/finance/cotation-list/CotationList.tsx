@@ -1638,12 +1638,30 @@ const CotationList = () => {
             </div>
             <Button
               type="primary"
-              onClick={() => {
+              onClick={async () => {
                 if (!isShirtFormVisible && !isShortFormVisible) {
                   message.warning('Seleccione al menos un tipo de prenda (playera o short).')
                   return
                 }
-                setCuttingOrderStep(1)
+                
+                // Capturar y guardar los valores del CuttingForm antes de avanzar
+                try {
+                  const cuttingFormValues = await CuttingForm.validateFields()
+                  const formDataCut: CuttingOrderData = {
+                    id: 0, // Temporal, se asignará cuando se cree
+                    quotationId: selectedQuotation?.id || 0,
+                    dateReceipt: cuttingFormValues.dateReceipt,
+                    dueDate: cuttingFormValues.dueDate,
+                    quotation: selectedQuotation as any
+                  }
+                  
+                  // Guardar en el estado
+                  setCuttingOrderDt([formDataCut])
+                  setCuttingOrderStep(1)
+                } catch (error) {
+                  console.error('Error al validar CuttingForm:', error)
+                  message.error('Por favor complete los campos de fecha correctamente')
+                }
               }}
             >
               Siguiente: Especificaciones
@@ -2182,7 +2200,8 @@ const CotationList = () => {
                     selectedQuotation,
                     shirts,
                     CuttingOrderDt,
-                    imageShirt
+                    imageShirt,
+                    CuttingForm
                   )
                 }
                 if (isShortFormVisible && shorts.length > 0) {
@@ -2190,7 +2209,8 @@ const CotationList = () => {
                     selectedQuotation,
                     shorts,
                     CuttingOrderDt,
-                    imageShort
+                    imageShort,
+                    CuttingForm
                   )
                 }
                 setVisibleCut(false)

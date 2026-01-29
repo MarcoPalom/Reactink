@@ -40,11 +40,8 @@ export const updateProductArea = async (productId: number, areaId: number, produ
   console.log({ productId });
   console.log({ areaId });
   
-  // Shirts usa parámetros de ruta: /checkArea/:id/:area
-  // Shorts usa query params: /checkArea/?id=X&area=Y
-  const url = productType === 'shirt' 
-    ? `${API_BASE_URL}/quotation-product-${productType}/checkArea/${productId}/${areaId}`
-    : `${API_BASE_URL}/quotation-product-${productType}/checkArea/?id=${productId}&area=${areaId}`;
+  // Ambos (shirts y shorts) usan query params: /checkArea/?id=X&area=Y
+  const url = `${API_BASE_URL}/quotation-product-${productType}/checkArea/?id=${productId}&area=${areaId}`;
   
   const response = await axios.put(url, {}, getAuthHeaders())
   return response
@@ -141,11 +138,15 @@ export const deleteExpense = async (id: number) => {
 }
 //funciones relacionadas con diseños
 
-export const fetchQuotationDesigns = async (page = 1, pageSize = 999) => {
+export const fetchQuotationDesigns = async (page = 1, pageSize = 999, quotationId?: number) => {
   try {
+    const params: any = { page, pageSize };
+    if (quotationId) {
+      params.quotationId = quotationId;
+    }
     const response = await axios.get(
       `${API_BASE_URL}/quotation-design/`,
-      { ...getAuthHeaders(), params: { page, pageSize } }
+      { ...getAuthHeaders(), params }
     )
     return response.data
   } catch (error) {
@@ -655,12 +656,16 @@ export const fetchOrder = async (id: number): Promise<(FormDataShirtView | FormD
     );
     console.log('Raw API response:', response.data);
     console.log('Quotation data:', response.data.quotation);
-    console.log('Shirt products:', response.data.quotation.quotationProductShirts);
-    console.log('Short products:', response.data.quotation.quotationProductShorts);
+    console.log('Shirt products:', response.data.quotation?.quotation_product_shirt);
+    console.log('Short products:', response.data.quotation?.quotation_product_short);
+    
+    // El backend devuelve quotation_product_shirt y quotation_product_short (snake_case)
+    const shirts = response.data.quotation?.quotation_product_shirt || [];
+    const shorts = response.data.quotation?.quotation_product_short || [];
     
     const products = [
-      ...response.data.quotation.quotationProductShirts, 
-      ...response.data.quotation.quotationProductShorts
+      ...shirts, 
+      ...shorts
     ];
     console.log('Combined products:', products);
     

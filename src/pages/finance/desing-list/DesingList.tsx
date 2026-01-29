@@ -69,7 +69,8 @@ const DesingList = () => {
   const loadDesigns = async () => {
     setLoading(true)
     try {
-      const data = await fetchQuotationDesigns(1, 999)
+      // Filtrar solo diseños de la cotización 1
+      const data = await fetchQuotationDesigns(1, 999, 1)
       setDesigns(Array.isArray(data) ? data : [])
     } catch (e) {
       message.error('Error al cargar la lista de diseños')
