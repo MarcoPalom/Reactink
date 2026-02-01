@@ -9,6 +9,7 @@ import {useNavigate} from 'react-router-dom'
 import useTokenRenewal from 'components/Scripts/useTokenRenewal'
 import IroningAreaList from "./IroningArea";
 import FinishingAreaList from "./FinishingArea";
+import DesignArea from "./DesingArea";
 
 const HomePage = () => {
     const navigate = useNavigate()
@@ -38,6 +39,8 @@ const HomePage = () => {
                 <IroningAreaList/>
             ) : roleNumber === 10 ? (
                 <FinishingAreaList/>
+            ) : roleNumber === 11 ? (
+                <DesignArea/>
             ) : (
                 null
             )}
