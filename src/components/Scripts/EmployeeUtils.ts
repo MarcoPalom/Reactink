@@ -35,7 +35,8 @@ export const roleMapping: Record<number, string> = {
   7: 'Sublimado',
   8: 'Costura',
   9: 'Planchado',
-  10: 'Acabado'
+  10: 'Acabado',
+  11: 'Diseño área'
 }
 
 export const handleView = async (
