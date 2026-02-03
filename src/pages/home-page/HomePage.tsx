@@ -20,7 +20,7 @@ const HomePage = () => {
     
     return (
         <div>
-            {roleNumber === 1 ? (
+            {roleNumber === 1 || roleNumber === 2 || roleNumber === 3 ? (
                 <div>
                     <DashCount />
                     <ChartNTable />
