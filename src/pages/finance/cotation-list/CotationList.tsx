@@ -952,7 +952,7 @@ const CotationList = () => {
                 </p>
                 <p>
                   <strong>Fecha de expiracion:</strong>{' '}
-                  {new Date(selectedQuotation.dateReceipt).toLocaleDateString(
+                  {new Date(selectedQuotation.expirationDate).toLocaleDateString(
                     'es-ES'
                   )}
                 </p>
@@ -991,7 +991,8 @@ const CotationList = () => {
                   {
                     title: 'Descripción',
                     dataIndex: 'description',
-                    key: 'description'
+                    key: 'description',
+                    render: (text: string) => text || '-'
                   },
                   {
                     title: 'Cantidad',
@@ -1026,7 +1027,8 @@ const CotationList = () => {
                   {
                     title: 'Descripción',
                     dataIndex: 'description',
-                    key: 'description'
+                    key: 'description',
+                    render: (text: string) => text || '-'
                   },
                   {
                     title: 'Cantidad',

@@ -39,29 +39,19 @@ const SideNav = () => {
 
   const userRole = Number(localStorage.getItem('userRole') || 0)
 
-  // Admin (1), Financiero (2), Auxiliar (3) y Diseño (4) ven el sidenav
-  const roleWithNav = [ROLE_ADMIN, ROLE_FINANCIERO, ROLE_AUXILIAR, ROLE_DISENO].includes(userRole)
+  // Admin (1), Financiero (2), Auxiliar (3) ven el sidenav (rol 4 NO debe verlo)
+  const roleWithNav = [ROLE_ADMIN, ROLE_FINANCIERO, ROLE_AUXILIAR].includes(userRole)
   if (!roleWithNav) {
     return null
   }
 
   const allowedRoutesAdmin = ['/homepage', '/inventario', '/finanzas', '/personal', '/prod']
-  const allowedRoutesDiseno = ['/homepage', '/finanzas/cotizaciones']
 
-  const showSideNav =
-    userRole === ROLE_DISENO
-      ? allowedRoutesDiseno.some((route) => location.pathname.startsWith(route))
-      : allowedRoutesAdmin.some((route) => location.pathname.startsWith(route))
+  const showSideNav = allowedRoutesAdmin.some((route) => location.pathname.startsWith(route))
 
   if (!showSideNav) {
     return null
   }
-
-  // Menú para rol Diseño: Inicio (dashboard con tabla de diseños) y Cotizaciones (solo ver)
-  const itemsDiseno: MenuProps['items'] = [
-    getItem('Inicio', '/homepage', <DashboardOutlined />),
-    getItem('Cotizaciones', '/finanzas/cotizaciones', <CodeSandboxOutlined />)
-  ]
 
   // Menú completo: Admin y Financiero (tienen verifyAdminFinance + verifyAdministrationDepartment)
   const itemsAdminFinanciero: MenuProps['items'] = [
@@ -106,11 +96,9 @@ const SideNav = () => {
   ]
 
   const items =
-    userRole === ROLE_DISENO
-      ? itemsDiseno
-      : userRole === ROLE_AUXILIAR
-        ? itemsAuxiliar
-        : itemsAdminFinanciero
+    userRole === ROLE_AUXILIAR
+      ? itemsAuxiliar
+      : itemsAdminFinanciero
 
   return (
     <div>
