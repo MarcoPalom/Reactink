@@ -36,12 +36,12 @@ const IMAGE_LABELS: Record<string, string> = {
   imageReference: 'Imagen de Referencia'
 }
 
-const ROLE_DISENO = 4
+const ROLE_SALES = 11
 
 const DesingList = () => {
   const navigate = useNavigate()
   const userRole = Number(localStorage.getItem('userRole') || 0)
-  const isReadOnlyDiseno = userRole === ROLE_DISENO
+  const readOnly = userRole === ROLE_SALES
   const [designs, setDesigns] = useState<QuotationDesign[]>([])
   const [searchText, setSearchText] = useState('')
   const [loading, setLoading] = useState(false)
@@ -272,7 +272,7 @@ const DesingList = () => {
             title="Editar"
             className="hover:bg-gray-100"
           />
-          {!isReadOnlyDiseno && (
+          {!readOnly && (
             <Button
               type="text"
               icon={<CheckCircleOutlined />}
@@ -294,7 +294,7 @@ const DesingList = () => {
           <h4 className="font-bold text-lg">Diseño</h4>
           <h6 className="text-sm text-gray-600">Lista de Diseños</h6>
         </div>
-        {!isReadOnlyDiseno && (
+        {!readOnly && (
           <Button type="primary" icon={<PlusOutlined />} onClick={openNuevo}>
             Añadir nuevo diseño
           </Button>
