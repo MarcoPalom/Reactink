@@ -40,7 +40,7 @@ const HomePage = () => {
             ) : roleNumber === 10 ? (
                 <FinishingAreaList/>
             ) : roleNumber === 11 ? (
-                <DesignArea/>
+                <DesingList />
             ) : (
                 null
             )}
