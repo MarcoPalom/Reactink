@@ -35,6 +35,7 @@ const SewingAreaList: React.FC = () => {
   const [quotationProducts, setQuotationProducts] = useState<(FormDataShirtView | FormDataShortView)[]>([])
   const [filteredQuotationProducts, setFilteredQuotationProducts] = useState<(FormDataShirtView | FormDataShortView)[]>([])
   const [CuttingOrder, setCuttingOrder] = useState<Quotation[]>([])
+  const [materials, setMaterials] = useState<Material[]>([])
   const [visible, setVisible] = useState<boolean>(false)
   const [searchText, setSearchText] = useState('')
   const [currentSlide, setCurrentSlide] = useState(0)
@@ -50,6 +51,12 @@ const SewingAreaList: React.FC = () => {
 
   const isShortProduct = (product: FormDataShirtView | FormDataShortView): product is FormDataShortView => {
     return 'shortSection' in product
+  }
+
+  const materialMap = new Map(materials.map((material) => [material.id, material.name]))
+
+  const getMaterialName = (id: number) => {
+    return materialMap.get(id) || 'Unknown'
   }
 
   const fetchImg = async (
@@ -97,6 +104,7 @@ const SewingAreaList: React.FC = () => {
         fetchQuotationDesigns(),
       ])
       setOrders(ordersData)
+      setMaterials(materialsData)
       setDesigns(quotationsDesignData)
       console.log('Fetched data:', { orders: ordersData, materials: materialsData, quotations: quotationsData, quotationsDesign: quotationsDesignData })
     } catch (error) {
@@ -410,6 +418,85 @@ const SewingAreaList: React.FC = () => {
                           <p>
                             <strong>Disciplina:</strong> {product.discipline}
                           </p>
+                          {isShortProduct(product) ? (
+                            <>
+                              <p>
+                                <strong>Tela Short:</strong>{' '}
+                                {getMaterialName(product.clothShortId)}
+                              </p>
+                              <p>
+                                <strong>Vista Short:</strong> {product.viewShort}
+                              </p>
+                              <p>
+                                <strong>Sección Short:</strong> {product.shortSection}
+                              </p>
+                              <p>
+                                <strong>Género:</strong> {product.gender}
+                              </p>
+                              <p>
+                                <strong>Talla:</strong> {product.size}
+                              </p>
+                              <p>
+                                <strong>Cantidad:</strong> {product.quantity}
+                              </p>
+                              {product.observation && (
+                                <p>
+                                  <strong>Observación:</strong> {product.observation}
+                                </p>
+                              )}
+                            </>
+                          ) : (
+                            <>
+                              <p>
+                                <strong>Tela espalda:</strong>{' '}
+                                {getMaterialName(product.clothBackShirtId)}
+                              </p>
+                              <p>
+                                <strong>Tela Manga:</strong>{' '}
+                                {getMaterialName(product.clothSleeveId)}
+                              </p>
+                              <p>
+                                <strong>Tela cuello:</strong>{' '}
+                                {getMaterialName(product.clothNecklineId)}
+                              </p>
+                              <p>
+                                <strong>Tela frente:</strong>{' '}
+                                {getMaterialName(product.clothFrontShirtId)}
+                              </p>
+                              <p>
+                                <strong>Puño:</strong> {product.cuff}
+                              </p>
+                              <p>
+                                <strong>Tipo Puño:</strong> {product.typeCuff}
+                              </p>
+                              <p>
+                                <strong>Cuello:</strong> {product.neckline}
+                              </p>
+                              <p>
+                                <strong>Tipo Cuello:</strong> {product.typeNeckline}
+                              </p>
+                              <p>
+                                <strong>Manga:</strong> {product.sleeveShape}
+                              </p>
+                              <p>
+                                <strong>Tipo Manga:</strong> {product.sleeveType}
+                              </p>
+                              <p>
+                                <strong>Género:</strong> {product.gender}
+                              </p>
+                              <p>
+                                <strong>Talla:</strong> {product.size}
+                              </p>
+                              <p>
+                                <strong>Cantidad:</strong> {product.quantity}
+                              </p>
+                              {product.observation && (
+                                <p>
+                                  <strong>Observación:</strong> {product.observation}
+                                </p>
+                              )}
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
