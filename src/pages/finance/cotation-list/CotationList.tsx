@@ -80,7 +80,7 @@ const { Option } = Select
 
 const CotationList = () => {
   const userRole = Number(localStorage.getItem('userRole') || 0)
-  const readOnly = userRole === 4
+  const readOnly = userRole === 11
 
   const [Quotations, setQuotations] = useState<Quotation[]>([])
   const [searchText, setSearchText] = useState('')
@@ -952,7 +952,7 @@ const CotationList = () => {
                 </p>
                 <p>
                   <strong>Fecha de expiracion:</strong>{' '}
-                  {new Date(selectedQuotation.dateReceipt).toLocaleDateString(
+                  {new Date(selectedQuotation.expirationDate).toLocaleDateString(
                     'es-ES'
                   )}
                 </p>
@@ -991,7 +991,8 @@ const CotationList = () => {
                   {
                     title: 'Descripción',
                     dataIndex: 'description',
-                    key: 'description'
+                    key: 'description',
+                    render: (text: string) => text || '-'
                   },
                   {
                     title: 'Cantidad',
@@ -1026,7 +1027,8 @@ const CotationList = () => {
                   {
                     title: 'Descripción',
                     dataIndex: 'description',
-                    key: 'description'
+                    key: 'description',
+                    render: (text: string) => text || '-'
                   },
                   {
                     title: 'Cantidad',
@@ -1657,7 +1659,7 @@ const CotationList = () => {
                   
                   // Guardar en el estado
                   setCuttingOrderDt([formDataCut])
-                  setCuttingOrderStep(1)
+                setCuttingOrderStep(1)
                 } catch (error) {
                   console.error('Error al validar CuttingForm:', error)
                   message.error('Por favor complete los campos de fecha correctamente')

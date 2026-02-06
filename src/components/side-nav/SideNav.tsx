@@ -29,6 +29,8 @@ const getItem = (
   } as MenuItem
 }
 const ROLE_ADMIN = 1
+const ROLE_FINANCIERO = 2
+const ROLE_AUXILIAR = 3
 const ROLE_DISENO = 4
 
 const SideNav = () => {
@@ -37,30 +39,22 @@ const SideNav = () => {
 
   const userRole = Number(localStorage.getItem('userRole') || 0)
 
-  // Solo admin (1) y diseño (4) ven el sidenav
-  if (userRole !== ROLE_ADMIN && userRole !== ROLE_DISENO) {
+  // Admin (1), Financiero (2), Auxiliar (3) ven el sidenav (rol 4 NO debe verlo)
+  const roleWithNav = [ROLE_ADMIN, ROLE_FINANCIERO, ROLE_AUXILIAR].includes(userRole)
+  if (!roleWithNav) {
     return null
   }
 
   const allowedRoutesAdmin = ['/homepage', '/inventario', '/finanzas', '/personal', '/prod']
-  const allowedRoutesDiseno = ['/homepage', '/finanzas/cotizaciones']
 
-  const showSideNav =
-    userRole === ROLE_ADMIN
-      ? allowedRoutesAdmin.some((route) => location.pathname.startsWith(route))
-      : allowedRoutesDiseno.some((route) => location.pathname.startsWith(route))
+  const showSideNav = allowedRoutesAdmin.some((route) => location.pathname.startsWith(route))
 
   if (!showSideNav) {
     return null
   }
 
-  // Menú para rol Diseño: Inicio (dashboard con tabla de diseños) y Cotizaciones (solo ver)
-  const itemsDiseno: MenuProps['items'] = [
-    getItem('Inicio', '/homepage', <DashboardOutlined />),
-    getItem('Cotizaciones', '/finanzas/cotizaciones', <CodeSandboxOutlined />)
-  ]
-
-  const itemsAdmin: MenuProps['items'] = [
+  // Menú completo: Admin y Financiero (tienen verifyAdminFinance + verifyAdministrationDepartment)
+  const itemsAdminFinanciero: MenuProps['items'] = [
     getItem('Inicio', '/homepage', <DashboardOutlined />),
     getItem('Inventario', 'stock', <MailOutlined />, [
       getItem('Materiales', '/inventario/productos')
@@ -81,7 +75,30 @@ const SideNav = () => {
     ])
   ]
 
-  const items = userRole === ROLE_DISENO ? itemsDiseno : itemsAdmin
+  // Auxiliar: verifyAdministrationDepartment + verifyAreas (sin Gastos)
+  const itemsAuxiliar: MenuProps['items'] = [
+    getItem('Inicio', '/homepage', <DashboardOutlined />),
+    getItem('Inventario', 'stock', <MailOutlined />, [
+      getItem('Materiales', '/inventario/productos')
+    ]),
+    getItem('Finanzas', 'finance', <CodeSandboxOutlined />, [
+      getItem('Cotizaciones', '/finanzas/cotizaciones'),
+      getItem('Ordenes', '/finanzas/cuttingorders'),
+      getItem('Diseños', '/finanzas/desinglist')
+    ]),
+    getItem('Personal', 'employees', <ShoppingCartOutlined />, [
+      getItem('Empleados', '/personal/empleados'),
+      getItem('Clientes', '/personal/clientes')
+    ]),
+    getItem('Producción', 'prod', <EyeOutlined />, [
+      getItem('Estado de producción', '/produccion')
+    ])
+  ]
+
+  const items =
+    userRole === ROLE_AUXILIAR
+      ? itemsAuxiliar
+      : itemsAdminFinanciero
 
   return (
     <div>

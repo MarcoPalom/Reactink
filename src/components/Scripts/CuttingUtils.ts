@@ -982,6 +982,7 @@ export const handleSubmitShirts = async (
   const DesignData = {
     quotationId,
     ...(imageFileName ? { designFront: imageFileName } : {}),
+    cuttingOrderId: 0,
   }
 
   // Validar que haya playeras para enviar
@@ -1218,6 +1219,7 @@ export const handleSubmitShorts = async (
   const DesignData = {
     quotationId,
     ...(imageFileName ? { design: imageFileName } : {}),
+    cuttingOrderId: 0,
   }
 
   // Validar que haya shorts para enviar

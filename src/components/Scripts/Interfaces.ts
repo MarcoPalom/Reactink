@@ -266,6 +266,7 @@ export interface Employee {
     dateReceipt:string;
     quotation: Quotation
     dueDate:string;
+    status?: boolean;
   }
 
   export interface Props {
