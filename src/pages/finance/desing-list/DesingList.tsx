@@ -6,7 +6,8 @@ import {
   UnorderedListOutlined,
   EditOutlined,
   CheckCircleOutlined,
-  CloudUploadOutlined
+  CloudUploadOutlined,
+  DeleteOutlined
 } from '@ant-design/icons'
 import useTokenRenewal from 'components/Scripts/useTokenRenewal'
 import { useNavigate } from 'react-router-dom'
@@ -17,7 +18,8 @@ import {
   fetchQuotationDesign,
   addQuotationDesign,
   updateQuotationDesign,
-  uploadDesignFile
+  uploadDesignFile,
+  deleteQuotationDesign
 } from 'components/Scripts/Apicalls'
 import TodayDate from 'components/Scripts/Utils'
 import { API_BASE_URL } from 'config/api.config'
@@ -37,11 +39,14 @@ const IMAGE_LABELS: Record<string, string> = {
 }
 
 const ROLE_SALES = 11
+const ROLE_DISENO = 4
+//cambio
 
 const DesingList = () => {
   const navigate = useNavigate()
   const userRole = Number(localStorage.getItem('userRole') || 0)
   const readOnly = userRole === ROLE_SALES
+  const canDelete = userRole === ROLE_SALES || userRole === ROLE_DISENO
   const [designs, setDesigns] = useState<QuotationDesign[]>([])
   const [searchText, setSearchText] = useState('')
   const [loading, setLoading] = useState(false)
@@ -217,6 +222,25 @@ const DesingList = () => {
     }
   }
 
+  const handleDelete = async (record: QuotationDesign) => {
+    Modal.confirm({
+      title: '¿Estás seguro de eliminar este diseño?',
+      content: 'Esta acción no se puede deshacer.',
+      okText: 'Eliminar',
+      okType: 'danger',
+      cancelText: 'Cancelar',
+      onOk: async () => {
+        try {
+          await deleteQuotationDesign(record.id)
+          message.success('Diseño eliminado')
+          loadDesigns()
+        } catch {
+          message.error('Error al eliminar el diseño')
+        }
+      }
+    })
+  }
+
   const columns = [
     {
       title: 'Folio',
@@ -280,6 +304,16 @@ const DesingList = () => {
               title="Aprobar"
               disabled={!!record.approved}
               className={record.approved ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-100'}
+            />
+          )}
+          {canDelete && (
+            <Button
+              type="text"
+              icon={<DeleteOutlined />}
+              onClick={() => handleDelete(record)}
+              title="Eliminar"
+              danger
+              className="hover:bg-red-50"
             />
           )}
         </Space>
