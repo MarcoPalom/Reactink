@@ -46,7 +46,8 @@ const IroningAreaList: React.FC = () => {
   const [client, setClient] = useState<string | null>(null);
 
   useTokenRenewal(navigate)
-  const CURRENT_AREA = 9
+  //const CURRENT_AREA = 9
+  const CURRENT_AREA = 5
 
   const isShortProduct = (product: FormDataShirtView | FormDataShortView): product is FormDataShortView => {
     return 'shortSection' in product

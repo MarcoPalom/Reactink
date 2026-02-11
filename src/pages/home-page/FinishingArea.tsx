@@ -44,7 +44,8 @@ const FinishingAreaList: React.FC = () => {
   const [selectedProduct, setSelectedProduct] = useState<FormDataShirtView | FormDataShortView | null>(null)
 
   useTokenRenewal(navigate)
-  const CURRENT_AREA = 10
+  //const CURRENT_AREA = 10
+  const CURRENT_AREA = 6
 
   const isShortProduct = (product: FormDataShirtView | FormDataShortView): product is FormDataShortView => {
     return 'shortSection' in product
