@@ -581,9 +581,9 @@ const CotationList = () => {
         <Input
           value={text}
           onChange={(e) =>
-            QuotationUtils.handleFieldChangeEdit(
+            QuotationUtils.handleFieldChange(
               e.target.value,
-              record.id,
+              record.key,
               'description',
               dataSourceProducts,
               setDataSourceProducts,
@@ -602,9 +602,9 @@ const CotationList = () => {
           min={0}
           value={text}
           onChange={(value) =>
-            QuotationUtils.handleFieldChangeEdit(
+            QuotationUtils.handleFieldChange(
               value,
-              record.id,
+              record.key,
               'amount',
               dataSourceProducts,
               setDataSourceProducts,
@@ -623,9 +623,9 @@ const CotationList = () => {
           min={0}
           value={text}
           onChange={(value) =>
-            QuotationUtils.handleFieldChangeEdit(
+            QuotationUtils.handleFieldChange(
               value,
-              record.id,
+              record.key,
               'quantity',
               dataSourceProducts,
               setDataSourceProducts,
@@ -645,9 +645,9 @@ const CotationList = () => {
           max={100}
           value={record.tax}
           onChange={(value) =>
-            QuotationUtils.handleFieldChangeEdit(
+            QuotationUtils.handleFieldChange(
               value,
-              record.id,
+              record.key,
               'tax',
               dataSourceProducts,
               setDataSourceProducts,
@@ -666,17 +666,125 @@ const CotationList = () => {
     {
       title: 'Accion',
       key: 'action',
-      render: (record: any) => (
+      render: (text: any, record: any) => (
         <Space size="middle">
           <Button
             icon={<DeleteOutlined className="text-red-700" />}
             onClick={() =>
-              QuotationUtils.handleDeleteProductsClick(
+              QuotationUtils.handleDeleteProductEdit(
                 record,
-                quotationProductsMaquila,
-                setQuotationProductsMaquila,
-                quotationProducts,
-                setQuotationProducts
+                dataSourceProducts,
+                setDataSourceProducts,
+                dataSourceProductsMaquila,
+                setDataSourceProductsMaquila
+              )
+            }
+          />
+        </Space>
+      )
+    }
+  ]
+
+  const columnsEditQuotationMaquila = [
+    {
+      title: 'Descripcion',
+      dataIndex: 'description',
+      key: 'description',
+      render: (text: string, record: any) => (
+        <Input
+          value={text}
+          onChange={(e) =>
+            QuotationUtils.handleFieldChangeMaquila(
+              e.target.value,
+              record.key,
+              'description',
+              dataSourceProductsMaquila,
+              setDataSourceProductsMaquila,
+              setSaveLocked
+            )
+          }
+        />
+      )
+    },
+    {
+      title: 'Precio M',
+      dataIndex: 'price_meter',
+      key: 'price_meter',
+      render: () => <span>120</span>
+    },
+    {
+      title: 'Metros de impresion',
+      dataIndex: 'meters_impression',
+      key: 'meters_impression',
+      render: (text: number, record: any) => (
+        <InputNumber
+          step={0.1}
+          min={0}
+          value={text}
+          onChange={(value) =>
+            QuotationUtils.handleFieldChangeMaquila(
+              value,
+              record.key,
+              'meters_impression',
+              dataSourceProductsMaquila,
+              setDataSourceProductsMaquila,
+              setSaveLocked
+            )
+          }
+        />
+      )
+    },
+    {
+      title: 'Precio Unitario',
+      dataIndex: 'price_unit',
+      key: 'price_unit',
+      render: (text: any) => (
+        <span>{`$${!isNaN(parseFloat(text)) ? parseFloat(text).toFixed(2) : '0.00'}`}</span>
+      )
+    },
+    {
+      title: 'Cantidad',
+      dataIndex: 'quantity',
+      key: 'quantity',
+      render: (text: number, record: any) => (
+        <InputNumber
+          min={0}
+          value={text}
+          onChange={(value) =>
+            QuotationUtils.handleFieldChangeMaquila(
+              value,
+              record.key,
+              'quantity',
+              dataSourceProductsMaquila,
+              setDataSourceProductsMaquila,
+              setSaveLocked
+            )
+          }
+        />
+      )
+    },
+    {
+      title: 'Total',
+      dataIndex: 'amount',
+      key: 'amount',
+      render: (text: any) => (
+        <span>{`$${!isNaN(parseFloat(text)) ? parseFloat(text).toFixed(2) : '0.00'}`}</span>
+      )
+    },
+    {
+      title: 'Accion',
+      key: 'action',
+      render: (text: any, record: any) => (
+        <Space size="middle">
+          <Button
+            icon={<DeleteOutlined className="text-red-700" />}
+            onClick={() =>
+              QuotationUtils.handleDeleteProductEdit(
+                record,
+                dataSourceProducts,
+                setDataSourceProducts,
+                dataSourceProductsMaquila,
+                setDataSourceProductsMaquila
               )
             }
           />
@@ -804,7 +912,7 @@ const CotationList = () => {
       dataIndex: 'dateReceipt',
       key: 'dateReceipt',
       render: (dateReceipt: string) =>
-        new Date(dateReceipt).toLocaleDateString()
+        new Date(dateReceipt.split('T')[0] + 'T00:00:00').toLocaleDateString()
     },
     {
       title: 'Fecha de Expiracion',
@@ -812,7 +920,7 @@ const CotationList = () => {
       key: 'expirationDate',
       className: 'hidden lg:table-cell',
       render: (expirationDate: string) =>
-        new Date(expirationDate).toLocaleDateString()
+        new Date(expirationDate.split('T')[0] + 'T00:00:00').toLocaleDateString()
     },
     {
       title: 'Cliente',
@@ -946,13 +1054,13 @@ const CotationList = () => {
               <div className="text-sm">
                 <p>
                   <strong>Fecha de recibido:</strong>{' '}
-                  {new Date(selectedQuotation.dateReceipt).toLocaleDateString(
+                  {new Date(selectedQuotation.dateReceipt.split('T')[0] + 'T00:00:00').toLocaleDateString(
                     'es-ES'
                   )}
                 </p>
                 <p>
                   <strong>Fecha de expiracion:</strong>{' '}
-                  {new Date(selectedQuotation.expirationDate).toLocaleDateString(
+                  {new Date(selectedQuotation.expirationDate.split('T')[0] + 'T00:00:00').toLocaleDateString(
                     'es-ES'
                   )}
                 </p>
@@ -1134,6 +1242,17 @@ const CotationList = () => {
                 <Space className="flex justify-end">
                   <Button
                     onClick={() =>
+                      QuotationUtils.handleAddRowProducts(
+                        count,
+                        setCount,
+                        setDataSourceProducts,
+                        dataSourceProducts
+                      )
+                    }
+                    icon={<PlusOutlined className="text-cyan-500" />}
+                  />
+                  <Button
+                    onClick={() =>
                       QuotationUtils.handleFinishEdit(
                         EditForm,
                         dataSourceProducts,
@@ -1142,17 +1261,40 @@ const CotationList = () => {
                     }
                     icon={<SendOutlined className="text-green-500" />}
                   />
+                  <Button
+                    onClick={() =>
+                      QuotationUtils.handleEmpty(
+                        setDataSourceProductsMaquila,
+                        setDataSourceProducts,
+                        setTaxLocked,
+                        setSaveLocked,
+                        EditForm
+                      )
+                    }
+                    icon={<ClearOutlined className="text-red-500" />}
+                  />
                 </Space>
               )}
             />
           )}
           {dataSourceProductsMaquila.length > 0 && (
             <Table
-              columns={columnsAddQuotationMaquila}
+              columns={columnsEditQuotationMaquila}
               dataSource={dataSourceProductsMaquila}
               pagination={false}
               footer={() => (
                 <Space className="flex justify-end">
+                  <Button
+                    onClick={() =>
+                      QuotationUtils.handleAddRowMaquila(
+                        count,
+                        setCount,
+                        setDataSourceProductsMaquila,
+                        dataSourceProductsMaquila
+                      )
+                    }
+                    icon={<PlusOutlined className="text-cyan-500" />}
+                  />
                   <Button
                     onClick={() =>
                       QuotationUtils.handleFinishMaquilaEdit(
@@ -1162,6 +1304,18 @@ const CotationList = () => {
                       )
                     }
                     icon={<SendOutlined className="text-green-500" />}
+                  />
+                  <Button
+                    onClick={() =>
+                      QuotationUtils.handleEmpty(
+                        setDataSourceProductsMaquila,
+                        setDataSourceProducts,
+                        setTaxLocked,
+                        setSaveLocked,
+                        EditForm
+                      )
+                    }
+                    icon={<ClearOutlined className="text-red-500" />}
                   />
                 </Space>
               )}
@@ -1281,7 +1435,7 @@ const CotationList = () => {
                   <Select placeholder="Selecciona un cliente">
                     {clients.map((client: any) => (
                       <Option key={client.id} value={client.id}>
-                        {client.name}
+                        {client.name} {client.surname} - {client.phone}
                       </Option>
                     ))}
                   </Select>
@@ -1530,7 +1684,7 @@ const CotationList = () => {
                   <Select placeholder="Selecciona un cliente">
                     {clients.map((client: any) => (
                       <Option key={client.id} value={client.id}>
-                        {client.name}
+                        {client.name} {client.surname} - {client.phone}
                       </Option>
                     ))}
                   </Select>

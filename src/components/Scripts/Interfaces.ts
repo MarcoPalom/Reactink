@@ -148,6 +148,7 @@ export interface Employee {
 
   export interface QuotationProductMaquila {
     id?:number
+    key?:number
     quotationId : number
     description: string;
     quantity: number;

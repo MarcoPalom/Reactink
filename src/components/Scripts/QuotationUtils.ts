@@ -105,23 +105,28 @@ export const handleEdit = async (
   >
 ) => {
   try {
+    const fullRecord = await fetchQuotation(record.id.toString())
+
     const formattedRecord = {
-      ...record,
-      dateReceipt: record.dateReceipt ? record.dateReceipt.split('T')[0] : null,
-      expirationDate: record.expirationDate? record.expirationDate.split('T')[0]: null
+      ...fullRecord,
+      dateReceipt: fullRecord.dateReceipt ? fullRecord.dateReceipt.split('T')[0] : null,
+      expirationDate: fullRecord.expirationDate ? fullRecord.expirationDate.split('T')[0] : null
     }
 
-    if (
-      Array.isArray(formattedRecord.quotationProductMaquila) &&
-      formattedRecord.quotationProductMaquila.length > 0
-    ) {
-      setDataSourceProductsMaquila(formattedRecord.quotationProductMaquila)
+    const maquilaProducts = formattedRecord.quotation_product_maquila || formattedRecord.quotationProductMaquila
+    if (Array.isArray(maquilaProducts) && maquilaProducts.length > 0) {
+      const maquilaWithKeys = maquilaProducts.map(
+        (p: any, i: number) => ({ ...p, key: i })
+      )
+      setDataSourceProductsMaquila(maquilaWithKeys)
     }
-    if (
-      Array.isArray(formattedRecord.quotationProduct) &&
-      formattedRecord.quotationProduct.length > 0
-    ) {
-      setDataSourceProducts(formattedRecord.quotationProduct)
+
+    const products = formattedRecord.quotation_product || formattedRecord.quotationProduct
+    if (Array.isArray(products) && products.length > 0) {
+      const productsWithKeys = products.map(
+        (p: any, i: number) => ({ ...p, key: i })
+      )
+      setDataSourceProducts(productsWithKeys)
     }
     setEditingQuotation(formattedRecord)
     EditForm.setFieldsValue(formattedRecord)
@@ -184,37 +189,36 @@ export const handleSave = async (
 
     setQuotations(updatedQuotations)
 
-    if (
-      Array.isArray(editingQuotation.quotationProductMaquila) &&
-      editingQuotation.quotationProductMaquila.length > 0
-    ) {
-      for (const item of dataSourceProductsMaquila) {
-        const pivotDataProductMaquila = {
-          quotationId: editingQuotation.id,
-          description: item.description,
-          quantity: item.quantity,
-          meters_impression: item.meters_impression,
-          price_unit: item.price_unit,
-          price_meter: item.price_meter,
-          amount: item.amount
-        }
+    for (const item of dataSourceProductsMaquila) {
+      const pivotDataProductMaquila = {
+        quotationId: editingQuotation.id,
+        description: item.description,
+        quantity: item.quantity,
+        meters_impression: item.meters_impression,
+        price_unit: item.price_unit,
+        price_meter: item.price_meter,
+        amount: item.amount
+      }
+      if (item.id) {
         await EditQuotationProductMaquila(item.id, pivotDataProductMaquila)
+      } else {
+        await addQuotationProductMaquila(pivotDataProductMaquila)
       }
     }
-    if (
-      Array.isArray(editingQuotation.quotationProduct) &&
-      editingQuotation.quotationProduct.length > 0
-    ) {
-      for (const item of dataSourceProducts) {
-        const pivotDataProduct = {
-          quotationId: editingQuotation.id,
-          description: item.description,
-          quantity: item.quantity,
-          amount: item.amount,
-          tax: item.tax,
-          total: item.total
-        }
+
+    for (const item of dataSourceProducts) {
+      const pivotDataProduct = {
+        quotationId: editingQuotation.id,
+        description: item.description,
+        quantity: item.quantity,
+        amount: item.amount,
+        tax: item.tax,
+        total: item.total
+      }
+      if (item.id) {
         await EditQuotationProduct(item.id, pivotDataProduct)
+      } else {
+        await addQuotationProduct(pivotDataProduct)
       }
     }
     setDataSourceProducts([])
@@ -354,6 +358,45 @@ export const handleDeleteProduct = (
           setQuotationProductsMaquila(updatedProducts)
         }
 
+        message.success('Producto eliminado exitosamente')
+      } catch (error) {
+        message.error('Error al eliminar el producto')
+        console.log(error)
+      }
+    }
+  })
+}
+
+export const handleDeleteProductEdit = (
+  record: any,
+  dataSourceProducts: QuotationProduct[],
+  setDataSourceProducts: React.Dispatch<React.SetStateAction<QuotationProduct[]>>,
+  dataSourceProductsMaquila: QuotationProductMaquila[],
+  setDataSourceProductsMaquila: React.Dispatch<React.SetStateAction<QuotationProductMaquila[]>>
+) => {
+  confirm({
+    title: 'Confirmación de Eliminación',
+    content: `¿Estás seguro de que quieres eliminar este producto?`,
+    okText: 'Eliminar',
+    okType: 'danger',
+    cancelText: 'Cancelar',
+    onOk: async () => {
+      try {
+        if (record.id) {
+          const emptyData = {}
+          if ('tax' in record) {
+            await deleteQuotationProduct(record.id, emptyData)
+          } else if ('price_meter' in record) {
+            await deleteQuotationProductMaquila(record.id, emptyData)
+          }
+        }
+        if ('tax' in record) {
+          const updated = dataSourceProducts.filter((p) => p.key !== record.key)
+          setDataSourceProducts(updated)
+        } else if ('price_meter' in record) {
+          const updated = dataSourceProductsMaquila.filter((p) => p.key !== record.key)
+          setDataSourceProductsMaquila(updated)
+        }
         message.success('Producto eliminado exitosamente')
       } catch (error) {
         message.error('Error al eliminar el producto')
