@@ -115,17 +115,17 @@ export const handleEdit = async (
 
     const maquilaProducts = formattedRecord.quotation_product_maquila || formattedRecord.quotationProductMaquila
     if (Array.isArray(maquilaProducts) && maquilaProducts.length > 0) {
-      const maquilaWithKeys = maquilaProducts.map(
-        (p: any, i: number) => ({ ...p, key: i })
-      )
+      const maquilaWithKeys = maquilaProducts
+        .filter((p: any) => p.status !== false)
+        .map((p: any, i: number) => ({ ...p, key: i }))
       setDataSourceProductsMaquila(maquilaWithKeys)
     }
 
     const products = formattedRecord.quotation_product || formattedRecord.quotationProduct
     if (Array.isArray(products) && products.length > 0) {
-      const productsWithKeys = products.map(
-        (p: any, i: number) => ({ ...p, key: i })
-      )
+      const productsWithKeys = products
+        .filter((p: any) => p.status !== false)
+        .map((p: any, i: number) => ({ ...p, key: i }))
       setDataSourceProducts(productsWithKeys)
     }
     setEditingQuotation(formattedRecord)

@@ -2071,22 +2071,33 @@ const CotationList = () => {
                       <div>
                         <p>Disciplina: {selectedShirt.discipline}</p>
                         <p>
-                          Tela playera frente: {selectedShirt.clothFrontShirtId}
+                          Tela playera frente:{' '}
+                          {materials.find((m) => m.id === Number(selectedShirt.clothFrontShirtId))?.name ?? selectedShirt.clothFrontShirtId}
                         </p>
                         <p>
-                          Tela playera espalda: {selectedShirt.clothBackShirtId}
+                          Tela playera espalda:{' '}
+                          {materials.find((m) => m.id === Number(selectedShirt.clothBackShirtId))?.name ?? selectedShirt.clothBackShirtId}
                         </p>
                         <p>Forma cuello: {selectedShirt.neckline}</p>
                         <p>Tipo cuello: {selectedShirt.typeNeckline}</p>
-                        <p>Tela cuello: {selectedShirt.clothNecklineId}</p>
+                        <p>
+                          Tela cuello:{' '}
+                          {materials.find((m) => m.id === Number(selectedShirt.clothNecklineId))?.name ?? selectedShirt.clothNecklineId}
+                        </p>
                         <p>Forma de manga: {selectedShirt.sleeveShape}</p>
                         <p>Tipo de manga: {selectedShirt.sleeveType}</p>
-                        <p>Tela de manga: {selectedShirt.clothSleeveId}</p>
+                        <p>
+                          Tela de manga:{' '}
+                          {materials.find((m) => m.id === Number(selectedShirt.clothSleeveId))?.name ?? selectedShirt.clothSleeveId}
+                        </p>
                         <p>Puño: {selectedShirt.cuff}</p>
                         <p>Tipo de puño: {selectedShirt.typeCuff}</p>
-                        <p>Tela de puño: {selectedShirt.clothCuffId}</p>
+                        <p>
+                          Tela de puño:{' '}
+                          {materials.find((m) => m.id === Number(selectedShirt.clothCuffId))?.name ?? selectedShirt.clothCuffId}
+                        </p>
                         <p>DTF playera: {selectedShirt.dtfShirt}</p>
-                        <p>Tramos playera: {selectedShirt.tShirtSection}</p>
+                        <p>Tramos playera: {selectedShirt.tShirtSection == true ? 'Si' : 'No'}</p>
                       </div>
                     )}
                   </Modal>
