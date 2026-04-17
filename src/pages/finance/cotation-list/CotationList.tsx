@@ -144,6 +144,7 @@ const CotationList = () => {
   const [selectedShirt, setSelectedShirt] = useState<FormDataShirt | null>(null)
   const [selectedShort, setSelectedShort] = useState<FormDataShort | null>(null)
   const isSaveDisabled = CuttingUtils.isSaveButtonDisabled(shirts)
+  const isSaveDisabledShort = CuttingUtils.isSaveButtonDisabledShort(shorts)
   const [productType, setProductType] = useState<number | null>(null)
   const [productTypeShort, setProductTypeShort] = useState<number | null>(null)
   const [fileShirt, setFileShirt] = useState<File | null>(null)
@@ -2042,7 +2043,6 @@ const CotationList = () => {
                           productType
                         )
                       }
-                      disabled={isSaveDisabled}
                     >
                       Añadir a la lista
                     </Button>
@@ -2061,46 +2061,6 @@ const CotationList = () => {
                       />
                     )}
                   </Space>
-                  <Modal
-                    title={`Orden`}
-                    open={isModalShirtsTempVisible}
-                    onCancel={() => SetisModalShirtsTempVisible(false)}
-                    footer={null}
-                  >
-                    {selectedShirt && (
-                      <div>
-                        <p>Disciplina: {selectedShirt.discipline}</p>
-                        <p>
-                          Tela playera frente:{' '}
-                          {materials.find((m) => m.id === Number(selectedShirt.clothFrontShirtId))?.name ?? selectedShirt.clothFrontShirtId}
-                        </p>
-                        <p>
-                          Tela playera espalda:{' '}
-                          {materials.find((m) => m.id === Number(selectedShirt.clothBackShirtId))?.name ?? selectedShirt.clothBackShirtId}
-                        </p>
-                        <p>Forma cuello: {selectedShirt.neckline}</p>
-                        <p>Tipo cuello: {selectedShirt.typeNeckline}</p>
-                        <p>
-                          Tela cuello:{' '}
-                          {materials.find((m) => m.id === Number(selectedShirt.clothNecklineId))?.name ?? selectedShirt.clothNecklineId}
-                        </p>
-                        <p>Forma de manga: {selectedShirt.sleeveShape}</p>
-                        <p>Tipo de manga: {selectedShirt.sleeveType}</p>
-                        <p>
-                          Tela de manga:{' '}
-                          {materials.find((m) => m.id === Number(selectedShirt.clothSleeveId))?.name ?? selectedShirt.clothSleeveId}
-                        </p>
-                        <p>Puño: {selectedShirt.cuff}</p>
-                        <p>Tipo de puño: {selectedShirt.typeCuff}</p>
-                        <p>
-                          Tela de puño:{' '}
-                          {materials.find((m) => m.id === Number(selectedShirt.clothCuffId))?.name ?? selectedShirt.clothCuffId}
-                        </p>
-                        <p>DTF playera: {selectedShirt.dtfShirt}</p>
-                        <p>Tramos playera: {selectedShirt.tShirtSection == true ? 'Si' : 'No'}</p>
-                      </div>
-                    )}
-                  </Modal>
                 </Form>
               </div>
             ) : null}
@@ -2215,7 +2175,6 @@ const CotationList = () => {
                           CuttingOrderDt
                         )
                       }
-                      disabled={isSaveDisabled}
                     >
                       Añadir a la lista
                     </Button>
@@ -2234,31 +2193,6 @@ const CotationList = () => {
                       />
                     )}
                   </Space>
-                  <div className="mt-4 flex gap-2">
-                    <Button onClick={() => setCuttingOrderStep(0)}>Atrás</Button>
-                    {shorts.length > 0 && (
-                      <Button type="primary" onClick={() => setCuttingOrderStep(2)}>
-                        Siguiente: Lista e imagen
-                      </Button>
-                    )}
-                  </div>
-                  <Modal
-                    title={`Orden`}
-                    open={isModalShortsTempVisible}
-                    onCancel={() => SetisModalShortsTempVisible(false)}
-                    footer={null}
-                  >
-                    {selectedShort && (
-                      <div>
-                        <p>Disciplina: {selectedShort.discipline}</p>
-                        <p>Disciplina: {selectedShort.clothShortId}</p>
-                        <p>Disciplina: {selectedShort.clothViewId}</p>
-                        <p>Disciplina: {selectedShort.viewShort}</p>
-                        <p>Disciplina: {selectedShort.dtfShort}</p>
-                        <p>Disciplina: {selectedShort.shortSection}</p>
-                      </div>
-                    )}
-                  </Modal>
                 </Form>
               </div>
             ) : null}
@@ -2270,8 +2204,8 @@ const CotationList = () => {
                 type="primary"
                 onClick={() => setCuttingOrderStep(2)}
                 disabled={
-                  (isShirtFormVisible && shirts.length === 0) ||
-                  (isShortFormVisible && shorts.length === 0)
+                  (isShirtFormVisible && (shirts.length === 0 || isSaveDisabled)) ||
+                  (isShortFormVisible && (shorts.length === 0 || isSaveDisabledShort))
                 }
               >
                 Siguiente: Lista e imagen
@@ -2397,6 +2331,71 @@ const CotationList = () => {
             </Button>
           </div>
         )}
+
+        <Modal
+          title={`Orden`}
+          open={isModalShirtsTempVisible}
+          onCancel={() => SetisModalShirtsTempVisible(false)}
+          footer={null}
+        >
+          {selectedShirt && (
+            <div>
+              <p>Disciplina: {selectedShirt.discipline}</p>
+              <p>
+                Tela playera frente:{' '}
+                {materials.find((m) => m.id === Number(selectedShirt.clothFrontShirtId))?.name ?? selectedShirt.clothFrontShirtId}
+              </p>
+              <p>
+                Tela playera espalda:{' '}
+                {materials.find((m) => m.id === Number(selectedShirt.clothBackShirtId))?.name ?? selectedShirt.clothBackShirtId}
+              </p>
+              <p>Forma cuello: {selectedShirt.neckline}</p>
+              <p>Tipo cuello: {selectedShirt.typeNeckline}</p>
+              <p>
+                Tela cuello:{' '}
+                {materials.find((m) => m.id === Number(selectedShirt.clothNecklineId))?.name ?? selectedShirt.clothNecklineId}
+              </p>
+              <p>Forma de manga: {selectedShirt.sleeveShape}</p>
+              <p>Tipo de manga: {selectedShirt.sleeveType}</p>
+              <p>
+                Tela de manga:{' '}
+                {materials.find((m) => m.id === Number(selectedShirt.clothSleeveId))?.name ?? selectedShirt.clothSleeveId}
+              </p>
+              <p>Puño: {selectedShirt.cuff}</p>
+              <p>Tipo de puño: {selectedShirt.typeCuff}</p>
+              <p>
+                Tela de puño:{' '}
+                {materials.find((m) => m.id === Number(selectedShirt.clothCuffId))?.name ?? selectedShirt.clothCuffId}
+              </p>
+              <p>DTF playera: {selectedShirt.dtfShirt}</p>
+              <p>Tramos playera: {selectedShirt.tShirtSection == true ? 'Si' : 'No'}</p>
+            </div>
+          )}
+        </Modal>
+
+        <Modal
+          title={`Orden`}
+          open={isModalShortsTempVisible}
+          onCancel={() => SetisModalShortsTempVisible(false)}
+          footer={null}
+        >
+          {selectedShort && (
+            <div>
+              <p>Disciplina: {selectedShort.discipline}</p>
+              <p>
+                Tela short:{' '}
+                {materials.find((m) => m.id === Number(selectedShort.clothShortId))?.name ?? selectedShort.clothShortId}
+              </p>
+              <p>
+                Tela de vista short:{' '}
+                {materials.find((m) => m.id === Number(selectedShort.clothViewId))?.name ?? selectedShort.clothViewId}
+              </p>
+              <p>Vista de short: {selectedShort.viewShort}</p>
+              <p>DTF short: {selectedShort.dtfShort}</p>
+              <p>Tramos short: {selectedShort.shortSection}</p>
+            </div>
+          )}
+        </Modal>
       </Drawer>
 
       <div className="flex flex-col md:flex-row md:justify-between mb-4">

@@ -8,7 +8,7 @@ import {
 } from './Apicalls'
 import { message, Modal } from 'antd'
 import { Employee } from './Interfaces'
-import axios from 'axios'
+import axios, { AxiosError } from 'axios'
 import { API_BASE_URL } from 'config/api.config'
 import { FormInstance } from 'antd'
 
@@ -103,7 +103,14 @@ export const handleSave = async (
     }
   } catch (error) {
     console.error('Error al actualizar el empleado:', error)
-    message.error('Error al actualizar el empleado')
+    if (error instanceof AxiosError) {
+      const backendError = error.response?.data?.error
+      message.error(backendError || 'Error al actualizar el empleado')
+    } else if ((error as any)?.errorFields) {
+      return
+    } else {
+      message.error('Error al actualizar el empleado')
+    }
   } finally {
     setVisibleEdit(false)
     editForm.resetFields()
@@ -141,11 +148,14 @@ export const handleAddSave = async (
     const response = await addEmployee(employeeDataWithImage)
     setEmployees((prevEmployees: Employee[]) => [...prevEmployees, response])
     message.success('Empleado agregado exitosamente')
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error adding employee:', error)
-    message.error(
-      error.response?.data.message || 'Error al agregar el empleado'
-    )
+    if (error instanceof AxiosError) {
+      const backendError = error.response?.data?.error
+      message.error(backendError || 'Error al agregar el empleado')
+    } else {
+      message.error('Error desconocido al agregar el empleado')
+    }
   } finally {
     setVisibleAdd(false)
     addForm.resetFields()

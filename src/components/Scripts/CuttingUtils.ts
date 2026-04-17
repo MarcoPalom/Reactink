@@ -31,7 +31,7 @@ import {
 } from 'components/Scripts/Interfaces'
 import { message } from 'antd'
 import { useState } from 'react'
-import axios from 'axios'
+import axios, { AxiosError } from 'axios'
 import { FormInstance } from 'antd'
 
 export const fetchAndSetOrders = async (
@@ -238,7 +238,14 @@ export const handleSave = async (
     }
   } catch (error) {
     console.error('Error al actualizar la orden de corte:', error);
-    message.error('Error al actualizar la orden de corte');
+    if (error instanceof AxiosError) {
+      const backendError = error.response?.data?.error
+      message.error(backendError || 'Error al actualizar la orden de corte');
+    } else if ((error as any)?.errorFields) {
+      return;
+    } else {
+      message.error('Error al actualizar la orden de corte');
+    }
   } finally {
     setVisibleEdit(false);
     editForm.resetFields();
@@ -669,6 +676,16 @@ export const isSaveButtonDisabled = (shirts: FormDataShirt[]): boolean => {
       !shirt.quantity ||
       !shirt.gender ||
       !shirt.size?.trim()
+  )
+}
+
+export const isSaveButtonDisabledShort = (shorts: FormDataShort[]): boolean => {
+  return shorts.some(
+    (short) =>
+      !short.observation?.trim() ||
+      !short.quantity ||
+      !short.gender ||
+      !short.size?.trim()
   )
 }
 

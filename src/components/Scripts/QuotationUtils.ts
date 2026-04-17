@@ -1,4 +1,5 @@
 import { message, Modal } from 'antd'
+import { AxiosError } from 'axios'
 import {
   deleteQuotation,
   deleteQuotationProduct,
@@ -228,7 +229,14 @@ export const handleSave = async (
     EditForm.resetFields()
   } catch (error) {
     console.error('Error updating Quotation:', error)
-    message.error('Error al actualizar la Cotización')
+    if (error instanceof AxiosError) {
+      const backendError = error.response?.data?.error
+      message.error(backendError || 'Error al actualizar la Cotización')
+    } else if ((error as any)?.errorFields) {
+      return
+    } else {
+      message.error('Error al actualizar la Cotización')
+    }
   }
 }
 
@@ -291,11 +299,14 @@ export const handleAddSave = async (
     addForm.resetFields()
     setDataSourceProductsMaquila([])
     setDataSourceProducts([])
-  } catch (error: any) {
+  } catch (error) {
     console.error('Error adding Quotation:', error)
-    message.error(
-      error.response?.data.message || 'Error al agregar la Cotización'
-    )
+    if (error instanceof AxiosError) {
+      const backendError = error.response?.data?.error
+      message.error(backendError || 'Error al agregar la Cotización')
+    } else {
+      message.error('Error desconocido al agregar la Cotización')
+    }
   }
 }
 

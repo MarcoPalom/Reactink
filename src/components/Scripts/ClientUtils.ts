@@ -62,7 +62,14 @@ export const handleSave = async (
     EditForm.resetFields()
   } catch (error) {
     console.error('Error updating Client:', error)
-    message.error('Error al actualizar el Cliente')
+    if (error instanceof AxiosError) {
+      const backendError = error.response?.data?.error
+      message.error(backendError || 'Error al actualizar el Cliente')
+    } else if ((error as any)?.errorFields) {
+      return
+    } else {
+      message.error('Error al actualizar el Cliente')
+    }
   }
 }
 
@@ -86,9 +93,8 @@ export const handleAddSave = async (
   } catch (error) {
     console.error('Error adding Client:', error)
     if (error instanceof AxiosError) {
-      message.error(
-        error.response?.data.message || 'Error al agregar el Cliente'
-      )
+      const backendError = error.response?.data?.error
+      message.error(backendError || 'Error al agregar el Cliente')
     } else {
       message.error('Error desconocido al agregar el Cliente')
     }

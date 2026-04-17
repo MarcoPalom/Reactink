@@ -10,6 +10,7 @@ import {
   import { message, Modal } from 'antd'
   import { Expense, Material, Employee } from './Interfaces'
   import { FormInstance } from 'antd'
+  import { AxiosError } from 'axios'
   
   const { confirm } = Modal
   
@@ -86,7 +87,14 @@ import {
       }
     } catch (error) {
       console.error('Error al actualizar el Gasto:', error)
-      message.error('Error al actualizar el Gasto')
+      if (error instanceof AxiosError) {
+        const backendError = error.response?.data?.error
+        message.error(backendError || 'Error al actualizar el Gasto')
+      } else if ((error as any)?.errorFields) {
+        return
+      } else {
+        message.error('Error al actualizar el Gasto')
+      }
     } finally {
       setVisibleEdit(false)
       editForm.resetFields()
@@ -107,11 +115,16 @@ import {
       const response = await addExpense(expenseData)
       setExpenses((prevExpenses: Expense[]) => [...prevExpenses, response])
       message.success('Gasto agregado exitosamente')
-    } catch (error: any) {
+    } catch (error) {
       console.error('Error adding expense:', error)
-      message.error(
-        error.response?.data.message || 'Error al agregar el Gasto'
-      )
+      if (error instanceof AxiosError) {
+        const backendError = error.response?.data?.error
+        message.error(backendError || 'Error al agregar el Gasto')
+      } else if (error instanceof Error && error.message === 'Las contraseñas no coinciden') {
+        message.error(error.message)
+      } else {
+        message.error('Error desconocido al agregar el Gasto')
+      }
     } finally {
       setVisibleAdd(false)
       addForm.resetFields()

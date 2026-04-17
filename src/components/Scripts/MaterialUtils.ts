@@ -25,7 +25,7 @@ import {
   Employee,
   MaterialRends
 } from './Interfaces'
-import axios from 'axios'
+import axios, { AxiosError } from 'axios'
 
 
 const { confirm } = Modal
@@ -167,7 +167,14 @@ export const handleSave = async (
     }
   } catch (error) {
     console.error('Error al actualizar el Material:', error)
-    message.error('Error al actualizar el Material')
+    if (error instanceof AxiosError) {
+      const backendError = error.response?.data?.error
+      message.error(backendError || 'Error al actualizar el Material')
+    } else if ((error as any)?.errorFields) {
+      return
+    } else {
+      message.error('Error al actualizar el Material')
+    }
   } finally {
     setVisibleEdit(false)
     EditForm.resetFields()
@@ -212,9 +219,8 @@ export const handleAddSave = async (
     if (isValidationError) {
       message.warning('Complete los campos requeridos (Nombre, Cantidad, Categoría, Proveedor, Fecha de recibido, Ubicación)')
     } else {
-      message.error(
-        error.response?.data?.message || error.response?.data?.error || 'Error al agregar el Material'
-      )
+      const backendError = error instanceof AxiosError ? error.response?.data?.error : undefined
+      message.error(backendError || 'Error al agregar el Material')
     }
   }
 }
