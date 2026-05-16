@@ -35,6 +35,8 @@ const CuttingOrderList: React.FC = () => {
   const [isEditingShirt, setIsEditingShirt] = useState(true)
   const [searchText, setSearchText] = useState('')
   const [image, setImage] = useState<string | null>(null)
+  const [shirtImage, setShirtImage] = useState<string | null>(null)
+  const [shortImage, setShortImage] = useState<string | null>(null)
   const [editForm] = Form.useForm()
   const [editProductForm] = Form.useForm()
   
@@ -161,7 +163,8 @@ const CuttingOrderList: React.FC = () => {
                 setQuotationProducts,
                 setVisible,
                 setCuttingOrder,
-                setImage,
+                setShirtImage,
+                setShortImage,
                 setCurrentDesign
               )
               setCurrentQuotationId(record.quotationId)
@@ -265,19 +268,36 @@ const CuttingOrderList: React.FC = () => {
                     Imagen del Diseño
                   </h4>
                 </div>
-                <div className="flex flex-col items-center">
-                  {image ? (
-                    <img
-                      src={image}
-                      alt="Diseño"
-                      className="w-64 h-48 object-contain rounded border"
-                    />
-                  ) : (
+                {shirtImage || shortImage ? (
+                  <div className="flex flex-wrap gap-4 justify-center">
+                    {shirtImage && (
+                      <div className="flex flex-col items-center">
+                        <img
+                          src={shirtImage}
+                          alt="Diseño playera"
+                          className="w-48 h-36 object-contain rounded border"
+                        />
+                        <span className="text-xs text-gray-500 mt-1">Playera</span>
+                      </div>
+                    )}
+                    {shortImage && (
+                      <div className="flex flex-col items-center">
+                        <img
+                          src={shortImage}
+                          alt="Diseño short"
+                          className="w-48 h-36 object-contain rounded border"
+                        />
+                        <span className="text-xs text-gray-500 mt-1">Short</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex justify-center">
                     <div className="w-64 h-48 bg-gray-200 rounded flex items-center justify-center">
                       <span className="text-gray-400 text-sm">Sin imagen de diseño</span>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
 
               {combinedProducts.map((product, index) => {
@@ -332,15 +352,18 @@ const CuttingOrderList: React.FC = () => {
 
                     <div className="flex mb-4">
                       <div className="flex justify-center">
-                        {image ? (
-                          <img className="w-64 h-44" src={image} alt="Product" />
-                        ) : (
-                          <img
-                            className="w-64 h-44"
-                            src={Missing}
-                            alt="Missing product image"
-                          />
-                        )}
+                        {(() => {
+                          const productImage = isShirtProduct(product) ? shirtImage : shortImage
+                          return productImage ? (
+                            <img className="w-64 h-44" src={productImage} alt="Product" />
+                          ) : (
+                            <img
+                              className="w-64 h-44"
+                              src={Missing}
+                              alt="Missing product image"
+                            />
+                          )
+                        })()}
                       </div>
                       <div className="w-3/4 pl-4">
                         <div className="text-center text-sm text-gray-500 space-y-2">

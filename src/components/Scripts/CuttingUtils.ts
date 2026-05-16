@@ -77,7 +77,8 @@ export const handleView = async (
   setQuotationProducts: (products: (FormDataShirtView | FormDataShortView)[]) => void,
   setVisible: (visible: boolean) => void,
   setCuttingOrder: (order: Quotation[]) => void,
-  setDesignImage?: (imageUrl: string | null) => void,
+  setShirtImage?: (imageUrl: string | null) => void,
+  setShortImage?: (imageUrl: string | null) => void,
   setCurrentDesign?: (design: any) => void
 ): Promise<(FormDataShirtView | FormDataShortView)[]> => {
   try {
@@ -86,46 +87,38 @@ export const handleView = async (
     const cuttingOrder = await fetchQuotationOrder(id.toString());
     setQuotationProducts(products);
     setCuttingOrder(cuttingOrder);
-    
-    // Obtener la imagen del diseño si existe
+
     if (cuttingOrder) {
       const quotationData = cuttingOrder as any;
-      // El backend devuelve quotation_design (snake_case)
       const designs = quotationData.quotation_design || quotationData.quotationDesigns || [];
-      if (designs.length > 0) {
-        // Buscar el diseño asociado a esta orden de corte
-        const design = designs.find((d: any) => d.cuttingOrderId === id) || designs[0];
-        
-        // Guardar el diseño actual para edición
-        if (setCurrentDesign) {
-          setCurrentDesign(design);
-        }
-        
-        // Priorizar: designFront (playeras) > designShort > design > imageReference > logo
-        if (setDesignImage) {
-          if (design.designFront) {
-            // Las imágenes de playeras se guardan en quotation_shirt
-            setDesignImage(`${API_BASE_URL}/image/quotation_shirt/${design.designFront}`);
-          } else if (design.designShort || design.design) {
-            // Las imágenes de shorts se guardan en quotation_short
-            const shortImage = design.designShort || design.design;
-            setDesignImage(`${API_BASE_URL}/image/quotation_short/${shortImage}`);
-          } else if (design.imageReference) {
-            setDesignImage(`${API_BASE_URL}/image/quotation_design/${design.imageReference}`);
-          } else if (design.logo) {
-            setDesignImage(`${API_BASE_URL}/image/quotation_design/${design.logo}`);
-          } else {
-            setDesignImage(null);
-          }
-        }
-      } else {
-        if (setDesignImage) setDesignImage(null);
-        if (setCurrentDesign) setCurrentDesign(null);
+      const ownDesigns = designs.filter((d: any) => d.cuttingOrderId === id);
+      const candidates = ownDesigns.length > 0 ? ownDesigns : designs;
+
+      const shirtDesign = candidates.find((d: any) => d.designFront);
+      const shortDesign = candidates.find((d: any) => d.designShort || d.design);
+
+      if (setShirtImage) {
+        setShirtImage(
+          shirtDesign?.designFront
+            ? `${API_BASE_URL}/image/quotation_shirt/${shirtDesign.designFront}`
+            : null
+        );
+      }
+
+      if (setShortImage) {
+        const shortFile = shortDesign?.designShort || shortDesign?.design;
+        setShortImage(
+          shortFile ? `${API_BASE_URL}/image/quotation_short/${shortFile}` : null
+        );
+      }
+
+      if (setCurrentDesign) {
+        setCurrentDesign(shirtDesign || shortDesign || candidates[0] || null);
       }
     }
-    
+
     setVisible(true);
-    return products; // Devolver los productos para uso inmediato
+    return products;
   } catch (error) {
     console.error('Error handling view:', error);
     return [];
@@ -1235,7 +1228,7 @@ export const handleSubmitShorts = async (
   const Type: boolean = true
   const DesignData = {
     quotationId,
-    ...(imageFileName ? { design: imageFileName } : {}),
+    ...(imageFileName ? { designShort: imageFileName } : {}),
     cuttingOrderId: 0,
   }
 
