@@ -166,6 +166,13 @@ const PrintingAreaList: React.FC = () => {
         fetchData()
         setIsModalVisible(false)
         setSelectedProduct(null)
+        const updatedFilteredProducts = await Promise.all(
+          filteredQuotationProducts.map(async (product) => {
+            const status = await fetchProductStatus(product.id, isShortProduct(product) ? 'short' : 'shirt')
+            return { ...product, isPrintingAreaComplete: status.printingArea }
+          })
+        )
+        setFilteredQuotationProducts(updatedFilteredProducts.filter(product => !product.isPrintingAreaComplete))
         await fetchAllProductsData()
       } else {
         throw new Error('Unexpected response status')

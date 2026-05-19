@@ -1682,13 +1682,20 @@ const CotationList = () => {
                   name="clientId"
                   label="Cliente"
                 >
-                  <Select placeholder="Selecciona un cliente">
-                    {clients.map((client: any) => (
-                      <Option key={client.id} value={client.id}>
-                        {client.name} {client.surname} - {client.phone}
-                      </Option>
-                    ))}
-                  </Select>
+                  <Select
+                    placeholder="Selecciona un cliente"
+                    showSearch
+                    optionFilterProp="label"
+                    filterOption={(input, option) =>
+                      ((option?.label as string) ?? '')
+                        .toLowerCase()
+                        .includes(input.toLowerCase())
+                    }
+                    options={clients.map((client: any) => ({
+                      value: client.id,
+                      label: `${client.name} ${client.surname} - ${client.phone}`
+                    }))}
+                  />
                 </Form.Item>
               </div>
             </div>

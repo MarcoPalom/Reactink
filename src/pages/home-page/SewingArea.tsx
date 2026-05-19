@@ -167,6 +167,13 @@ const SewingAreaList: React.FC = () => {
         fetchData()
         setIsModalVisible(false)
         setSelectedProduct(null)
+        const updatedFilteredProducts = await Promise.all(
+          filteredQuotationProducts.map(async (product) => {
+            const status = await fetchProductStatus(product.id, isShortProduct(product) ? 'short' : 'shirt')
+            return { ...product, isSewingAreaComplete: status.sewingArea }
+          })
+        )
+        setFilteredQuotationProducts(updatedFilteredProducts.filter(product => !product.isSewingAreaComplete))
         await fetchAllProductsData()
       } else {
         throw new Error('Unexpected response status')

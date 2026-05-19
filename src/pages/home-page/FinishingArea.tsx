@@ -166,6 +166,13 @@ const FinishingAreaList: React.FC = () => {
         fetchData()
         setIsModalVisible(false)
         setSelectedProduct(null)
+        const updatedFilteredProducts = await Promise.all(
+          filteredQuotationProducts.map(async (product) => {
+            const status = await fetchProductStatus(product.id, isShortProduct(product) ? 'short' : 'shirt')
+            return { ...product, isFinishingAreaComplete: status.finishingArea }
+          })
+        )
+        setFilteredQuotationProducts(updatedFilteredProducts.filter(product => !product.isFinishingAreaComplete))
         await fetchAllProductsData()
       } else {
         throw new Error('Unexpected response status')
