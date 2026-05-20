@@ -12,24 +12,22 @@ import {
   Quotation,
   FormDataShirtView,
   FormDataShortView,
-  QuotationDesign
 } from 'components/Scripts/Interfaces'
 import {
   fetchOrders,
   fetchMaterials,
   fetchQuotations,
   fetchAllProducts,
-  fetchProductStatus,
   updateProductArea,
   fetchImage,
-  fetchQuotationDesigns
+  fetchCuttingOrderDetails
 } from 'components/Scripts/Apicalls'
 
 const FinishingAreaList: React.FC = () => {
   const navigate = useNavigate()
   const [orders, setOrders] = useState<CuttingOrderData[]>([])
-  const [designs, setDesigns] = useState<QuotationDesign[]>([])
-  const [image, setImage] = useState<string | null>(null)
+  const [shirtImage, setShirtImage] = useState<string | null>(null)
+  const [shortImage, setShortImage] = useState<string | null>(null)
   const [quotationProducts, setQuotationProducts] = useState<(FormDataShirtView | FormDataShortView)[]>([])
   const [filteredQuotationProducts, setFilteredQuotationProducts] = useState<(FormDataShirtView | FormDataShortView)[]>([])
   const [CuttingOrder, setCuttingOrder] = useState<Quotation[]>([])
@@ -53,17 +51,26 @@ const FinishingAreaList: React.FC = () => {
 
   const fetchImg = async (
     imageName: string,
-    setImage: (imageUrl: string) => void
+    folder: string,
+    setImage: (imageUrl: string | null) => void
   ) => {
     try {
-      const imageExtension = 'quotation_shirt'
-      if (imageName != null) {
-        const img = await fetchImage(imageName, imageExtension)
-        const imgURL = URL.createObjectURL(img)
-        setImage(imgURL)
-      }
+      const img = await fetchImage(imageName, folder)
+      const imgURL = URL.createObjectURL(img)
+      setImage(imgURL)
     } catch (error) {
-      console.error('Error fetching Material details:', error)
+      console.error('Error fetching design image:', error)
+      setImage(null)
+    }
+  }
+
+  const pickDesignsForOrder = (orderId: number, designs: any[]) => {
+    if (!designs || designs.length === 0) return { shirt: null, short: null }
+    const own = designs.filter((d: any) => d.cuttingOrderId === orderId)
+    const candidates = own.length > 0 ? own : designs
+    return {
+      shirt: candidates.find((d: any) => d.designFront) || null,
+      short: candidates.find((d: any) => d.designShort || d.design) || null,
     }
   }
 
@@ -95,15 +102,12 @@ const FinishingAreaList: React.FC = () => {
 
   const fetchData = async () => {
     try {
-      const [ordersData, materialsData, quotationsData, quotationsDesignData] = await Promise.all([
+      const [ordersData] = await Promise.all([
         fetchOrders(),
         fetchMaterials(),
         fetchQuotations(),
-        fetchQuotationDesigns(),
       ])
       setOrders(ordersData)
-      setDesigns(quotationsDesignData)
-      console.log('Fetched data:', { orders: ordersData, materials: materialsData, quotations: quotationsData, quotationsDesign: quotationsDesignData })
     } catch (error) {
       console.error('Error fetching data:', error)
       message.error('Error al cargar los datos. Por favor, intente de nuevo.')
@@ -115,8 +119,7 @@ const FinishingAreaList: React.FC = () => {
       setIsLoading(true)
       const products = await fetchAllProducts()
       setAllProducts(products)
-      console.log('Fetched all products:', products)
-      await checkProductStatus(products)
+      checkProductStatus(products)
     } catch (error) {
       console.error('Error fetching all products:', error)
       message.error('Error al cargar los productos. Por favor, intente de nuevo.')
@@ -126,18 +129,12 @@ const FinishingAreaList: React.FC = () => {
   }
 
   // Para acabado, mostrar productos que ya pasaron por todas las áreas incluyendo planchado (ironingArea = true)
-  const checkProductStatus = async (products: (FormDataShirtView | FormDataShortView)[]) => {
-    const completedProductsData = await Promise.all(
-      products.map(async (product) => {
-        const status = await fetchProductStatus(product.id, isShortProduct(product) ? 'short' : 'shirt')
-        // Mostrar productos que ya fueron validados en planchado (ironingArea = true) pero no en acabado todavía
-        if ( status.cuttingArea && status.printingArea && status.sublimationArea && status.sewingArea && status.ironingArea && !status.finishingArea ) {
-          return product
-        }
-        return null
-      })
+  const checkProductStatus = (products: (FormDataShirtView | FormDataShortView)[]) => {
+    setCompletedProducts(
+      products.filter(p =>
+        !!p.cuttingArea && !!p.printingArea && !!p.sublimationArea && !!p.sewingArea && !!p.ironingArea && !p.finishingArea
+      )
     )
-    setCompletedProducts(completedProductsData.filter((product): product is FormDataShirtView | FormDataShortView => product !== null))
   }
 
   useEffect(() => {
@@ -163,16 +160,10 @@ const FinishingAreaList: React.FC = () => {
 
       if (response.status === 200) {
         message.success("Artículo validado exitosamente")
-        fetchData()
         setIsModalVisible(false)
+        const validatedId = selectedProduct.id
         setSelectedProduct(null)
-        const updatedFilteredProducts = await Promise.all(
-          filteredQuotationProducts.map(async (product) => {
-            const status = await fetchProductStatus(product.id, isShortProduct(product) ? 'short' : 'shirt')
-            return { ...product, isFinishingAreaComplete: status.finishingArea }
-          })
-        )
-        setFilteredQuotationProducts(updatedFilteredProducts.filter(product => !product.isFinishingAreaComplete))
+        setFilteredQuotationProducts(prev => prev.filter(p => p.id !== validatedId))
         await fetchAllProductsData()
       } else {
         throw new Error('Unexpected response status')
@@ -186,40 +177,31 @@ const FinishingAreaList: React.FC = () => {
   const handleViewOrderDetails = async (id: number, quotationId: number) => {
     try {
       setIsLoading(true)
+      setShirtImage(null)
+      setShortImage(null)
 
-      const currentDesignD = designs.find(d => d.quotationId === quotationId);
+      const orderDetails = await fetchCuttingOrderDetails(id)
+      const quotationData: any = orderDetails?.quotation
+      const orderDesigns: any[] =
+        quotationData?.quotation_design || quotationData?.quotationDesigns || []
+      const { shirt, short } = pickDesignsForOrder(id, orderDesigns)
 
-      if (currentDesignD?.designFront) {
-        console.log('Setting currentDesign to:', currentDesignD.designFront)
-        fetchImg(currentDesignD.designFront, setImage)
-
-      } else {
-        console.log('Setting currentDesign to undefined')
-        setImage(null)
+      if (shirt?.designFront) {
+        fetchImg(shirt.designFront, 'quotation_shirt', setShirtImage)
+      }
+      const shortFile = short?.designShort || short?.design
+      if (shortFile) {
+        fetchImg(shortFile, 'quotation_short', setShortImage)
       }
 
-      const currentOrder = orders.find(o => o.quotationId === quotationId);
-
-      console.log( {currentOrder} );
-
-      if ( currentOrder?.quotation.clientId ) {
-        fetchClient( currentOrder?.quotation.clientId );
+      if (quotationData?.clientId) {
+        fetchClient(quotationData.clientId)
       } else {
-        setClient(null);
+        setClient(null)
       }
 
-      console.log('Fetching order details for id:', id)
       const fetchedProducts = await CuttingUtils.handleView(id, setQuotationProducts, setVisible, setCuttingOrder)
-      console.log('Quotation products after handleView:', fetchedProducts)
-      
-      // Filtrar solo productos que pasaron por planchado pero no por acabado
-      const productsWithStatus = await Promise.all(
-        fetchedProducts.map(async (product) => {
-          const status = await fetchProductStatus(product.id, isShortProduct(product) ? 'short' : 'shirt')
-          return { ...product, isCompleted: status.ironingArea && !status.finishingArea }
-        })
-      )
-      setFilteredQuotationProducts(productsWithStatus.filter(product => product.isCompleted))
+      setFilteredQuotationProducts(fetchedProducts.filter(p => !!p.ironingArea && !p.finishingArea))
       setVisible(true)
     } catch (error) {
       console.error('Error viewing order details:', error)
@@ -404,15 +386,18 @@ const FinishingAreaList: React.FC = () => {
 
                     <div className="flex flex-col md:flex-row mb-4">
                       <div className="flex justify-center md:w-1/3">
-                        {image ? (
-                          <img className="w-64 h-44" src={image} alt="Product" />
-                        ) : (
-                          <img
-                            className="w-64 h-44 object-cover"
-                            src={Missing}
-                            alt="missing image"
-                          />
-                        )}
+                        {(() => {
+                          const productImage = isShortProduct(product) ? shortImage : shirtImage
+                          return productImage ? (
+                            <img className="w-64 h-44" src={productImage} alt="Product" />
+                          ) : (
+                            <img
+                              className="w-64 h-44 object-cover"
+                              src={Missing}
+                              alt="missing image"
+                            />
+                          )
+                        })()}
                       </div>
                       <div className="md:w-2/3 mt-4 md:mt-0 md:pl-4">
                         <div className="text-sm text-gray-500 space-y-2">

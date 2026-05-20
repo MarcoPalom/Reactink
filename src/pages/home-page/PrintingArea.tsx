@@ -13,17 +13,14 @@ import {
   FormDataShirtView,
   FormDataShortView,
   Material,
-  quotationDesigns,
-  QuotationDesign
 } from 'components/Scripts/Interfaces'
 import {
   fetchOrders,
   fetchMaterials,
   fetchQuotations,
   fetchAllProducts,
-  fetchProductStatus,
   updateProductArea,
-  fetchQuotationDesigns,
+  fetchCuttingOrderDetails,
   fetchImage
 } from 'components/Scripts/Apicalls'
 import axios from 'axios'
@@ -32,8 +29,8 @@ const PrintingAreaList: React.FC = () => {
   const navigate = useNavigate()
   const [orders, setOrders] = useState<CuttingOrderData[]>([])
   const [materials, setMaterials] = useState<Material[]>([])
-  const [designs, setDesigns] = useState<QuotationDesign[]>([])
-  const [image, setImage] = useState<string | null>(null)
+  const [shirtImage, setShirtImage] = useState<string | null>(null)
+  const [shortImage, setShortImage] = useState<string | null>(null)
   const [quotationProducts, setQuotationProducts] = useState<(FormDataShirtView | FormDataShortView)[]>([])
   const [filteredQuotationProducts, setFilteredQuotationProducts] = useState<(FormDataShirtView | FormDataShortView)[]>([])
   const [CuttingOrder, setCuttingOrder] = useState<Quotation[]>([])
@@ -58,17 +55,26 @@ const PrintingAreaList: React.FC = () => {
 
   const fetchImg = async (
     imageName: string,
-    setImage: (imageUrl: string) => void
+    folder: string,
+    setImage: (imageUrl: string | null) => void
   ) => {
     try {
-      const imageExtension = 'quotation_shirt'
-      if (imageName != null) {
-        const img = await fetchImage(imageName, imageExtension)
-        const imgURL = URL.createObjectURL(img)
-        setImage(imgURL)
-      }
+      const img = await fetchImage(imageName, folder)
+      const imgURL = URL.createObjectURL(img)
+      setImage(imgURL)
     } catch (error) {
-      console.error('Error fetching Material details:', error)
+      console.error('Error fetching design image:', error)
+      setImage(null)
+    }
+  }
+
+  const pickDesignsForOrder = (orderId: number, designs: any[]) => {
+    if (!designs || designs.length === 0) return { shirt: null, short: null }
+    const own = designs.filter((d: any) => d.cuttingOrderId === orderId)
+    const candidates = own.length > 0 ? own : designs
+    return {
+      shirt: candidates.find((d: any) => d.designFront) || null,
+      short: candidates.find((d: any) => d.designShort || d.design) || null,
     }
   }
 
@@ -94,17 +100,14 @@ const PrintingAreaList: React.FC = () => {
 
   const fetchData = async () => {
     try {
-      const [ordersData, materialsData, quotationsData, quotationsDesignData] = await Promise.all([
+      const [ordersData, materialsData] = await Promise.all([
         fetchOrders(),
         fetchMaterials(),
         fetchQuotations(),
-        fetchQuotationDesigns(),
       ])
 
       setOrders(ordersData)
       setMaterials(materialsData)
-      setDesigns(quotationsDesignData)
-      console.log('Fetched data:', { orders: ordersData, materials: materialsData, quotations: quotationsData, quotationsDesign: quotationsDesignData })
     } catch (error) {
       console.error('Error fetching data:', error)
       message.error('Error al cargar los datos. Por favor, intente de nuevo.')
@@ -116,8 +119,7 @@ const PrintingAreaList: React.FC = () => {
       setIsLoading(true)
       const products = await fetchAllProducts()
       setAllProducts(products)
-      console.log('Fetched all products:', products)
-      await checkProductStatus(products)
+      checkProductStatus(products)
     } catch (error) {
       console.error('Error fetching all products:', error)
       message.error('Error al cargar los productos. Por favor, intente de nuevo.')
@@ -126,17 +128,8 @@ const PrintingAreaList: React.FC = () => {
     }
   }
 
-  const checkProductStatus = async (products: (FormDataShirtView | FormDataShortView)[]) => {
-    const validatedProductsData = await Promise.all(
-      products.map(async (product) => {
-        const status = await fetchProductStatus(product.id, isShortProduct(product) ? 'short' : 'shirt')
-        if (status.cuttingArea && !status.printingArea) {
-          return product
-        }
-        return null
-      })
-    )
-    setValidatedProducts(validatedProductsData.filter((product): product is FormDataShirtView | FormDataShortView => product !== null))
+  const checkProductStatus = (products: (FormDataShirtView | FormDataShortView)[]) => {
+    setValidatedProducts(products.filter(p => !!p.cuttingArea && !p.printingArea))
   }
 
   useEffect(() => {
@@ -163,16 +156,10 @@ const PrintingAreaList: React.FC = () => {
 
       if (response.status === 200) {
         message.success("Artículo validado exitosamente")
-        fetchData()
         setIsModalVisible(false)
+        const validatedId = selectedProduct.id
         setSelectedProduct(null)
-        const updatedFilteredProducts = await Promise.all(
-          filteredQuotationProducts.map(async (product) => {
-            const status = await fetchProductStatus(product.id, isShortProduct(product) ? 'short' : 'shirt')
-            return { ...product, isPrintingAreaComplete: status.printingArea }
-          })
-        )
-        setFilteredQuotationProducts(updatedFilteredProducts.filter(product => !product.isPrintingAreaComplete))
+        setFilteredQuotationProducts(prev => prev.filter(p => p.id !== validatedId))
         await fetchAllProductsData()
       } else {
         throw new Error('Unexpected response status')
@@ -183,46 +170,34 @@ const PrintingAreaList: React.FC = () => {
     }
   }
 
-  // AQUI ESTOY GUARDANDO LA FOKIN IMAGEN
   const handleViewOrderDetails = async (id: number, quotationId: number) => {
     try {
       setIsLoading(true)
+      setShirtImage(null)
+      setShortImage(null)
 
-      const currentDesignD = designs.find(d => d.quotationId === quotationId);
+      const orderDetails = await fetchCuttingOrderDetails(id)
+      const quotationData: any = orderDetails?.quotation
+      const orderDesigns: any[] =
+        quotationData?.quotation_design || quotationData?.quotationDesigns || []
+      const { shirt, short } = pickDesignsForOrder(id, orderDesigns)
 
-      console.log('Diseño Actual:', currentDesignD);
-
-      if (currentDesignD?.designFront) {
-        console.log('Setting currentDesign to:', currentDesignD.designFront)
-        fetchImg(currentDesignD.designFront, setImage)
-
-      } else {
-        console.log('Setting currentDesign to undefined')
-        setImage(null)
+      if (shirt?.designFront) {
+        fetchImg(shirt.designFront, 'quotation_shirt', setShirtImage)
+      }
+      const shortFile = short?.designShort || short?.design
+      if (shortFile) {
+        fetchImg(shortFile, 'quotation_short', setShortImage)
       }
 
-      const currentOrder = orders.find(o => o.quotationId === quotationId);
-
-      console.log( {currentOrder} );
-
-      if ( currentOrder?.quotation.clientId ) {
-        fetchClient( currentOrder?.quotation.clientId );
+      if (quotationData?.clientId) {
+        fetchClient(quotationData.clientId)
       } else {
-        setClient(null);
+        setClient(null)
       }
 
-      console.log('Fetching order details for id:', id)
       const fetchedProducts = await CuttingUtils.handleView(id, setQuotationProducts, setVisible, setCuttingOrder)
-      console.log('Quotation products after handleView:', fetchedProducts)
-      const productsWithStatus = await Promise.all(
-        fetchedProducts.map(async (product) => {
-          const status = await fetchProductStatus(product.id, isShortProduct(product) ? 'short' : 'shirt')
-          return { ...product, isPrintingAreaComplete: status.printingArea }
-        })
-      )
-      console.log('Products with status:', productsWithStatus)
-      setFilteredQuotationProducts(productsWithStatus.filter(product => !product.isPrintingAreaComplete))
-      console.log('Filtered quotation products:', filteredQuotationProducts)
+      setFilteredQuotationProducts(fetchedProducts.filter(p => !p.printingArea))
       setVisible(true)
     } catch (error) {
       console.error('Error viewing order details:', error)
@@ -409,15 +384,18 @@ const PrintingAreaList: React.FC = () => {
 
                     <div className="flex flex-col md:flex-row mb-4">
                       <div className="flex justify-center md:w-1/3">
-                        {image ? (
-                          <img className="w-64 h-44 " src={ image } alt="Product" />
-                        ) : (
-                          <img
-                            className="w-64 h-44 object-cover"
-                            src={Missing}
-                            alt="missing image"
-                          />
-                        )}
+                        {(() => {
+                          const productImage = isShortProduct(product) ? shortImage : shirtImage
+                          return productImage ? (
+                            <img className="w-64 h-44" src={productImage} alt="Product" />
+                          ) : (
+                            <img
+                              className="w-64 h-44 object-cover"
+                              src={Missing}
+                              alt="missing image"
+                            />
+                          )
+                        })()}
                       </div>
                       <div className="md:w-2/3 mt-4 md:mt-0 md:pl-4">
                         <div className="text-sm text-gray-500 space-y-2">
