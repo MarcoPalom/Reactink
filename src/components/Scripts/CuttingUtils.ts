@@ -283,102 +283,248 @@ export const handleDelete = (
   });
 };
 
-// Función para abrir el modal de edición de un producto (playera o short)
-export const handleEditProduct = (
-  product: FormDataShirtView | FormDataShortView,
+type CombinedEditable = (FormDataShirtView | FormDataShortView) & {
+  originals: (FormDataShirtView | FormDataShortView)[];
+};
+
+const buildShirtPayload = (
+  original: FormDataShirtView,
+  overrides: Partial<FormDataShirtView>
+) => {
+  const cleanOverrides = Object.fromEntries(
+    Object.entries(overrides).filter(([, v]) => v !== undefined)
+  ) as Partial<FormDataShirtView>;
+  const merged = { ...original, ...cleanOverrides };
+  return {
+    quotationId: Number(merged.quotationId),
+    productType: Number(merged.productType) || 1,
+    discipline: merged.discipline,
+    clothFrontShirtId: merged.clothFrontShirtId ? Number(merged.clothFrontShirtId) : merged.clothFrontShirtId,
+    clothBackShirtId: merged.clothBackShirtId ? Number(merged.clothBackShirtId) : merged.clothBackShirtId,
+    clothSleeveId: merged.clothSleeveId ? Number(merged.clothSleeveId) : merged.clothSleeveId,
+    clothNecklineId: merged.clothNecklineId ? Number(merged.clothNecklineId) : merged.clothNecklineId,
+    clothCuffId: merged.clothCuffId ? Number(merged.clothCuffId) : merged.clothCuffId,
+    neckline: merged.neckline || null,
+    typeNeckline: merged.typeNeckline || null,
+    sleeveType: merged.sleeveType || null,
+    sleeveShape: merged.sleeveShape || null,
+    cuff: merged.cuff || null,
+    typeCuff: merged.typeCuff || null,
+    dtfShirt: merged.dtfShirt || null,
+    tShirtSection: merged.tShirtSection,
+    size: merged.size,
+    quantity: Number(merged.quantity),
+    gender: Number(merged.gender),
+    observation: merged.observation || null,
+  };
+};
+
+const buildShortPayload = (
+  original: FormDataShortView,
+  overrides: Partial<FormDataShortView>
+) => {
+  const cleanOverrides = Object.fromEntries(
+    Object.entries(overrides).filter(([, v]) => v !== undefined)
+  ) as Partial<FormDataShortView>;
+  const merged = { ...original, ...cleanOverrides };
+  return {
+    quotationId: Number(merged.quotationId),
+    productType: Number(merged.productType) || 2,
+    discipline: merged.discipline,
+    clothShortId: merged.clothShortId ? Number(merged.clothShortId) : merged.clothShortId,
+    viewShort: merged.viewShort || null,
+    shortSection: merged.shortSection || null,
+    dtfShort: merged.dtfShort || null,
+    size: merged.size,
+    quantity: Number(merged.quantity),
+    gender: Number(merged.gender) as any,
+    observation: merged.observation || null,
+  };
+};
+
+// Abrir el modal de edición de especificaciones COMPARTIDAS de un producto combinado.
+// El form solo recibe los campos compartidos; talla/cantidad/género/observación se editan por fila.
+export const handleEditSharedSpecs = (
+  combinedProduct: CombinedEditable,
   isShirt: boolean,
-  setEditingProduct: (product: FormDataShirtView | FormDataShortView | null) => void,
+  setEditingProduct: (product: CombinedEditable | null) => void,
   setIsEditingShirt: (isShirt: boolean) => void,
   editProductForm: FormInstance,
   setVisibleEditProduct: (visible: boolean) => void
 ) => {
-  setEditingProduct(product);
+  setEditingProduct(combinedProduct);
   setIsEditingShirt(isShirt);
-  editProductForm.setFieldsValue(product);
+
+  if (isShirt) {
+    const p = combinedProduct as FormDataShirtView;
+    editProductForm.setFieldsValue({
+      discipline: p.discipline,
+      clothFrontShirtId: p.clothFrontShirtId,
+      clothBackShirtId: p.clothBackShirtId,
+      clothSleeveId: p.clothSleeveId,
+      clothNecklineId: p.clothNecklineId,
+      clothCuffId: p.clothCuffId,
+      neckline: p.neckline,
+      typeNeckline: p.typeNeckline,
+      sleeveType: p.sleeveType,
+      sleeveShape: p.sleeveShape,
+      cuff: p.cuff,
+      typeCuff: p.typeCuff,
+    });
+  } else {
+    const p = combinedProduct as FormDataShortView;
+    editProductForm.setFieldsValue({
+      discipline: p.discipline,
+      clothShortId: p.clothShortId,
+      viewShort: p.viewShort,
+      shortSection: p.shortSection,
+    });
+  }
+
   setVisibleEditProduct(true);
 };
 
-// Función para guardar cambios de un producto (playera o short)
-export const handleSaveProduct = async (
+// Guarda los campos compartidos aplicándolos a TODOS los originales del producto combinado.
+export const handleSaveSharedSpecs = async (
   editProductForm: FormInstance,
-  editingProduct: FormDataShirtView | FormDataShortView | null,
+  editingProduct: CombinedEditable | null,
   isEditingShirt: boolean,
   quotationProducts: (FormDataShirtView | FormDataShortView)[],
   setQuotationProducts: (products: (FormDataShirtView | FormDataShortView)[]) => void,
   setVisibleEditProduct: (visible: boolean) => void
 ) => {
   try {
-    const values = await editProductForm.validateFields();
+    const values = editProductForm.getFieldsValue(true);
 
-    if (editingProduct) {
-      let updatedData: any;
-
-      if (isEditingShirt) {
-        const shirtProduct = editingProduct as FormDataShirtView;
-        // Construir solo los campos que el backend acepta para playera
-        updatedData = {
-          quotationId: Number(shirtProduct.quotationId),
-          productType: Number(shirtProduct.productType) || 1,
-          discipline: values.discipline || shirtProduct.discipline,
-          clothFrontShirtId: values.clothFrontShirtId ? Number(values.clothFrontShirtId) : shirtProduct.clothFrontShirtId,
-          clothBackShirtId: values.clothBackShirtId ? Number(values.clothBackShirtId) : shirtProduct.clothBackShirtId,
-          clothSleeveId: values.clothSleeveId ? Number(values.clothSleeveId) : shirtProduct.clothSleeveId,
-          clothNecklineId: values.clothNecklineId ? Number(values.clothNecklineId) : shirtProduct.clothNecklineId,
-          clothCuffId: values.clothCuffId ? Number(values.clothCuffId) : shirtProduct.clothCuffId,
-          neckline: values.neckline || shirtProduct.neckline || null,
-          typeNeckline: values.typeNeckline || shirtProduct.typeNeckline || null,
-          sleeveType: values.sleeveType || shirtProduct.sleeveType || null,
-          sleeveShape: values.sleeveShape || shirtProduct.sleeveShape || null,
-          cuff: values.cuff || shirtProduct.cuff || null,
-          typeCuff: values.typeCuff || shirtProduct.typeCuff || null,
-          dtfShirt: values.dtfShirt || shirtProduct.dtfShirt || null,
-          tShirtSection: shirtProduct.tShirtSection,
-          size: values.size || shirtProduct.size,
-          quantity: Number(values.quantity),
-          gender: Number(values.gender),
-          observation: values.observation || shirtProduct.observation || null,
-        };
-
-        console.log('Sending shirt data:', updatedData);
-        await updateQuotationProductShirt(editingProduct.id, updatedData);
-        message.success('Playera actualizada exitosamente');
-      } else {
-        const shortProduct = editingProduct as FormDataShortView;
-        // Construir solo los campos que el backend acepta para short
-        updatedData = {
-          quotationId: Number(shortProduct.quotationId),
-          productType: Number(shortProduct.productType) || 2,
-          discipline: values.discipline || shortProduct.discipline,
-          clothShortId: values.clothShortId ? Number(values.clothShortId) : shortProduct.clothShortId,
-          viewShort: values.viewShort || shortProduct.viewShort || null,
-          shortSection: values.shortSection || shortProduct.shortSection || null,
-          dtfShort: values.dtfShort || shortProduct.dtfShort || null,
-          size: values.size || shortProduct.size,
-          quantity: Number(values.quantity),
-          gender: Number(values.gender),
-          observation: values.observation || shortProduct.observation || null,
-        };
-
-        console.log('Sending short data:', updatedData);
-        await updateQuotationProductShort(editingProduct.id, updatedData);
-        message.success('Short actualizado exitosamente');
-      }
-
-      // Actualizar la lista local de productos
-      const updatedProducts = quotationProducts.map((p) =>
-        p.id === editingProduct.id ? { ...p, ...values } : p
-      );
-      setQuotationProducts(updatedProducts);
-    } else {
+    if (!editingProduct || !editingProduct.originals?.length) {
       message.error('No hay producto para actualizar');
+      return;
     }
+
+    const sharedOverrides: any = isEditingShirt
+      ? {
+          discipline: values.discipline,
+          clothFrontShirtId: values.clothFrontShirtId,
+          clothBackShirtId: values.clothBackShirtId,
+          clothSleeveId: values.clothSleeveId,
+          clothNecklineId: values.clothNecklineId,
+          clothCuffId: values.clothCuffId,
+          neckline: values.neckline,
+          typeNeckline: values.typeNeckline,
+          sleeveType: values.sleeveType,
+          sleeveShape: values.sleeveShape,
+          cuff: values.cuff,
+          typeCuff: values.typeCuff,
+        }
+      : {
+          discipline: values.discipline,
+          clothShortId: values.clothShortId,
+          viewShort: values.viewShort,
+          shortSection: values.shortSection,
+        };
+
+    const updateOps = editingProduct.originals.map((original) => {
+      if (isEditingShirt) {
+        const payload = buildShirtPayload(original as FormDataShirtView, sharedOverrides);
+        return updateQuotationProductShirt(original.id, payload);
+      }
+      const payload = buildShortPayload(original as FormDataShortView, sharedOverrides);
+      return updateQuotationProductShort(original.id, payload);
+    });
+
+    const results = await Promise.allSettled(updateOps);
+    const failed = results.filter((r) => r.status === 'rejected').length;
+
+    if (failed === 0) {
+      message.success(
+        isEditingShirt
+          ? `Playera actualizada en ${results.length} registro(s)`
+          : `Short actualizado en ${results.length} registro(s)`
+      );
+    } else {
+      message.warning(`${results.length - failed} de ${results.length} registros actualizados; ${failed} fallaron`);
+    }
+
+    const updatedIds = new Set(editingProduct.originals.map((o) => o.id));
+    const updatedProducts = quotationProducts.map((p) =>
+      updatedIds.has(p.id) ? ({ ...p, ...sharedOverrides } as FormDataShirtView | FormDataShortView) : p
+    );
+    setQuotationProducts(updatedProducts);
   } catch (error: any) {
-    console.error('Error al actualizar el producto:', error);
+    console.error('Error al actualizar especificaciones compartidas:', error);
     const errorMsg = error.response?.data?.error || 'Error al actualizar el producto';
     message.error(errorMsg);
   } finally {
     setVisibleEditProduct(false);
     editProductForm.resetFields();
+  }
+};
+
+// Abrir el modal de edición de una fila (un registro individual).
+export const handleEditProductRow = (
+  original: FormDataShirtView | FormDataShortView,
+  isShirt: boolean,
+  setEditingProductRow: (product: FormDataShirtView | FormDataShortView | null) => void,
+  setIsEditingShirt: (isShirt: boolean) => void,
+  editProductRowForm: FormInstance,
+  setVisibleEditProductRow: (visible: boolean) => void
+) => {
+  setEditingProductRow(original);
+  setIsEditingShirt(isShirt);
+  editProductRowForm.setFieldsValue({
+    size: original.size,
+    quantity: typeof original.quantity === 'string' ? Number(original.quantity) : original.quantity,
+    gender: typeof original.gender === 'string' ? Number(original.gender) : original.gender,
+    observation: original.observation,
+  });
+  setVisibleEditProductRow(true);
+};
+
+// Guarda los campos individuales de un solo registro (una fila).
+export const handleSaveProductRow = async (
+  editProductRowForm: FormInstance,
+  editingProductRow: FormDataShirtView | FormDataShortView | null,
+  isEditingShirt: boolean,
+  quotationProducts: (FormDataShirtView | FormDataShortView)[],
+  setQuotationProducts: (products: (FormDataShirtView | FormDataShortView)[]) => void,
+  setVisibleEditProductRow: (visible: boolean) => void
+) => {
+  try {
+    const values = await editProductRowForm.validateFields();
+
+    if (!editingProductRow) {
+      message.error('No hay registro para actualizar');
+      return;
+    }
+
+    const overrides = {
+      size: values.size,
+      quantity: values.quantity,
+      gender: values.gender,
+      observation: values.observation,
+    };
+
+    if (isEditingShirt) {
+      const payload = buildShirtPayload(editingProductRow as FormDataShirtView, overrides as any);
+      await updateQuotationProductShirt(editingProductRow.id, payload);
+      message.success('Talla actualizada exitosamente');
+    } else {
+      const payload = buildShortPayload(editingProductRow as FormDataShortView, overrides as any);
+      await updateQuotationProductShort(editingProductRow.id, payload);
+      message.success('Talla actualizada exitosamente');
+    }
+
+    const updatedProducts = quotationProducts.map((p) =>
+      p.id === editingProductRow.id ? ({ ...p, ...overrides } as FormDataShirtView | FormDataShortView) : p
+    );
+    setQuotationProducts(updatedProducts);
+  } catch (error: any) {
+    console.error('Error al actualizar la talla:', error);
+    const errorMsg = error.response?.data?.error || 'Error al actualizar la talla';
+    message.error(errorMsg);
+  } finally {
+    setVisibleEditProductRow(false);
+    editProductRowForm.resetFields();
   }
 };
 

@@ -30,8 +30,10 @@ const CuttingOrderList: React.FC = () => {
   const [visible, setVisible] = useState(false)
   const [visibleEdit, setVisibleEdit] = useState(false)
   const [visibleEditProduct, setVisibleEditProduct] = useState(false)
+  const [visibleEditProductRow, setVisibleEditProductRow] = useState(false)
   const [editingOrder, setEditingOrder] = useState<CuttingOrderData | null>(null)
-  const [editingProduct, setEditingProduct] = useState<FormDataShirtView | FormDataShortView | null>(null)
+  const [editingProduct, setEditingProduct] = useState<((FormDataShirtView | FormDataShortView) & { originals: (FormDataShirtView | FormDataShortView)[] }) | null>(null)
+  const [editingProductRow, setEditingProductRow] = useState<FormDataShirtView | FormDataShortView | null>(null)
   const [isEditingShirt, setIsEditingShirt] = useState(true)
   const [searchText, setSearchText] = useState('')
   const [image, setImage] = useState<string | null>(null)
@@ -39,6 +41,7 @@ const CuttingOrderList: React.FC = () => {
   const [shortImage, setShortImage] = useState<string | null>(null)
   const [editForm] = Form.useForm()
   const [editProductForm] = Form.useForm()
+  const [editProductRowForm] = Form.useForm()
   
   // Estados para edición de imagen
   const [currentDesign, setCurrentDesign] = useState<any>(null)
@@ -70,8 +73,12 @@ const CuttingOrderList: React.FC = () => {
     return 'clothFrontShirtId' in product
   }
 
-  function combineProducts(products: (FormDataShirtView | FormDataShortView)[]): (FormDataShirtView | FormDataShortView)[] {
-    const combinedProducts: (FormDataShirtView | FormDataShortView)[] = []
+  type CombinedProduct = (FormDataShirtView | FormDataShortView) & {
+    originals: (FormDataShirtView | FormDataShortView)[]
+  }
+
+  function combineProducts(products: (FormDataShirtView | FormDataShortView)[]): CombinedProduct[] {
+    const combinedProducts: CombinedProduct[] = []
 
     products.forEach((product) => {
       const existingProduct = combinedProducts.find(
@@ -99,11 +106,9 @@ const CuttingOrderList: React.FC = () => {
       )
 
       if (existingProduct) {
-        existingProduct.size += `, ${product.size}`
-        existingProduct.quantity += `, ${product.quantity}`
-        existingProduct.observation += `, ${product.observation}`
+        existingProduct.originals.push(product)
       } else {
-        combinedProducts.push({ ...product })
+        combinedProducts.push({ ...product, originals: [product] } as CombinedProduct)
       }
     })
 
@@ -112,7 +117,7 @@ const CuttingOrderList: React.FC = () => {
 
   const combinedProducts = combineProducts(quotationProducts)
 
-  const columnsData = [
+  const buildRowColumns = (isShirt: boolean) => [
     {
       title: 'Talla',
       dataIndex: 'size',
@@ -127,6 +132,28 @@ const CuttingOrderList: React.FC = () => {
       title: 'Observación',
       dataIndex: 'observation',
       key: 'observation'
+    },
+    {
+      title: 'Acción',
+      key: 'action',
+      width: 90,
+      render: (_: any, record: any) => (
+        <Button
+          icon={<EditOutlined />}
+          size="small"
+          onClick={() =>
+            CuttingUtils.handleEditProductRow(
+              record.original,
+              isShirt,
+              setEditingProductRow,
+              setIsEditingShirt,
+              editProductRowForm,
+              setVisibleEditProductRow
+            )
+          }
+          title="Editar talla"
+        />
+      )
     }
   ]
 
@@ -301,21 +328,13 @@ const CuttingOrderList: React.FC = () => {
               </div>
 
               {combinedProducts.map((product, index) => {
-                const isSingleProduct = typeof product.size === 'string' && !product.size.includes(', ');
-
-                const dataSource = isSingleProduct
-                  ? [{
-                      key: 0,
-                      size: product.size,
-                      quantity: product.quantity,
-                      observation: product.observation,
-                    }]
-                  : (typeof product.size === 'string' ? product.size.split(', ') : [product.size]).map((size, idx) => ({
-                      key: idx,
-                      size,
-                      quantity: typeof product.quantity === 'string' ? product.quantity.split(', ')[idx] : product.quantity,
-                      observation: typeof product.observation === 'string' ? product.observation.split(', ')[idx] : product.observation,
-                    }));
+                const dataSource = product.originals.map((o) => ({
+                  key: o.id,
+                  size: o.size,
+                  quantity: o.quantity,
+                  observation: o.observation,
+                  original: o,
+                }));
                 return (
                   <div key={index} className="mb-4">
                     <div className="flex justify-between mb-4">
@@ -335,8 +354,9 @@ const CuttingOrderList: React.FC = () => {
                         icon={<EditOutlined />}
                         type="primary"
                         size="small"
-                        onClick={() =>
-                          CuttingUtils.handleEditProduct(
+                        onClick={() => {
+                          setEditProductStep(0)
+                          CuttingUtils.handleEditSharedSpecs(
                             product,
                             isShirtProduct(product),
                             setEditingProduct,
@@ -344,9 +364,9 @@ const CuttingOrderList: React.FC = () => {
                             editProductForm,
                             setVisibleEditProduct
                           )
-                        }
+                        }}
                       >
-                        Editar
+                        Editar especificaciones
                       </Button>
                     </div>
 
@@ -435,9 +455,9 @@ const CuttingOrderList: React.FC = () => {
                     )}
                     <div className="mt-4">
                       <Table
-                        columns={columnsData}
+                        columns={buildRowColumns(isShirtProduct(product))}
                         dataSource={dataSource}
-                        pagination={false} 
+                        pagination={false}
                         bordered
                       />
                     </div>
@@ -571,9 +591,9 @@ const CuttingOrderList: React.FC = () => {
         </Form>
       </Drawer>
 
-      {/* Drawer para editar producto (Playera o Short) */}
+      {/* Drawer para editar especificaciones compartidas del producto (aplica a todas las tallas) */}
       <Drawer
-        title={isEditingShirt ? "Editar Playera" : "Editar Short"}
+        title={isEditingShirt ? "Editar especificaciones (Playera)" : "Editar especificaciones (Short)"}
         placement="right"
         onClose={() => {
           CuttingUtils.handleCloseEditProduct(editProductForm, setVisibleEditProduct)
@@ -587,7 +607,10 @@ const CuttingOrderList: React.FC = () => {
               {editProductStep > 0 ? (
                 <Button onClick={() => setEditProductStep((s) => s - 1)}>Atrás</Button>
               ) : (
-                <Button onClick={() => CuttingUtils.handleCloseEditProduct(editProductForm, setVisibleEditProduct)}>
+                <Button onClick={() => {
+                  CuttingUtils.handleCloseEditProduct(editProductForm, setVisibleEditProduct)
+                  setEditProductStep(0)
+                }}>
                   Cancelar
                 </Button>
               )}
@@ -604,7 +627,7 @@ const CuttingOrderList: React.FC = () => {
                     editProductForm
                       .validateFields()
                       .then(() => {
-                        CuttingUtils.handleSaveProduct(
+                        CuttingUtils.handleSaveSharedSpecs(
                           editProductForm,
                           editingProduct,
                           isEditingShirt,
@@ -650,28 +673,9 @@ const CuttingOrderList: React.FC = () => {
               <Form.Item name="discipline" label="Disciplina" rules={[{ required: true, message: 'Requerido' }]}>
                 <Input placeholder="Ej. Fútbol" />
               </Form.Item>
-              <div className="grid grid-cols-2 gap-4">
-                <Form.Item name="size" label="Talla" rules={[{ required: true }]}>
-                  <Select placeholder="Talla">
-                    {['XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL', '8', '10', '12', '14', '16'].map((s) => (
-                      <Select.Option key={s} value={s}>{s}</Select.Option>
-                    ))}
-                  </Select>
-                </Form.Item>
-                <Form.Item name="quantity" label="Cantidad" rules={[{ required: true }]}>
-                  <InputNumber min={1} style={{ width: '100%' }} placeholder="0" />
-                </Form.Item>
-                <Form.Item name="gender" label="Género">
-                  <Select placeholder="Género">
-                    <Select.Option value={1}>Masculino</Select.Option>
-                    <Select.Option value={2}>Femenino</Select.Option>
-                    <Select.Option value={3}>Unisex</Select.Option>
-                  </Select>
-                </Form.Item>
-              </div>
-              <Form.Item name="observation" label="Observación">
-                <Input.TextArea rows={3} placeholder="Notas opcionales" />
-              </Form.Item>
+              <p className="text-xs text-gray-500">
+                Talla, cantidad, género y observación se editan por talla desde la tabla.
+              </p>
             </>
           )}
           {editProductStep === 1 && isEditingShirt && (
@@ -796,6 +800,73 @@ const CuttingOrderList: React.FC = () => {
           {editProductStep === 2 && !isEditingShirt && (
             <p className="text-gray-500 text-sm">No hay más campos. Use &quot;Guardar&quot; para aplicar cambios.</p>
           )}
+        </Form>
+      </Drawer>
+
+      {/* Drawer para editar una talla individual (un registro) */}
+      <Drawer
+        title="Editar talla"
+        placement="right"
+        onClose={() => CuttingUtils.handleCloseEditProduct(editProductRowForm, setVisibleEditProductRow)}
+        open={visibleEditProductRow}
+        width={420}
+        footer={
+          <div style={{ textAlign: 'right' }}>
+            <Button
+              onClick={() => CuttingUtils.handleCloseEditProduct(editProductRowForm, setVisibleEditProductRow)}
+              style={{ marginRight: 8 }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="primary"
+              onClick={() => {
+                editProductRowForm
+                  .validateFields()
+                  .then(() => {
+                    CuttingUtils.handleSaveProductRow(
+                      editProductRowForm,
+                      editingProductRow,
+                      isEditingShirt,
+                      quotationProducts,
+                      setQuotationProducts,
+                      setVisibleEditProductRow
+                    )
+                  })
+                  .catch((errorInfo) => {
+                    console.error('Error validating form:', errorInfo)
+                    message.error('Por favor completa todos los campos requeridos.')
+                  })
+              }}
+            >
+              Guardar
+            </Button>
+          </div>
+        }
+      >
+        <Form form={editProductRowForm} layout="vertical">
+          <div className="grid grid-cols-2 gap-4">
+            <Form.Item name="size" label="Talla" rules={[{ required: true }]}>
+              <Select placeholder="Talla">
+                {['6', '8', '12', '14', '16', '18', 'CH', 'M', 'G', 'XG', 'XXG', 'XXXG', '4XG'].map((s) => (
+                  <Select.Option key={s} value={s}>{s}</Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+            <Form.Item name="quantity" label="Cantidad" rules={[{ required: true }]}>
+              <InputNumber min={1} style={{ width: '100%' }} placeholder="0" />
+            </Form.Item>
+            <Form.Item name="gender" label="Género">
+              <Select placeholder="Género">
+                <Select.Option value={1}>Masculino</Select.Option>
+                <Select.Option value={2}>Femenino</Select.Option>
+                <Select.Option value={3}>Unisex</Select.Option>
+              </Select>
+            </Form.Item>
+          </div>
+          <Form.Item name="observation" label="Observación">
+            <Input.TextArea rows={3} placeholder="Notas opcionales" />
+          </Form.Item>
         </Form>
       </Drawer>
     </>
