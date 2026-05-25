@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react'
-import { Card, Drawer, Button, Modal, message, Spin } from 'antd'
+import { Card, Drawer, Modal, message, Spin } from 'antd'
 import { RightOutlined, LeftOutlined, SkinOutlined } from '@ant-design/icons'
 import useTokenRenewal from 'components/Scripts/useTokenRenewal'
 import { useNavigate } from 'react-router-dom'
 import { API_BASE_URL } from 'config/api.config'
 import * as CuttingUtils from 'components/Scripts/CuttingUtils'
-import Logo from 'assets/img/logo.png'
-import Missing from 'assets/img/noUserPhoto.jpg'
+import ProductDetailView from './homepage-components/ProductDetailView'
 import {
   CuttingOrderData,
   Quotation,
   FormDataShirtView,
   FormDataShortView,
+  Material,
 } from 'components/Scripts/Interfaces'
 import {
   fetchOrders,
@@ -26,6 +26,7 @@ import {
 const IroningAreaList: React.FC = () => {
   const navigate = useNavigate()
   const [orders, setOrders] = useState<CuttingOrderData[]>([])
+  const [materials, setMaterials] = useState<Material[]>([])
   const [shirtImage, setShirtImage] = useState<string | null>(null)
   const [shortImage, setShortImage] = useState<string | null>(null)
   const [quotationProducts, setQuotationProducts] = useState<(FormDataShirtView | FormDataShortView)[]>([])
@@ -96,12 +97,13 @@ const IroningAreaList: React.FC = () => {
 
   const fetchData = async () => {
     try {
-      const [ordersData] = await Promise.all([
+      const [ordersData, materialsData] = await Promise.all([
         fetchOrders(),
         fetchMaterials(),
         fetchQuotations(),
       ])
       setOrders(ordersData)
+      setMaterials(materialsData)
     } catch (error) {
       console.error('Error fetching data:', error)
       message.error('Error al cargar los datos. Por favor, intente de nuevo.')
@@ -136,6 +138,12 @@ const IroningAreaList: React.FC = () => {
   const filteredOrders = CuttingUtils.filterOrders(orders, searchText)
     .filter(order => validatedProducts.some(product => product.quotationId === order.quotationId))
   const filteredOrdersWithKeys = CuttingUtils.addKeysToOrders(filteredOrders)
+
+  const materialMap = new Map(materials.map((material) => [material.id, material.name]))
+
+  const getMaterialName = (id: number) => {
+    return materialMap.get(id) || 'Unknown'
+  }
 
   const handleValidate = (record: FormDataShirtView | FormDataShortView) => {
     setSelectedProduct(record)
@@ -208,54 +216,6 @@ const IroningAreaList: React.FC = () => {
 
   const prevSlide = () => {
     setCurrentSlide((prevSlide) => (prevSlide - 1 + filteredOrdersWithKeys.length) % filteredOrdersWithKeys.length)
-  }
-
-  const ResponsiveTable: React.FC<{ dataSource: (FormDataShirtView | FormDataShortView)[] }> = ({ dataSource }) => {
-    return (
-      <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tipo</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Talla</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Cantidad</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Validar</th>
-            </tr>
-          </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
-            {dataSource.map((item) => (
-              <tr key={item.id}>
-                <td className="px-6 py-4 whitespace-nowrap">{isShortProduct(item) ? 'Short' : 'Camisa'}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{item.size}</td>
-                <td className="px-6 py-4 whitespace-nowrap">{item.quantity}</td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <Button onClick={() => handleValidate(item)}>Validar</Button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    )
-  }
-
-  const ResponsiveCardList: React.FC<{ dataSource: (FormDataShirtView | FormDataShortView)[] }> = ({ dataSource }) => {
-    return (
-      <div className="space-y-4">
-        {dataSource.map((item) => (
-          <Card key={item.id} className="shadow-sm">
-            <div className="space-y-2">
-              <p><strong>Tipo:</strong> {isShortProduct(item) ? 'Short' : 'Camisa'}</p>
-              <p><strong>Talla:</strong> {item.size}</p>
-              <p><strong>Cantidad:</strong> {item.quantity}</p>
-              <div>
-                <Button onClick={() => handleValidate(item)}>Validar</Button>
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
-    )
   }
 
   return (
@@ -351,74 +311,17 @@ const IroningAreaList: React.FC = () => {
         {isLoading ? (
           <div className="flex justify-center items-center h-full">
             <Spin size="large" />
-          
           </div>
         ) : filteredQuotationProducts && filteredQuotationProducts.length > 0 ? (
-          <Card className="p-4">
-            <div>
-              <div className="flex justify-center mb-2">
-                <img src={Logo} alt="Ink Sports" className="h-8" />
-              </div>
-
-              {filteredQuotationProducts.map((product, index) => {
-                console.log('Rendering product:', product)
-                return (
-                  <div key={index} className="mb-4">
-                    <div className="flex justify-between mb-4">
-                      <p>
-                        <strong>Cotización Folio:</strong> {product.quotationId}
-                      </p>
-                      <p>
-                        <strong>Cliente:</strong> { client }
-                      </p>
-                    </div>
-
-                    <h3 className="flex justify-center text-lg leading-6 font-medium text-gray-900 mb-4">
-                      Orden de Planchado
-                    </h3>
-
-                    <div className="flex flex-col md:flex-row mb-4">
-                      <div className="flex justify-center md:w-1/3">
-                        {(() => {
-                          const productImage = isShortProduct(product) ? shortImage : shirtImage
-                          return productImage ? (
-                            <img className="w-64 h-44" src={productImage} alt="Product" />
-                          ) : (
-                            <img
-                              className="w-64 h-44 object-cover"
-                              src={Missing}
-                              alt="missing image"
-                            />
-                          )
-                        })()}
-                      </div>
-                      <div className="md:w-2/3 mt-4 md:mt-0 md:pl-4">
-                        <div className="text-sm text-gray-500 space-y-2">
-                          <p>
-                            <strong>Tipo:</strong> {isShortProduct(product) ? 'Short' : 'Camisa'}
-                          </p>
-                          <p>
-                            <strong>Disciplina:</strong> {product.discipline}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="hidden md:block">
-                      <ResponsiveTable
-                        dataSource={[product]}
-                      />
-                    </div>
-                    <div className="md:hidden">
-                      <ResponsiveCardList
-                        dataSource={[product]}
-                      />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          </Card>
+          <ProductDetailView
+            products={filteredQuotationProducts}
+            client={client}
+            shirtImage={shirtImage}
+            shortImage={shortImage}
+            getMaterialName={getMaterialName}
+            onValidate={handleValidate}
+            title="Orden de Planchado"
+          />
         ) : (
           <div className="flex justify-center items-center h-full">
             <p>No hay productos para mostrar.</p>

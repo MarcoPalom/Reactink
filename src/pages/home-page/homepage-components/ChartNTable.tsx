@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useEffect, useMemo } from 'react'
-import { Card, Table, Popover } from "antd"
+import { Card, Table, Popover, Button } from "antd"
 import { SmallDashOutlined } from '@ant-design/icons'
 import { Bar } from 'react-chartjs-2'
 import { 
@@ -135,13 +135,29 @@ const ChartNTable: React.FC = () => {
     ],
   }), [chartData])
 
-  const recentOrders = orders.slice(0, 5)
+  const recentOrders = useMemo(
+    () =>
+      [...orders].sort(
+        (a, b) =>
+          new Date(b.dateReceipt).getTime() - new Date(a.dateReceipt).getTime()
+      ),
+    [orders]
+  )
 
   const columns = [
     {
       title: 'ID',
       dataIndex: 'quotationId',
       key: 'quotationId',
+      render: (quotationId: number, record: CuttingOrderData) => (
+        <Button
+          type="link"
+          className="p-0"
+          onClick={() => navigate(`/produccion?orderId=${record.id}`)}
+        >
+          {quotationId}
+        </Button>
+      ),
     },
     {
       title: 'Estado',

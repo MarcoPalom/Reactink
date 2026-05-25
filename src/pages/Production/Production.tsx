@@ -1,5 +1,5 @@
 import useTokenRenewal from 'components/Scripts/useTokenRenewal'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Space, Card, Steps, Divider, Progress as AntdProgress, message, Select } from 'antd'
 import {
   FilePdfOutlined,
@@ -17,10 +17,19 @@ const Production = () => {
   const [quotation, setQuotation] = useState<any>(null); // Almacenar la cotización
   const [activeProducts, setActiveProducts] = useState<any[]>([]); // Almacenar los productos activos (Shirts o Shorts)
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   useTokenRenewal(navigate);
 
   useEffect(() => {
-    getOrders();
+    const init = async () => {
+      const data = await getOrders();
+      const orderId = searchParams.get('orderId');
+      if (orderId && Array.isArray(data)) {
+        const selected = data.find((o: any) => o.id === Number(orderId));
+        if (selected) setSelectedOrder(selected);
+      }
+    };
+    init();
   }, []);
 
   useEffect(() => {
@@ -189,11 +198,12 @@ const Production = () => {
         <Select
           style={{ width: 200 }} // Ancho del select
           placeholder="Selecciona un pedido"
+          value={selectedOrder?.id}
           onChange={handleOrderChange} // Manejar el cambio del select
         >
           {orders.map((order: any) => (
             <Select.Option key={order.id} value={order.id}>
-              {"Orden No: " + order.id}
+              {"Orden No: " + order.quotationId}
             </Select.Option>
           ))}
         </Select>
@@ -212,7 +222,7 @@ const Production = () => {
         {/* Contenido dinámico basado en la orden seleccionada */}
         {selectedOrder ? (
           <>
-            <h3>{`ID de la Orden: ${selectedOrder.id}`}</h3>
+            <h3>{`ID de la Orden: ${selectedOrder.quotationId}`}</h3>
 
             {activeProducts.map((product, productIndex) => (
               <div key={productIndex}>
