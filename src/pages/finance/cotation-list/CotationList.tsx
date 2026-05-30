@@ -63,7 +63,8 @@ import { GiUnderwearShorts, GiGoalKeeper } from 'react-icons/gi'
 import {
   generatePDF,
   generatePDFMODAL,
-  contentBlockAceptEdit
+  contentBlockAceptEdit,
+  formatCurrency
 } from 'components/Scripts/Utils'
 import { UploadChangeParam } from 'antd/lib/upload'
 import { fetchMaterialName, checkCuttingOrderExists } from 'components/Scripts/Apicalls'
@@ -1069,8 +1070,7 @@ const CotationList = () => {
                   <strong>Cliente:</strong> {`${ selectedQuotation.client.name } ${ selectedQuotation.client.surname} - ${ selectedQuotation.client.organization }`}
                 </p>
                 <p>
-                  <strong>Subtotal:</strong> {'$'}
-                  {selectedQuotation.subtotal}
+                  <strong>Subtotal:</strong> {formatCurrency(selectedQuotation.subtotal)}
                 </p>
               </div>
               <div className="text-sm">
@@ -1079,16 +1079,13 @@ const CotationList = () => {
                   {'%'}
                 </p>
                 <p>
-                  <strong>Total neto:</strong> {'$'}
-                  {selectedQuotation.netAmount}
+                  <strong>Total neto:</strong> {formatCurrency(selectedQuotation.netAmount)}
                 </p>
                 <p>
-                  <strong>Avance:</strong> {'$'}
-                  {selectedQuotation.advance}
+                  <strong>Avance:</strong> {formatCurrency(selectedQuotation.advance)}
                 </p>
                 <p>
-                  <strong>Total:</strong> {'$'}
-                  {selectedQuotation.total}
+                  <strong>Total:</strong> {formatCurrency(selectedQuotation.total)}
                 </p>
               </div>
             </div>
@@ -1112,7 +1109,7 @@ const CotationList = () => {
                     title: 'Precio C/U',
                     dataIndex: 'amount',
                     key: 'amount',
-                    render: (text: any) => `$${parseFloat(text).toFixed(2)}`
+                    render: (text: any) => formatCurrency(text)
                   },
                   {
                     title: 'Impuesto',
@@ -1124,7 +1121,7 @@ const CotationList = () => {
                     title: 'Total',
                     dataIndex: 'total',
                     key: 'total',
-                    render: (text: any) => `$${parseFloat(text).toFixed(2)}`
+                    render: (text: any) => formatCurrency(text)
                   }
                 ]}
               />
@@ -1148,7 +1145,7 @@ const CotationList = () => {
                     title: 'Precio M',
                     dataIndex: 'price_meter',
                     key: 'price_meter',
-                    render: (text: any) => `$${parseFloat(text).toFixed(2)}`
+                    render: (text: any) => formatCurrency(text)
                   },
                   {
                     title: 'Metros de impresion',
@@ -1160,13 +1157,13 @@ const CotationList = () => {
                     title: 'Precio C/U',
                     dataIndex: 'price_unit',
                     key: 'price_unit',
-                    render: (text: any) => `$${parseFloat(text).toFixed(2)}`
+                    render: (text: any) => formatCurrency(text)
                   },
                   {
                     title: 'Total',
                     dataIndex: 'amount',
                     key: 'amount',
-                    render: (text: any) => `$${parseFloat(text).toFixed(2)}`
+                    render: (text: any) => formatCurrency(text)
                   }
                 ]}
                 scroll={{ x: 240 }}

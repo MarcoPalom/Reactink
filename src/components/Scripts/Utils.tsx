@@ -5,6 +5,7 @@ import { Quotation, QuotationProduct, QuotationProductMaquila } from 'components
 import ButtDisables from 'assets/img/AceptBlocked.png'
 import SendButt from 'assets/img/Send.png'
 import TaxBloq from 'assets/img/TaxBloq.jpg'
+import Logo from 'assets/img/logo.png'
 
 export const disciplines = [
   'Futbol soccer',
@@ -133,6 +134,30 @@ const TodayDate = () => {
 
 export default TodayDate
 
+export const formatCurrency = (value: number | string | undefined | null): string => {
+  const n = Number(value ?? 0)
+  return `$${(isNaN(n) ? 0 : n).toLocaleString('en-US', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  })}`
+}
+
+let logoDataUrlCache: string | null = null
+const getLogoDataUrl = async (): Promise<string> => {
+  if (logoDataUrlCache) return logoDataUrlCache
+  const res = await fetch(Logo)
+  const blob = await res.blob()
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      logoDataUrlCache = reader.result as string
+      resolve(logoDataUrlCache)
+    }
+    reader.onerror = reject
+    reader.readAsDataURL(blob)
+  })
+}
+
 // Función genérica para generar PDF de cualquier tabla
 export const generatePDFTable = (
   title: string,
@@ -203,7 +228,7 @@ export const generatePDF = (quotations?: Quotation[]) => {
   generatePDFTable('Lista de Cotizaciones', headers, data, 'lista_cotizaciones')
 }
 
-export const generatePDFMODAL = (
+export const generatePDFMODAL = async (
   selectedQuotation: Quotation | null,
   modalRef: React.RefObject<HTMLElement>,
   quotationProducts?: QuotationProduct[],
@@ -221,25 +246,29 @@ export const generatePDFMODAL = (
   })
 
   const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
   const margin = 15
-  let yPosition = 20
 
-  // Título y folio
-  doc.setFontSize(18)
+  // Header: logo a la izquierda, texto a su derecha
+  const logoDataUrl = await getLogoDataUrl()
+  const logoW = 40
+  const logoH = 15
+  doc.addImage(logoDataUrl, 'PNG', margin, 12, logoW, logoH)
+
+  const headerTextX = margin + logoW + 5
+  doc.setFontSize(16)
   doc.setFont('helvetica', 'bold')
-  doc.text('INK SPORTS', pageWidth / 2, yPosition, { align: 'center' })
-  yPosition += 10
+  doc.text('INK SPORTS', headerTextX, 18)
 
-  doc.setFontSize(14)
-  doc.text(`Cotización Folio: ${selectedQuotation.id}`, pageWidth / 2, yPosition, { align: 'center' })
-  yPosition += 10
-
-  // Fecha
-  doc.setFontSize(10)
+  doc.setFontSize(12)
   doc.setFont('helvetica', 'normal')
+  doc.text(`Cotización Folio: ${selectedQuotation.id}`, headerTextX, 24)
+
+  doc.setFontSize(10)
   const today = new Date().toLocaleDateString('es-ES')
-  doc.text(`Ciudad Victoria, Tamaulipas a ${today}`, pageWidth / 2, yPosition, { align: 'center' })
-  yPosition += 15
+  doc.text(`Ciudad Victoria, Tamaulipas a ${today}`, headerTextX, 29)
+
+  let yPosition = 40
 
   // Información del cliente y cotización
   doc.setFontSize(10)
@@ -251,7 +280,7 @@ export const generatePDFMODAL = (
   doc.text('Fecha de recibido:', leftColX, yPosition)
   doc.setFont('helvetica', 'normal')
   doc.text(new Date(selectedQuotation.dateReceipt).toLocaleDateString('es-ES'), leftColX + 40, yPosition)
-  
+
   // Columna derecha
   doc.setFont('helvetica', 'bold')
   doc.text('Impuesto:', rightColX, yPosition)
@@ -263,11 +292,11 @@ export const generatePDFMODAL = (
   doc.text('Fecha de expiración:', leftColX, yPosition)
   doc.setFont('helvetica', 'normal')
   doc.text(new Date(selectedQuotation.expirationDate).toLocaleDateString('es-ES'), leftColX + 40, yPosition)
-  
+
   doc.setFont('helvetica', 'bold')
   doc.text('Total neto:', rightColX, yPosition)
   doc.setFont('helvetica', 'normal')
-  doc.text(`$${selectedQuotation.netAmount}`, rightColX + 25, yPosition)
+  doc.text(formatCurrency(selectedQuotation.netAmount), rightColX + 25, yPosition)
   yPosition += 6
 
   doc.setFont('helvetica', 'bold')
@@ -275,22 +304,22 @@ export const generatePDFMODAL = (
   doc.setFont('helvetica', 'normal')
   const clientName = `${selectedQuotation.client.name} ${selectedQuotation.client.surname} - ${selectedQuotation.client.organization}`
   doc.text(clientName.substring(0, 50), leftColX + 18, yPosition)
-  
+
   doc.setFont('helvetica', 'bold')
   doc.text('Avance:', rightColX, yPosition)
   doc.setFont('helvetica', 'normal')
-  doc.text(`$${selectedQuotation.advance}`, rightColX + 25, yPosition)
+  doc.text(formatCurrency(selectedQuotation.advance), rightColX + 25, yPosition)
   yPosition += 6
 
   doc.setFont('helvetica', 'bold')
   doc.text('Subtotal:', leftColX, yPosition)
   doc.setFont('helvetica', 'normal')
-  doc.text(`$${selectedQuotation.subtotal}`, leftColX + 22, yPosition)
-  
+  doc.text(formatCurrency(selectedQuotation.subtotal), leftColX + 22, yPosition)
+
   doc.setFont('helvetica', 'bold')
   doc.text('Total:', rightColX, yPosition)
   doc.setFont('helvetica', 'normal')
-  doc.text(`$${selectedQuotation.total}`, rightColX + 25, yPosition)
+  doc.text(formatCurrency(selectedQuotation.total), rightColX + 25, yPosition)
   yPosition += 15
 
   // Tabla de productos
@@ -303,9 +332,9 @@ export const generatePDFMODAL = (
     const productData = quotationProducts.map((product) => [
       product.description || 'Sin descripción',
       product.quantity.toString(),
-      `$${parseFloat(String(product.amount)).toFixed(2)}`,
+      formatCurrency(product.amount),
       `${parseFloat(String(product.tax || 0)).toFixed(2)}%`,
-      `$${parseFloat(String(product.total)).toFixed(2)}`
+      formatCurrency(product.total)
     ])
 
     autoTable(doc, {
@@ -338,9 +367,9 @@ export const generatePDFMODAL = (
     const maquilaData = quotationProductsMaquila.map((product) => [
       product.description || 'Sin descripción',
       product.quantity.toString(),
-      `$${parseFloat(String(product.price_meter || 0)).toFixed(2)}`,
+      formatCurrency(product.price_meter || 0),
       `${parseFloat(String(product.meters_impression || 0)).toFixed(2)}`,
-      `$${parseFloat(String(product.amount)).toFixed(2)}`
+      formatCurrency(product.amount)
     ])
 
     autoTable(doc, {
@@ -359,7 +388,32 @@ export const generatePDFMODAL = (
         4: { cellWidth: 30, halign: 'right' }
       }
     })
+
+    yPosition = (doc as any).lastAutoTable.finalY + 10
   }
+
+  // Pie con datos de la empresa (igual al modal)
+  const footerEstimatedHeight = 30
+  if (yPosition + footerEstimatedHeight > pageHeight - margin) {
+    doc.addPage()
+    yPosition = margin
+  } else {
+    yPosition += 5
+  }
+
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'normal')
+  doc.text('1 Y 2 Hidalgo, Zona Centro Cd. Victoria, Tamaulipas', pageWidth - margin, yPosition, { align: 'right' })
+  yPosition += 5
+  doc.text('Tel: (834)-312-16-58   Whatsapp: 8341330078', pageWidth - margin, yPosition, { align: 'right' })
+  yPosition += 7
+
+  doc.setFontSize(8)
+  const contactText =
+    'Si usted tiene alguna pregunta sobre esta cotización, por favor, póngase en contacto con nosotros ' +
+    'INK SUBLIMACIÓN, al 31 2 16 58 o a nuestro E-mail inkcomprasvic@gmail.com'
+  const wrapped = doc.splitTextToSize(contactText, pageWidth - margin * 2)
+  doc.text(wrapped, pageWidth - margin, yPosition, { align: 'right' })
 
   // Guardar PDF
   doc.save(`cotizacion_folio_${selectedQuotation.id}.pdf`)
