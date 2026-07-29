@@ -5,6 +5,13 @@ import axios from 'axios'
 import { useNavigate } from 'react-router-dom'
 import useTokenRenewal from 'components/Scripts/useTokenRenewal'
 import { API_BASE_URL } from 'config/api.config'
+import { fetchOrders, fetchAllProducts } from 'components/Scripts/Apicalls'
+
+// Una orden está completada cuando todos sus productos tienen las 6 áreas
+// de avance terminadas (los flags son numéricos 0/1, el truthy-check funciona).
+const isProductDone = (p: any) =>
+  !!(p.cuttingArea && p.printingArea && p.sublimationArea &&
+     p.sewingArea && p.ironingArea && p.finishingArea)
 
 export default function DashCount() {
   const [dashCountData, setDashCountData] = useState<number[]>([0, 0, 0, 0])
@@ -32,9 +39,28 @@ export default function DashCount() {
         });
         const totalClients = clientResponse.data.length;
 
+        // Pedidos recibidos = total de órdenes de corte
+        const orders = await fetchOrders();
+        const totalOrders = Array.isArray(orders) ? orders.length : 0;
+
+        // Pedidos completados = órdenes donde todos sus productos tienen
+        // las 6 áreas terminadas. Agrupamos los productos por quotationId.
+        const products = await fetchAllProducts();
+        const byQuotation = new Map<number, any[]>();
+        products.forEach((p: any) => {
+          const group = byQuotation.get(p.quotationId) || [];
+          group.push(p);
+          byQuotation.set(p.quotationId, group);
+        });
+
+        const completedOrders = (Array.isArray(orders) ? orders : []).filter((o: any) => {
+          const group = byQuotation.get(o.quotationId);
+          return !!group && group.length > 0 && group.every(isProductDone);
+        }).length;
+
         await new Promise(resolve => setTimeout(resolve, 1000));
 
-        setDashCountData([totalEmployees, totalClients, 10, 10]);
+        setDashCountData([totalEmployees, totalClients, totalOrders, completedOrders]);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching data:', error);

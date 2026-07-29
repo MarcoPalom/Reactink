@@ -977,13 +977,26 @@ const filterProductsMaquilaByQuotationId = (
 
 export const filterQuotations = (
   Quotations: Quotation[],
-  searchText: string
+  searchText: string,
+  clients: Client[] = []
 ) => {
-  return searchText
-    ? Quotations.filter((Quotation) =>
-        Quotation.id.toString().toLowerCase().includes(searchText.toLowerCase())
-      )
-    : Quotations
+  if (!searchText) return Quotations
+  const term = searchText.toLowerCase()
+  return Quotations.filter((Quotation) => {
+    const client =
+      clients.find((c) => String(c.id) === String(Quotation.clientId)) ||
+      Quotation.client
+    const haystack = [
+      Quotation.id,
+      client?.name,
+      client?.surname,
+      client?.organization
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+    return haystack.includes(term)
+  })
 }
 
 export const addKeysToQuotations = (Quotations: Quotation[]) => {

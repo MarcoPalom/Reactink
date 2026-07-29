@@ -185,7 +185,8 @@ const CotationList = () => {
 
   const filteredQuotations = QuotationUtils.filterQuotations(
     Quotations,
-    searchText
+    searchText,
+    clients
   )
   const filteredQuotationsWithKeys =
     QuotationUtils.addKeysToQuotations(filteredQuotations)
@@ -930,7 +931,9 @@ const CotationList = () => {
       key: 'clientId',
       render: (clientId: string) => {
         const client = clients.find((client) => client.id === clientId)
-        return client ? client.name : 'Cliente no encontrado'
+        if (!client) return 'Cliente no encontrado'
+        const fullName = `${client.name || ''} ${client.surname || ''}`.trim()
+        return client.organization ? `${fullName} - ${client.organization}` : fullName
       }
     },
     {

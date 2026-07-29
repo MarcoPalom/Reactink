@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import {  Space, Table, Card, Input, Progress } from 'antd'
+import {  Space, Table, Card, Input, Progress, Segmented } from 'antd'
 import { FilePdfOutlined } from '@ant-design/icons'
 import useTokenRenewal from 'components/Scripts/useTokenRenewal'
 import { useNavigate } from 'react-router-dom'
@@ -15,35 +15,56 @@ const DebtList = () => {
   const navigate = useNavigate()
   const [Quotations, setQuotations] = useState<Quotation[]>([])
   const [Clients, setClients] = useState<Client[]>([])
+  const [cuttingOrders, setCuttingOrders] = useState<any[]>([])
   const [searchText, setSearchText] = useState('')
+  const [paymentStatus, setPaymentStatus] = useState<'con_deuda' | 'liquidado'>(
+    'con_deuda'
+  )
   const filteredQuotations = DebtsUtils.filterQuotations(Quotations, searchText)
+  const filteredByStatus = DebtsUtils.filterQuotationsByPaymentStatus(
+    filteredQuotations,
+    paymentStatus
+  )
   const filteredQuotationsWithKeys =
-    DebtsUtils.addKeysToQuotations(filteredQuotations)
+    DebtsUtils.addKeysToQuotations(filteredByStatus)
 
   useTokenRenewal(navigate)
 
   useEffect(() => {
     DebtsUtils.fetchAndSetQuotations(setQuotations)
     DebtsUtils.fetchAndSetClients(setClients)
+    DebtsUtils.fetchAndSetCuttingOrders(setCuttingOrders)
   }, [])
 
-  const calculateDebtStatus = (Quotations: any) => {
-    const { netAmount, advance, total } = Quotations
+  const cuttingOrderMap = new Map<number, number>(
+    cuttingOrders.map((order) => [order.quotationId, order.id])
+  )
 
-    if (!netAmount || !total) {
-      return null
+  const calculateDebtStatus = (Quotation: any) => {
+    const advance = Quotation.advance ?? 0
+    const total = Quotation.total ?? 0
+
+    if (DebtsUtils.isLiquidated(Quotation)) {
+      return <span style={{ color: 'green' }}>Liquidado</span>
     }
 
-    if (netAmount - total === 0) {
-      return <span style={{ color: 'red' }}>En deuda</span>
-    } else {
-      const percentagePaid = ((advance / netAmount) * 100).toFixed(2)
-      console.log(percentagePaid)
-      return <Progress percent={parseFloat(percentagePaid)} status="normal" />
-    }
+    const original = advance + total
+    const percentagePaid =
+      original > 0 ? ((advance / original) * 100).toFixed(2) : '0'
+    return <Progress percent={parseFloat(percentagePaid)} status="normal" />
   }
 
   const columns = [
+    {
+      title: 'N° Cotización',
+      dataIndex: 'id',
+      key: 'id'
+    },
+    {
+      title: 'N° Orden de Corte',
+      key: 'cuttingOrderId',
+      render: (_: any, record: any) => cuttingOrderMap.get(record.id) ?? '-'
+    },
     {
       title: 'Cliente',
       dataIndex: 'clientId',
@@ -84,14 +105,25 @@ const DebtList = () => {
         <Space
           className="mb-4 flex flex-row justify-between"
         >
-          <div className="flex flex-row gap-1">
+          <div className="flex flex-row gap-3 items-center">
             <Search placeholder="Busqueda..." className="w-44" />
+            <Segmented
+              value={paymentStatus}
+              onChange={(value) =>
+                setPaymentStatus(value as 'con_deuda' | 'liquidado')
+              }
+              options={[
+                { label: 'Con deuda', value: 'con_deuda' },
+                { label: 'Liquidados', value: 'liquidado' }
+              ]}
+            />
           </div>
           <div className="flex flex-row gap-4 text-lg">
             <FilePdfOutlined className="text-red-500" onClick={() => {
-              const headers = ['Folio', 'Cliente', 'Total', 'Avance', 'Restante', 'Estado']
+              const headers = ['N° Cotización', 'N° Orden de Corte', 'Cliente', 'Total', 'Avance', 'Restante', 'Estado']
               const data = filteredQuotationsWithKeys.map((q) => [
                 q.id?.toString() || '',
+                cuttingOrderMap.get(q.id)?.toString() ?? '-',
                 `${q.client?.name || ''} ${q.client?.surname || ''}`,
                 `$${q.netAmount || 0}`,
                 `$${q.advance || 0}`,

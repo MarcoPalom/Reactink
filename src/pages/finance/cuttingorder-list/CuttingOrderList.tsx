@@ -4,7 +4,8 @@ import { FilePdfOutlined, DatabaseOutlined, EditOutlined, DeleteOutlined, Upload
 import useTokenRenewal from 'components/Scripts/useTokenRenewal'
 import { useNavigate } from 'react-router-dom'
 import * as CuttingUtils from 'components/Scripts/CuttingUtils'
-import { generatePDFTable } from 'components/Scripts/Utils'
+import { generatePDFTable, generatePDFCuttingOrder, genderMap } from 'components/Scripts/Utils'
+import { fetchQuotations } from 'components/Scripts/Apicalls'
 import Logo from 'assets/img/logo.png'
 import TodayDate from '../../../components/Scripts/Utils'
 import Missing from 'assets/img/noUserPhoto.jpg'
@@ -15,7 +16,8 @@ import {
   FormDataShirtView,
   FormDataShortView,
   Material,
-  quotationDesigns
+  quotationDesigns,
+  Client
 } from 'components/Scripts/Interfaces'
 
 const { Search } = Input
@@ -23,6 +25,7 @@ const { Search } = Input
 const CuttingOrderList: React.FC = () => {
   const navigate = useNavigate()
   const [orders, setOrders] = useState<CuttingOrderData[]>([])
+  const [quotations, setQuotations] = useState<Quotation[]>([])
   const [materials, setMaterials] = useState<Material[]>([])
   const [designs, setDesigns] = useState<quotationDesigns[]>([])
   const [quotationProducts, setQuotationProducts] = useState<(FormDataShirtView | FormDataShortView)[]>([])
@@ -32,6 +35,8 @@ const CuttingOrderList: React.FC = () => {
   const [visibleEditProduct, setVisibleEditProduct] = useState(false)
   const [visibleEditProductRow, setVisibleEditProductRow] = useState(false)
   const [editingOrder, setEditingOrder] = useState<CuttingOrderData | null>(null)
+  const [viewingOrder, setViewingOrder] = useState<CuttingOrderData | null>(null)
+  const [generatingPDF, setGeneratingPDF] = useState(false)
   const [editingProduct, setEditingProduct] = useState<((FormDataShirtView | FormDataShortView) & { originals: (FormDataShirtView | FormDataShortView)[] }) | null>(null)
   const [editingProductRow, setEditingProductRow] = useState<FormDataShirtView | FormDataShortView | null>(null)
   const [isEditingShirt, setIsEditingShirt] = useState(true)
@@ -56,9 +61,19 @@ const CuttingOrderList: React.FC = () => {
     CuttingUtils.fetchAndSetOrders(setOrders)
     CuttingUtils.fetchAndSetMaterials(setMaterials)
     CuttingUtils.fetchAndSetQuotations(setDesigns)
+    fetchQuotations()
+      .then((data) => setQuotations(data || []))
+      .catch((error) => console.error('Error fetching quotations:', error))
   }, [])
 
-  const filteredOrders = CuttingUtils.filterOrders(orders, searchText)
+  const quotationMap = new Map<number, Quotation>(
+    quotations.map((q) => [q.id, q])
+  )
+
+  const getClient = (order: CuttingOrderData): Client | undefined =>
+    quotationMap.get(order.quotationId)?.client || order.quotation?.client
+
+  const filteredOrders = CuttingUtils.filterOrders(orders, searchText, quotationMap)
   const filteredOrdersWithKeys = CuttingUtils.addKeysToOrders(filteredOrders)
 
   const materialMap = new Map(
@@ -117,6 +132,36 @@ const CuttingOrderList: React.FC = () => {
 
   const combinedProducts = combineProducts(quotationProducts)
 
+  const handleDownloadOrderPDF = async () => {
+    if (!viewingOrder) {
+      message.error('No hay orden seleccionada')
+      return
+    }
+    setGeneratingPDF(true)
+    try {
+      // cuttingOrder está tipado como Quotation[] pero handleView lo carga como un único objeto.
+      const quotationObj = Array.isArray(cuttingOrder)
+        ? (cuttingOrder[0] as Quotation | undefined)
+        : ((cuttingOrder as unknown) as Quotation | undefined)
+      const orderForPDF: CuttingOrderData = {
+        ...viewingOrder,
+        quotation: quotationObj || viewingOrder.quotation
+      }
+      await generatePDFCuttingOrder(
+        orderForPDF,
+        combinedProducts,
+        shirtImage,
+        shortImage,
+        getMaterialName
+      )
+    } catch (err) {
+      console.error('Error generating cutting order PDF:', err)
+      message.error('No se pudo generar el PDF')
+    } finally {
+      setGeneratingPDF(false)
+    }
+  }
+
   const buildRowColumns = (isShirt: boolean) => [
     {
       title: 'Talla',
@@ -127,6 +172,12 @@ const CuttingOrderList: React.FC = () => {
       title: 'Cantidad',
       dataIndex: 'quantity',
       key: 'quantity'
+    },
+    {
+      title: 'Género',
+      dataIndex: 'gender',
+      key: 'gender',
+      render: (gender: any) => genderMap[Number(gender)] || '?'
     },
     {
       title: 'Observación',
@@ -164,6 +215,20 @@ const CuttingOrderList: React.FC = () => {
       key: 'quotationId'
     },
     {
+      title: 'Cliente',
+      key: 'client',
+      render: (_: any, record: CuttingOrderData) => {
+        const client = getClient(record)
+        return client ? `${client.name || ''} ${client.surname || ''}`.trim() || '-' : '-'
+      }
+    },
+    {
+      title: 'Organización',
+      key: 'organization',
+      render: (_: any, record: CuttingOrderData) =>
+        getClient(record)?.organization || '-'
+    },
+    {
       title: 'Fecha de recibido',
       dataIndex: 'dateReceipt',
       key: 'dateReceipt',
@@ -195,6 +260,7 @@ const CuttingOrderList: React.FC = () => {
                 setCurrentDesign
               )
               setCurrentQuotationId(record.quotationId)
+              setViewingOrder(record)
             }}
             title="Ver detalles"
           />
@@ -247,12 +313,17 @@ const CuttingOrderList: React.FC = () => {
           </div>
           <div className="flex flex-row gap-4 text-lg">
             <FilePdfOutlined className="text-red-500" onClick={() => {
-              const headers = ['Folio Cotización', 'Fecha Recepción', 'Fecha Entrega']
-              const data = filteredOrdersWithKeys.map((order) => [
-                order.quotationId?.toString() || '',
-                order.dateReceipt ? new Date(order.dateReceipt).toLocaleDateString('es-ES') : '',
-                order.dueDate ? new Date(order.dueDate).toLocaleDateString('es-ES') : ''
-              ])
+              const headers = ['Folio Cotización', 'Cliente', 'Organización', 'Fecha de recibido', 'Fecha de entrega']
+              const data = filteredOrdersWithKeys.map((order) => {
+                const client = getClient(order)
+                return [
+                  order.quotationId?.toString() || '',
+                  client ? `${client.name || ''} ${client.surname || ''}`.trim() || '-' : '-',
+                  client?.organization || '-',
+                  order.dateReceipt ? new Date(order.dateReceipt).toLocaleDateString('es-ES') : '',
+                  order.dueDate ? new Date(order.dueDate).toLocaleDateString('es-ES') : ''
+                ]
+              })
               generatePDFTable('Órdenes de Corte', headers, data, 'ordenes_corte')
             }} />
           </div>
@@ -279,6 +350,16 @@ const CuttingOrderList: React.FC = () => {
         onClose={() => setVisible(false)}
         open={visible}
         width={600}
+        extra={
+          <Button
+            type="primary"
+            icon={<FilePdfOutlined />}
+            loading={generatingPDF}
+            onClick={handleDownloadOrderPDF}
+          >
+            Descargar PDF
+          </Button>
+        }
       >
         {quotationProducts.length > 0 && (
           <Card className="p-4">
@@ -332,6 +413,7 @@ const CuttingOrderList: React.FC = () => {
                   key: o.id,
                   size: o.size,
                   quantity: o.quantity,
+                  gender: o.gender,
                   observation: o.observation,
                   original: o,
                 }));

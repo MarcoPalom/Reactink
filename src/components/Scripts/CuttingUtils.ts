@@ -612,17 +612,27 @@ export const handleUploadOrderImage = async (
 
 export const filterOrders = (
   Orders: CuttingOrderData[],
-  searchText: string
+  searchText: string,
+  quotationMap?: Map<number, Quotation>
 ): CuttingOrderData[] => {
-  return searchText
-    ? Orders.filter((Orders) =>
-        Object.values(Orders).some(
-          (value) =>
-            typeof value === 'string' &&
-            value.toLowerCase().includes(searchText.toLowerCase())
-        )
-      )
-    : Orders
+  if (!searchText) return Orders
+  const term = searchText.toLowerCase()
+  return Orders.filter((order) => {
+    const client =
+      quotationMap?.get(order.quotationId)?.client || order.quotation?.client
+    const haystack = [
+      order.quotationId,
+      order.dateReceipt,
+      order.dueDate,
+      client?.name,
+      client?.surname,
+      client?.organization
+    ]
+      .filter(Boolean)
+      .join(' ')
+      .toLowerCase()
+    return haystack.includes(term)
+  })
 }
 
 export const addKeysToOrders = (

@@ -1,6 +1,15 @@
 
 import { Quotation,Client } from './Interfaces'
-import { fetchQuotations, fetchClients } from 'components/Scripts/Apicalls'
+import { fetchQuotations, fetchClients, fetchOrders } from 'components/Scripts/Apicalls'
+
+export const fetchAndSetCuttingOrders = async (setOrders: React.Dispatch<React.SetStateAction<any[]>>) => {
+  try {
+    const response = await fetchOrders()
+    setOrders(response)
+  } catch (error) {
+    console.error('Error fetching and setting cutting orders:', error)
+  }
+}
 
 export const fetchAndSetClients = async (setClients: React.Dispatch<React.SetStateAction<Client[]>>) => {
   try {
@@ -33,6 +42,19 @@ export const filterQuotations = (
         )
       )
     : Quotations
+}
+
+export const isLiquidated = (Quotation: Quotation): boolean => {
+  return (Quotation.total ?? 0) <= 0
+}
+
+export const filterQuotationsByPaymentStatus = (
+  Quotations: Quotation[],
+  status: 'con_deuda' | 'liquidado'
+): Quotation[] => {
+  return Quotations.filter((Quotation) =>
+    status === 'liquidado' ? isLiquidated(Quotation) : !isLiquidated(Quotation)
+  )
 }
 
 export const addKeysToQuotations = (

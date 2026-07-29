@@ -1,7 +1,15 @@
 import html2pdf from 'html2pdf.js'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
-import { Quotation, QuotationProduct, QuotationProductMaquila } from 'components/Scripts/Interfaces'
+import axios from 'axios'
+import {
+  Quotation,
+  QuotationProduct,
+  QuotationProductMaquila,
+  CuttingOrderData,
+  FormDataShirtView,
+  FormDataShortView
+} from 'components/Scripts/Interfaces'
 import ButtDisables from 'assets/img/AceptBlocked.png'
 import SendButt from 'assets/img/Send.png'
 import TaxBloq from 'assets/img/TaxBloq.jpg'
@@ -417,6 +425,285 @@ export const generatePDFMODAL = async (
 
   // Guardar PDF
   doc.save(`cotizacion_folio_${selectedQuotation.id}.pdf`)
+}
+
+// Descarga una imagen remota y la convierte a data URL (base64) para embeber en jsPDF.
+// Usa axios con auth header porque el endpoint de imágenes requiere Bearer token.
+const fetchImageAsDataUrl = async (url: string): Promise<string | null> => {
+  try {
+    const response = await axios.get(url, {
+      headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
+      responseType: 'blob'
+    })
+    const blob = response.data as Blob
+    return await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onloadend = () => resolve(reader.result as string)
+      reader.onerror = reject
+      reader.readAsDataURL(blob)
+    })
+  } catch (error) {
+    console.error('Error fetching image for PDF:', url, error)
+    return null
+  }
+}
+
+const detectImageFormat = (dataUrl: string): 'PNG' | 'JPEG' => {
+  const match = /^data:image\/(png|jpe?g)/i.exec(dataUrl)
+  return match && match[1].toLowerCase() === 'png' ? 'PNG' : 'JPEG'
+}
+
+const isShirtView = (
+  p: FormDataShirtView | FormDataShortView
+): p is FormDataShirtView => 'clothFrontShirtId' in p
+
+export type CuttingOrderProductGroup = (FormDataShirtView | FormDataShortView) & {
+  originals: (FormDataShirtView | FormDataShortView)[]
+}
+
+export const generatePDFCuttingOrder = async (
+  order: CuttingOrderData,
+  groupedProducts: CuttingOrderProductGroup[],
+  shirtImageUrl: string | null,
+  shortImageUrl: string | null,
+  getMaterialName: (id: number) => string
+) => {
+  const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'letter' })
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
+  const margin = 15
+
+  // Descarga en paralelo el logo + imágenes de diseño + imagen por grupo.
+  const productImageUrls = groupedProducts.map((p) =>
+    isShirtView(p) ? shirtImageUrl : shortImageUrl
+  )
+  const [logoDataUrl, shirtDataUrl, shortDataUrl, ...productDataUrls] = await Promise.all([
+    getLogoDataUrl(),
+    shirtImageUrl ? fetchImageAsDataUrl(shirtImageUrl) : Promise.resolve(null),
+    shortImageUrl ? fetchImageAsDataUrl(shortImageUrl) : Promise.resolve(null),
+    ...productImageUrls.map((url) => (url ? fetchImageAsDataUrl(url) : Promise.resolve(null)))
+  ])
+
+  const ensureSpace = (needed: number, currentY: number): number => {
+    if (currentY + needed > pageHeight - margin - 5) {
+      doc.addPage()
+      return margin
+    }
+    return currentY
+  }
+
+  const safeAddImage = (
+    dataUrl: string | null,
+    x: number,
+    y: number,
+    w: number,
+    h: number
+  ) => {
+    if (!dataUrl) return
+    try {
+      doc.addImage(dataUrl, detectImageFormat(dataUrl), x, y, w, h)
+    } catch (e) {
+      console.error('addImage failed', e)
+    }
+  }
+
+  // Header: logo izquierda + título derecha
+  const logoW = 40
+  const logoH = 15
+  doc.addImage(logoDataUrl, 'PNG', margin, 12, logoW, logoH)
+
+  const headerTextX = margin + logoW + 5
+  doc.setFontSize(16)
+  doc.setFont('helvetica', 'bold')
+  doc.text('INK SPORTS', headerTextX, 18)
+  doc.setFontSize(12)
+  doc.setFont('helvetica', 'normal')
+  doc.text('Orden de Corte', headerTextX, 24)
+  doc.setFontSize(10)
+  const today = new Date().toLocaleDateString('es-ES')
+  doc.text(`Ciudad Victoria, Tamaulipas a ${today}`, headerTextX, 29)
+
+  let yPosition = 40
+
+  // Información general en dos columnas
+  const client = order.quotation?.client
+  const clientName = client ? `${client.name || ''} ${client.surname || ''}`.trim() : ''
+  const organization = client?.organization || ''
+  const dateReceiptStr = order.dateReceipt
+    ? new Date(order.dateReceipt).toLocaleDateString('es-ES')
+    : ''
+  const dueDateStr = order.dueDate ? new Date(order.dueDate).toLocaleDateString('es-ES') : ''
+
+  doc.setFontSize(10)
+  const leftColX = margin
+  const rightColX = pageWidth / 2 + 5
+  const labelOffset = 45
+
+  doc.setFont('helvetica', 'bold')
+  doc.text('Folio Cotización:', leftColX, yPosition)
+  doc.setFont('helvetica', 'normal')
+  doc.text(String(order.quotationId ?? ''), leftColX + labelOffset, yPosition)
+  doc.setFont('helvetica', 'bold')
+  doc.text('N° Orden de Corte:', rightColX, yPosition)
+  doc.setFont('helvetica', 'normal')
+  doc.text(String(order.id ?? ''), rightColX + labelOffset, yPosition)
+  yPosition += 6
+
+  doc.setFont('helvetica', 'bold')
+  doc.text('Cliente:', leftColX, yPosition)
+  doc.setFont('helvetica', 'normal')
+  doc.text(clientName.substring(0, 40) || '-', leftColX + labelOffset, yPosition)
+  doc.setFont('helvetica', 'bold')
+  doc.text('Fecha Recepción:', rightColX, yPosition)
+  doc.setFont('helvetica', 'normal')
+  doc.text(dateReceiptStr || '-', rightColX + labelOffset, yPosition)
+  yPosition += 6
+
+  doc.setFont('helvetica', 'bold')
+  doc.text('Organización:', leftColX, yPosition)
+  doc.setFont('helvetica', 'normal')
+  doc.text((organization || '-').substring(0, 40), leftColX + labelOffset, yPosition)
+  doc.setFont('helvetica', 'bold')
+  doc.text('Fecha Entrega:', rightColX, yPosition)
+  doc.setFont('helvetica', 'normal')
+  doc.text(dueDateStr || '-', rightColX + labelOffset, yPosition)
+  yPosition += 10
+
+  // Sección de imágenes de diseño
+  if (shirtDataUrl || shortDataUrl) {
+    yPosition = ensureSpace(65, yPosition)
+    doc.setFontSize(12)
+    doc.setFont('helvetica', 'bold')
+    doc.text('Diseños', margin, yPosition)
+    yPosition += 5
+
+    const imgW = 50
+    const imgH = 55
+    const gap = 10
+    const totalW = (shirtDataUrl ? imgW : 0) + (shortDataUrl ? imgW : 0) + (shirtDataUrl && shortDataUrl ? gap : 0)
+    let imgX = (pageWidth - totalW) / 2
+
+    if (shirtDataUrl) {
+      safeAddImage(shirtDataUrl, imgX, yPosition, imgW, imgH)
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'normal')
+      doc.text('Playera', imgX + imgW / 2, yPosition + imgH + 4, { align: 'center' })
+      imgX += imgW + gap
+    }
+    if (shortDataUrl) {
+      safeAddImage(shortDataUrl, imgX, yPosition, imgW, imgH)
+      doc.setFontSize(8)
+      doc.setFont('helvetica', 'normal')
+      doc.text('Short', imgX + imgW / 2, yPosition + imgH + 4, { align: 'center' })
+    }
+    yPosition += imgH + 10
+  }
+
+  // Productos agrupados
+  groupedProducts.forEach((product, idx) => {
+    const isShirt = isShirtView(product)
+    const productImg = productDataUrls[idx]
+
+    yPosition = ensureSpace(80, yPosition)
+
+    doc.setFontSize(11)
+    doc.setFont('helvetica', 'bold')
+    const genderTxt = product.gender === 1 ? 'H' : product.gender === 2 ? 'M' : ''
+    const title = `${isShirt ? 'Playera' : 'Short'} — ${product.discipline || ''}${
+      genderTxt ? ` (${genderTxt})` : ''
+    }`
+    doc.text(title, margin, yPosition)
+    yPosition += 5
+
+    const imgW = 32
+    const imgH = 40
+    const specsX = margin + imgW + 6
+    const specsStartY = yPosition
+
+    safeAddImage(productImg, margin, yPosition, imgW, imgH)
+
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'normal')
+    const specs: Array<[string, string]> = []
+    if (isShirt) {
+      specs.push(['Tela Frente', getMaterialName(product.clothFrontShirtId)])
+      specs.push(['Tela Espalda', getMaterialName(product.clothBackShirtId)])
+      specs.push(['Tela Manga', getMaterialName(product.clothSleeveId)])
+      specs.push(['Tela Cuello', getMaterialName(product.clothNecklineId)])
+      specs.push(['Tela Puño', getMaterialName(product.clothCuffId)])
+      specs.push(['Cuello', `${product.neckline || '-'} / ${product.typeNeckline || '-'}`])
+      specs.push(['Manga', `${product.sleeveType || '-'} / ${product.sleeveShape || '-'}`])
+      specs.push(['Puños', `${product.cuff || '-'} / ${product.typeCuff || '-'}`])
+    } else {
+      specs.push(['Tela Short', getMaterialName(product.clothShortId)])
+      specs.push(['Vista Short', product.viewShort || '-'])
+      specs.push(['Sección Short', product.shortSection || '-'])
+    }
+
+    let specY = specsStartY + 4
+    const specLabelW = 28
+    specs.forEach(([label, value]) => {
+      doc.setFont('helvetica', 'bold')
+      doc.text(`${label}:`, specsX, specY)
+      doc.setFont('helvetica', 'normal')
+      const wrapped = doc.splitTextToSize(String(value || '-'), pageWidth - specsX - specLabelW - margin)
+      doc.text(wrapped, specsX + specLabelW, specY)
+      specY += 4.5 * Math.max(1, Array.isArray(wrapped) ? wrapped.length : 1)
+    })
+
+    yPosition = Math.max(specsStartY + imgH, specY) + 4
+
+    const tableRows = product.originals.map((o) => [
+      o.size || '-',
+      String(o.quantity ?? '-'),
+      genderMap[Number(o.gender)] || '-',
+      o.observation || ''
+    ])
+
+    autoTable(doc, {
+      startY: yPosition,
+      head: [['Talla', 'Cantidad', 'Género', 'Observación']],
+      body: tableRows,
+      margin: { left: margin, right: margin },
+      styles: { fontSize: 9, cellPadding: 2 },
+      headStyles: { fillColor: [66, 66, 66], textColor: 255 },
+      alternateRowStyles: { fillColor: [245, 245, 245] },
+      columnStyles: {
+        0: { cellWidth: 25, halign: 'center' },
+        1: { cellWidth: 25, halign: 'center' },
+        2: { cellWidth: 25, halign: 'center' },
+        3: { cellWidth: 'auto' as any }
+      }
+    })
+
+    yPosition = (doc as any).lastAutoTable.finalY + 8
+    doc.setDrawColor(200)
+    doc.line(margin, yPosition - 4, pageWidth - margin, yPosition - 4)
+  })
+
+  // Footer
+  const footerEstimatedHeight = 25
+  if (yPosition + footerEstimatedHeight > pageHeight - margin) {
+    doc.addPage()
+    yPosition = margin
+  } else {
+    yPosition = pageHeight - margin - footerEstimatedHeight
+  }
+
+  doc.setFontSize(9)
+  doc.setFont('helvetica', 'normal')
+  doc.text('1 Y 2 Hidalgo, Zona Centro Cd. Victoria, Tamaulipas', pageWidth - margin, yPosition, { align: 'right' })
+  yPosition += 5
+  doc.text('Tel: (834)-312-16-58   Whatsapp: 8341330078', pageWidth - margin, yPosition, { align: 'right' })
+  yPosition += 7
+  doc.setFontSize(8)
+  const contactText =
+    'Si usted tiene alguna pregunta sobre esta orden de corte, por favor, póngase en contacto con nosotros ' +
+    'INK SUBLIMACIÓN, al 31 2 16 58 o a nuestro E-mail inkcomprasvic@gmail.com'
+  const wrapped = doc.splitTextToSize(contactText, pageWidth - margin * 2)
+  doc.text(wrapped, pageWidth - margin, yPosition, { align: 'right' })
+
+  doc.save(`orden_corte_${order.id}.pdf`)
 }
 
 // Función legacy usando html2pdf (backup)

@@ -222,7 +222,16 @@ const Production = () => {
         {/* Contenido dinámico basado en la orden seleccionada */}
         {selectedOrder ? (
           <>
-            <h3>{`ID de la Orden: ${selectedOrder.quotationId}`}</h3>
+            <h3>
+              {`ID de la Orden: ${selectedOrder.quotationId}`}
+              {quotation?.client && (
+                <>
+                  {' — '}
+                  {`${quotation.client.name || ''} ${quotation.client.surname || ''}`.trim()}
+                  {quotation.client.organization ? ` - ${quotation.client.organization}` : ''}
+                </>
+              )}
+            </h3>
 
             {activeProducts.map((product, productIndex) => (
               <div key={productIndex}>
